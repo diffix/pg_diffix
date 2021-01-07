@@ -5,7 +5,7 @@
 # - http://adpgtech.blogspot.com/2015/05/running-pgindent-on-non-core-code-or.html
 #
 
-FILES=${1:-'*.h *.c'}
+FILES=${1:-'**/*.h **/*.c'}
 
 if [ ! -f pg_opendiffix.so ]; then
     echo "ERROR: File pg_opendiffix.so not found! Run make and try again"

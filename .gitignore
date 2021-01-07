@@ -1,4 +1,7 @@
-pg_opendiffix.bc
-pg_opendiffix.o
-pg_opendiffix.so
-pg_opendiffix.typedefs
+.vscode/*
+!.vscode/cpp.code-snippets
+
+*.o
+*.so
+*.bc
+*.typedefs
