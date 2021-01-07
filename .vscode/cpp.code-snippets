@@ -1,0 +1,13 @@
+{
+  "Insert header guard": {
+    "prefix": "header",
+    "body": [
+      "#ifndef PG_OPENDIFFIX_${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H",
+      "#define PG_OPENDIFFIX_${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H",
+      "",
+      "",
+      "",
+      "#endif /* PG_OPENDIFFIX_${TM_FILENAME_BASE/(.*)/${1:/upcase}/}_H */"
+    ]
+  }
+}
