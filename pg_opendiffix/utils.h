@@ -4,7 +4,7 @@
 #define DEBUG
 
 #ifdef DEBUG
-#define LOG_DEBUG(...) ereport(LOG, (errmsg(__VA_ARGS__)))
+#define LOG_DEBUG(...) ereport(LOG, (errmsg("[PG_OPENDIFFIX] " __VA_ARGS__)))
 #else
 #define LOG_DEBUG(...)
 #endif

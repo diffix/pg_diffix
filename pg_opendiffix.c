@@ -22,20 +22,23 @@ void _PG_fini(void);
 /* Hooks */
 
 static void pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query);
-static post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
-
 static PlannedStmt *pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions, ParamListInfo boundParams);
-static planner_hook_type prev_planner_hook = NULL;
 
-ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
-ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
-ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
-ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
+static post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
+static planner_hook_type prev_planner_hook = NULL;
+static ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
+static ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
+static ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
+static ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
 /* Definitions */
 
+static int activationCount = 1;
+
 void _PG_init(void)
 {
+  LOG_DEBUG("Activating OpenDiffix extension (%i)...", activationCount++);
+
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
   post_parse_analyze_hook = pg_opendiffix_post_parse_analyze;
 
@@ -57,6 +60,8 @@ void _PG_init(void)
 
 void _PG_fini(void)
 {
+  LOG_DEBUG("Deactivating OpenDiffix extension...");
+
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;
   ExecutorStart_hook = prev_ExecutorStart_hook;
