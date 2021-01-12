@@ -74,6 +74,8 @@ void _PG_fini(void)
   ExecutorEnd_hook = prev_ExecutorEnd_hook;
 }
 
+uint64 nextQueryId = 1;
+
 static void
 pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
@@ -83,7 +85,12 @@ pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
    * get_role_oid(...)
 	 * is_member_of_role(...)
 	 */
+
   LOG_DEBUG("User ID %u", GetUserId());
+
+  /* We give queries a unique ID to track its identity across hooks. */
+  query->queryId = nextQueryId++;
+  LOG_DEBUG("pg_opendiffix_post_parse_analyze (Query ID: %lu)", query->queryId);
 }
 
 static PlannedStmt *
@@ -91,8 +98,9 @@ pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions,
 {
   PlannedStmt *plan;
 
+  LOG_DEBUG("pg_opendiffix_planner (Query ID: %lu)", parse->queryId);
   DUMP_NODE("Parse tree", parse);
   plan = standard_planner(parse, query_string, cursorOptions, boundParams);
-  DUMP_NODE("Query plan", plan);
+  /* DUMP_NODE("Query plan", plan); */
   return plan;
 }
