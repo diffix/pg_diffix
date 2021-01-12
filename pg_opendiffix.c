@@ -73,12 +73,15 @@ void _PG_fini(void)
 static void
 pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
-  LOG_DEBUG("Parsed a query %s", pstate->p_sourcetext);
 }
 
 static PlannedStmt *
 pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions, ParamListInfo boundParams)
 {
-  LOG_DEBUG("pg_opendiffix_planner");
-  return standard_planner(parse, query_string, cursorOptions, boundParams);
+  PlannedStmt *plan;
+
+  DUMP_NODE("Parse tree", parse);
+  plan = standard_planner(parse, query_string, cursorOptions, boundParams);
+  DUMP_NODE("Query plan", plan);
+  return plan;
 }
