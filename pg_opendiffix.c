@@ -1,8 +1,5 @@
 #include "postgres.h"
 
-#include "pg_opendiffix/executor.h"
-#include "pg_opendiffix/utils.h"
-
 /* Function manager. */
 #include "fmgr.h"
 
@@ -11,6 +8,13 @@
 
 /* Planner hook */
 #include "optimizer/planner.h"
+
+/* Current user and role checking */
+#include "miscadmin.h"
+#include "utils/acl.h"
+
+#include "pg_opendiffix/executor.h"
+#include "pg_opendiffix/utils.h"
 
 /* PG extension setup */
 
@@ -73,6 +77,13 @@ void _PG_fini(void)
 static void
 pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
+  /* --- Useful functions ---
+   * GetUserId()
+   * GetSessionUserId()
+   * get_role_oid(...)
+	 * is_member_of_role(...)
+	 */
+  LOG_DEBUG("User ID %u", GetUserId());
 }
 
 static PlannedStmt *
