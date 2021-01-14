@@ -15,7 +15,7 @@ void _PG_init(void)
 {
   static int activation_count = 1;
 
-  LOG_DEBUG("Activating OpenDiffix extension (%i)...", activation_count++);
+  DEBUG_LOG("Activating OpenDiffix extension (%i)...", activation_count++);
 
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
   post_parse_analyze_hook = pg_opendiffix_post_parse_analyze;
@@ -38,7 +38,7 @@ void _PG_init(void)
 
 void _PG_fini(void)
 {
-  LOG_DEBUG("Deactivating OpenDiffix extension...");
+  DEBUG_LOG("Deactivating OpenDiffix extension...");
 
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;

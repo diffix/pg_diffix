@@ -55,13 +55,13 @@ void pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
     /* A hook may have changed the ID. */
     if (query->queryId != query_id)
     {
-      LOG_DEBUG("Query ID was changed by another extension.");
+      DEBUG_LOG("Query ID was changed by another extension.");
       query_id = query->queryId;
     }
   }
 
-  LOG_DEBUG("User ID %u", GetUserId());
-  LOG_DEBUG("pg_opendiffix_post_parse_analyze (Query ID: %lu)", query->queryId);
+  DEBUG_LOG("User ID %u", GetUserId());
+  DEBUG_LOG("pg_opendiffix_post_parse_analyze (Query ID: %lu)", query->queryId);
 }
 
 PlannedStmt *
@@ -69,8 +69,8 @@ pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions,
 {
   PlannedStmt *plan;
 
-  LOG_DEBUG("pg_opendiffix_planner (Query ID: %lu)", parse->queryId);
-  DUMP_NODE("Parse tree", parse);
+  DEBUG_LOG("pg_opendiffix_planner (Query ID: %lu)", parse->queryId);
+  DEBUG_DUMP_NODE("Parse tree", parse);
 
   if (prev_planner_hook)
   {
@@ -81,13 +81,13 @@ pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions,
     plan = standard_planner(parse, query_string, cursorOptions, boundParams);
   }
 
-  /* DUMP_NODE("Query plan", plan); */
+  /* DEBUG_DUMP_NODE("Query plan", plan); */
   return plan;
 }
 
 void pg_opendiffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-  LOG_DEBUG("pg_opendiffix_ExecutorStart (Query ID: %lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_LOG("pg_opendiffix_ExecutorStart (Query ID: %lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorStart_hook)
   {
@@ -105,7 +105,7 @@ void pg_opendiffix_ExecutorRun(
     uint64 count,
     bool execute_once)
 {
-  LOG_DEBUG("pg_opendiffix_ExecutorRun (Query ID: %lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_LOG("pg_opendiffix_ExecutorRun (Query ID: %lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorRun_hook)
   {
@@ -119,7 +119,7 @@ void pg_opendiffix_ExecutorRun(
 
 void pg_opendiffix_ExecutorFinish(QueryDesc *queryDesc)
 {
-  LOG_DEBUG("pg_opendiffix_ExecutorFinish (Query ID: %lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_LOG("pg_opendiffix_ExecutorFinish (Query ID: %lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorFinish_hook)
   {
@@ -133,7 +133,7 @@ void pg_opendiffix_ExecutorFinish(QueryDesc *queryDesc)
 
 void pg_opendiffix_ExecutorEnd(QueryDesc *queryDesc)
 {
-  LOG_DEBUG("pg_opendiffix_ExecutorEnd (Query ID: %lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_LOG("pg_opendiffix_ExecutorEnd (Query ID: %lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorEnd_hook)
   {
