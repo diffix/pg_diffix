@@ -5,6 +5,7 @@
 
 #include "pg_opendiffix/utils.h"
 #include "pg_opendiffix/hooks.h"
+#include "pg_opendiffix/config.h"
 
 PG_MODULE_MAGIC;
 
@@ -16,6 +17,8 @@ void _PG_init(void)
   static int activation_count = 1;
 
   DEBUG_LOG("Activating OpenDiffix extension (%i)...", activation_count++);
+
+  load_opendiffix_config();
 
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
   post_parse_analyze_hook = pg_opendiffix_post_parse_analyze;
@@ -39,6 +42,8 @@ void _PG_init(void)
 void _PG_fini(void)
 {
   DEBUG_LOG("Deactivating OpenDiffix extension...");
+
+  free_opendiffix_config();
 
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;

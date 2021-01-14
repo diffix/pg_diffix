@@ -5,3 +5,6 @@
 *.so
 *.bc
 *.typedefs
+
+# Node dumps for debugging
+*.pgnode
