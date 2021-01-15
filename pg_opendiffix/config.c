@@ -25,6 +25,10 @@ OpenDiffixConfig *load_opendiffix_config(void)
 {
   MemoryContext oldcontext;
 
+  /* If it's a reload we make sure previous config is freed. */
+  free_opendiffix_config();
+
+  /* Global context isn't ideal, but we need to reuse the config multiple times. */
   oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 
   /* Data will be fetched from config tables here... */
