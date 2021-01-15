@@ -25,6 +25,8 @@ extern OpenDiffixConfig *load_opendiffix_config(void);
 
 extern void free_opendiffix_config(void);
 
+extern RelationConfig *get_relation_config(OpenDiffixConfig *config, Oid rel_oid);
+
 extern char *config_to_string(OpenDiffixConfig *config);
 
 #endif /* PG_OPENDIFFIX_CONFIG_H */

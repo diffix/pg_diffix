@@ -50,17 +50,20 @@ void free_opendiffix_config()
   }
 }
 
+/*
+ * Formats config to a palloc'd string.
+ */
 char *config_to_string(OpenDiffixConfig *config)
 {
   StringInfoData string;
-  ListCell *cell;
+  ListCell *lc;
 
   initStringInfo(&string);
   appendStringInfo(&string, "{OPENDIFFIX_CONFIG :tables (");
 
-  foreach (cell, config->relations)
+  foreach (lc, config->relations)
   {
-    RelationConfig *relation = (RelationConfig *)lfirst(cell);
+    RelationConfig *relation = (RelationConfig *)lfirst(lc);
     appendStringInfo(&string, "{TABLE_CONFIG "
                               ":rel_namespace_name \"%s\" "
                               ":rel_namespace_oid %u "
@@ -78,6 +81,26 @@ char *config_to_string(OpenDiffixConfig *config)
 
   appendStringInfo(&string, ")}");
   return string.data;
+}
+
+/*
+ * Looks up relation config by OID.
+ * Returns NULL if the relation is not configured.
+ */
+RelationConfig *get_relation_config(OpenDiffixConfig *config, Oid rel_oid)
+{
+  ListCell *lc;
+
+  foreach (lc, config->relations)
+  {
+    RelationConfig *relation = (RelationConfig *)lfirst(lc);
+    if (relation->rel_oid == rel_oid)
+    {
+      return relation;
+    }
+  }
+
+  return NULL;
 }
 
 static RelationConfig *
