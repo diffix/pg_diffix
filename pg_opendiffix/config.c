@@ -6,7 +6,7 @@
 
 #include "pg_opendiffix/config.h"
 
-static TableConfig *make_table_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
+static RelationConfig *make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
 
 static OpenDiffixConfig current_config = {NULL};
 
@@ -29,8 +29,8 @@ OpenDiffixConfig *load_opendiffix_config(void)
 
   /* Data will be fetched from config tables here... */
 
-  current_config.tables = list_make1(
-      make_table_config("public", "users", "id") /* Hard-coded for now. */
+  current_config.relations = list_make1(
+      make_relation_config("public", "users", "id") /* Hard-coded for now. */
   );
 
   MemoryContextSwitchTo(oldcontext);
@@ -43,10 +43,10 @@ OpenDiffixConfig *load_opendiffix_config(void)
  */
 void free_opendiffix_config()
 {
-  if (current_config.tables)
+  if (current_config.relations)
   {
-    list_free_deep(current_config.tables);
-    current_config.tables = NULL;
+    list_free_deep(current_config.relations);
+    current_config.relations = NULL;
   }
 }
 
@@ -58,9 +58,9 @@ char *config_to_string(OpenDiffixConfig *config)
   initStringInfo(&string);
   appendStringInfo(&string, "{OPENDIFFIX_CONFIG :tables (");
 
-  foreach (cell, config->tables)
+  foreach (cell, config->relations)
   {
-    TableConfig *table = (TableConfig *)lfirst(cell);
+    RelationConfig *relation = (RelationConfig *)lfirst(cell);
     appendStringInfo(&string, "{TABLE_CONFIG "
                               ":rel_namespace_name \"%s\" "
                               ":rel_namespace_oid %u "
@@ -68,22 +68,22 @@ char *config_to_string(OpenDiffixConfig *config)
                               ":rel_oid %u "
                               ":aid_attname \"%s\" "
                               ":aid_attnum %hi}",
-                     table->rel_namespace_name,
-                     table->rel_namespace_oid,
-                     table->rel_name,
-                     table->rel_oid,
-                     table->aid_attname,
-                     table->aid_attnum);
+                     relation->rel_namespace_name,
+                     relation->rel_namespace_oid,
+                     relation->rel_name,
+                     relation->rel_oid,
+                     relation->aid_attname,
+                     relation->aid_attnum);
   }
 
   appendStringInfo(&string, ")}");
   return string.data;
 }
 
-static TableConfig *
-make_table_config(char *rel_namespace_name, char *rel_name, char *aid_attname)
+static RelationConfig *
+make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname)
 {
-  TableConfig *table;
+  RelationConfig *relation;
   Oid rel_namespace_oid;
   Oid rel_oid;
   AttrNumber aid_attnum;
@@ -92,13 +92,13 @@ make_table_config(char *rel_namespace_name, char *rel_name, char *aid_attname)
   rel_oid = get_relname_relid(rel_name, rel_namespace_oid);
   aid_attnum = get_attnum(rel_oid, aid_attname);
 
-  table = palloc(sizeof(TableConfig));
-  table->rel_namespace_name = rel_namespace_name;
-  table->rel_namespace_oid = rel_namespace_oid;
-  table->rel_name = rel_name;
-  table->rel_oid = rel_oid;
-  table->aid_attname = aid_attname;
-  table->aid_attnum = aid_attnum;
+  relation = palloc(sizeof(RelationConfig));
+  relation->rel_namespace_name = rel_namespace_name;
+  relation->rel_namespace_oid = rel_namespace_oid;
+  relation->rel_name = rel_name;
+  relation->rel_oid = rel_oid;
+  relation->aid_attname = aid_attname;
+  relation->aid_attnum = aid_attnum;
 
-  return table;
+  return relation;
 }

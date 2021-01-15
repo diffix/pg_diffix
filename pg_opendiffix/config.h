@@ -4,7 +4,7 @@
 #include "postgres.h"
 #include "nodes/pg_list.h"
 
-typedef struct TableConfig
+typedef struct RelationConfig
 {
   char *rel_namespace_name; /* Namespace name */
   Oid rel_namespace_oid;    /* Namespace OID */
@@ -12,11 +12,11 @@ typedef struct TableConfig
   Oid rel_oid;              /* Relation OID */
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
-} TableConfig;
+} RelationConfig;
 
 typedef struct OpenDiffixConfig
 {
-  List *tables; /* Registered tables (of TableConfig) */
+  List *relations; /* Registered tables (of RelationConfig) */
 } OpenDiffixConfig;
 
 extern OpenDiffixConfig *get_opendiffix_config(void);
