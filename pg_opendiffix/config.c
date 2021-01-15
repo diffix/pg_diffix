@@ -2,6 +2,7 @@
 #include "catalog/namespace.h"
 #include "utils/memutils.h"
 #include "utils/lsyscache.h"
+#include "lib/stringinfo.h"
 
 #include "pg_opendiffix/config.h"
 
@@ -47,6 +48,36 @@ void free_opendiffix_config()
     list_free_deep(current_config.tables);
     current_config.tables = NULL;
   }
+}
+
+char *config_to_string(OpenDiffixConfig *config)
+{
+  StringInfoData string;
+  ListCell *cell;
+
+  initStringInfo(&string);
+  appendStringInfo(&string, "{OPENDIFFIX_CONFIG :tables (");
+
+  foreach (cell, config->tables)
+  {
+    TableConfig *table = (TableConfig *)lfirst(cell);
+    appendStringInfo(&string, "{TABLE_CONFIG "
+                              ":rel_namespace_name \"%s\" "
+                              ":rel_namespace_oid %u "
+                              ":rel_name \"%s\" "
+                              ":rel_oid %u "
+                              ":aid_attname \"%s\" "
+                              ":aid_attnum %hi}",
+                     table->rel_namespace_name,
+                     table->rel_namespace_oid,
+                     table->rel_name,
+                     table->rel_oid,
+                     table->aid_attname,
+                     table->aid_attnum);
+  }
+
+  appendStringInfo(&string, ")}");
+  return string.data;
 }
 
 static TableConfig *

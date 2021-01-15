@@ -16,9 +16,16 @@ void _PG_init(void)
 {
   static int activation_count = 1;
 
+  OpenDiffixConfig *config;
+  char *config_string;
+
   DEBUG_LOG("Activating OpenDiffix extension (%i)...", activation_count++);
 
-  load_opendiffix_config();
+  config = load_opendiffix_config();
+  config_string = config_to_string(config);
+
+  DEBUG_LOG("Config %s", config_string);
+  pfree(config_string);
 
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
   post_parse_analyze_hook = pg_opendiffix_post_parse_analyze;

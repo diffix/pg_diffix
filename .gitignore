@@ -8,3 +8,6 @@
 
 # Node dumps for debugging
 *.pgnode
+pg_node_formatter/node_modules/
+# We don't really care about package locking
+pg_node_formatter/package-lock.json

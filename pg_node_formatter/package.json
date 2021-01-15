@@ -1,0 +1,8 @@
+{
+  "name": "pg_node_formatter",
+  "main": "index.js",
+  "dependencies": {
+    "moo": "^0.5.1"
+  },
+  "private": true
+}
