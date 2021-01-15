@@ -19,7 +19,11 @@ extern ExecutorEnd_hook_type prev_ExecutorEnd_hook;
 
 extern void pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query);
 
-extern PlannedStmt *pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions, ParamListInfo boundParams);
+extern PlannedStmt *pg_opendiffix_planner(
+    Query *parse,
+    const char *query_string,
+    int cursorOptions,
+    ParamListInfo boundParams);
 
 extern void pg_opendiffix_ExecutorStart(QueryDesc *queryDesc, int eflags);
 

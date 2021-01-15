@@ -64,8 +64,11 @@ void pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
   verify_anonymization_requirements(query);
 }
 
-PlannedStmt *
-pg_opendiffix_planner(Query *parse, const char *query_string, int cursorOptions, ParamListInfo boundParams)
+PlannedStmt *pg_opendiffix_planner(
+    Query *parse,
+    const char *query_string,
+    int cursorOptions,
+    ParamListInfo boundParams)
 {
   PlannedStmt *plan;
 

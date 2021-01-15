@@ -6,7 +6,8 @@
 
 #include "pg_opendiffix/config.h"
 
-static RelationConfig *make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
+static RelationConfig *
+make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
 
 static OpenDiffixConfig current_config = {NULL};
 
