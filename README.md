@@ -8,7 +8,7 @@ The source is compiled with:
 $ make
 ```
 
-You should have the `postgresql-server-dev-x` package installed if you have postgres version `x`.
+You should already have the `postgresql-server-dev-x` package installed if you have postgres version `x`.
 If not, you must install it in order to compile the source.
 
 The compiled extension is installed with:
@@ -19,7 +19,7 @@ $ make install
 
 You probably need to run it with superuser permission as `sudo make install`.
 
-In `psql`, you have to activate the extension with `load 'pg_opendiffix'` each time you open a connection.
+In `psql`, you have to activate the extension with `load 'pg_opendiffix';` each time you open a connection.
 
 To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 

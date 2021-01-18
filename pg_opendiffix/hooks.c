@@ -50,6 +50,8 @@ void pg_opendiffix_post_parse_analyze(ParseState *pstate, Query *query)
     query_id = query->queryId;
   }
 
+  DEBUG_DUMP_NODE("Query tree", query);
+
   /* If it's a non-sensitive query we let it pass through. */
   if (!requires_anonymization(query))
   {
