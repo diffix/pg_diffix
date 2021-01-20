@@ -66,7 +66,6 @@ void verify_anonymization_requirements(Query *query)
   NOT_SUPPORTED(query->hasForUpdate, "FOR [KEY] UPDATE/SHARE");
   NOT_SUPPORTED(query->hasSubLinks, "SubLinks");
   NOT_SUPPORTED(query->hasTargetSRFs, "SRF functions");
-  NOT_SUPPORTED(query->groupClause, "GROUP BY");
   NOT_SUPPORTED(query->groupingSets, "GROUPING SETS");
   NOT_SUPPORTED(query->havingQual, "HAVING");
   NOT_SUPPORTED(query->windowClause, "window functions");
