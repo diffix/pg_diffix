@@ -1,6 +1,4 @@
 #include "postgres.h"
-
-/* Function manager. */
 #include "fmgr.h"
 
 #include "pg_opendiffix/utils.h"

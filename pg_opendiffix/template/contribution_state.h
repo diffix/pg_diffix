@@ -18,11 +18,20 @@
  * CS_OVERALL_CONTRIBUTION_INITIAL
  *
  * --- What to yield? ---
+ * CS_SCOPE
  * CS_DECLARE
  * CS_DEFINE
  */
 
+#ifndef PG_OPENDIFFIX_CONTRIBUTION_STATE_H
+#define PG_OPENDIFFIX_CONTRIBUTION_STATE_H
+
+/* Non-template stuff should go here. */
+
 #include "postgres.h"
+#include "fmgr.h"
+
+#endif /* PG_OPENDIFFIX_CONTRIBUTION_STATE_H */
 
 /* ----------------------------------------------------------------
  * Internal macros
@@ -40,6 +49,7 @@
 
 /* API Functions */
 #define CS_STATE_NEW CS_MAKE_NAME(state_new)
+#define CS_STATE_GETARG0 CS_MAKE_NAME(state_getarg0)
 #define CS_STATE_UPDATE CS_MAKE_NAME(state_update)
 
 /* Types for table */
@@ -97,17 +107,30 @@ typedef struct CS_CONTRIBUTOR
 
 typedef struct CS_CONTRIBUTION_STATE
 {
+  MemoryContext context;           /* Where the hash table lives */
   uint64 distinct_aids;            /* Number of distinct AIDs being tracked */
   CS_TABLE_HASH *all_contributors; /* All contributors (map of AID -> TableEntry) */
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   CS_CONTRIBUTION_TYPE overall_contribution; /* Total contribution from all contributors */
 #endif
-  uint32 top_contributors_length;                         /* Length of top_contributors array */
+  unsigned int top_contributors_length;                   /* Length of top_contributors array */
   CS_CONTRIBUTOR top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
 } CS_CONTRIBUTION_STATE;
 
-extern CS_CONTRIBUTION_STATE *CS_STATE_NEW(MemoryContext context, uint32 top_contributors_length);
-extern void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CONTRIBUTION_TYPE contribution);
+/* API Functions */
+
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
+    MemoryContext context,
+    unsigned int top_contributors_length);
+
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(
+    PG_FUNCTION_ARGS,
+    unsigned int top_contributors_length);
+
+CS_SCOPE void CS_STATE_UPDATE(
+    CS_CONTRIBUTION_STATE *state,
+    CS_AID_TYPE aid,
+    CS_CONTRIBUTION_TYPE contribution);
 
 #endif /* CS_DECLARE */
 
@@ -117,6 +140,8 @@ extern void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CO
  */
 
 #ifdef CS_DEFINE
+
+#include "utils/elog.h"
 
 /* Hash table setup */
 
@@ -130,12 +155,12 @@ extern void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CO
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-static inline uint32 CS_INSERTION_INDEX(
+static inline unsigned int CS_INSERTION_INDEX(
     CS_CONTRIBUTION_STATE *state,
-    uint32 top_length,
+    unsigned int top_length,
     CS_CONTRIBUTION_TYPE contribution)
 {
-  uint32 i;
+  unsigned int i;
   /*
    * Do a single comparison in the middle to halve lookup steps.
    * No. elements won't be large enough to bother with a full binary search.
@@ -155,13 +180,13 @@ static inline uint32 CS_INSERTION_INDEX(
   return top_length;
 }
 
-static inline uint32 CS_AID_INDEX(
+static inline unsigned int CS_AID_INDEX(
     CS_CONTRIBUTION_STATE *state,
-    uint32 top_length,
+    unsigned int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE old_contribution)
 {
-  uint32 i;
+  unsigned int i;
   for (i = CS_CONTRIBUTION_GREATER(old_contribution, state->top_contributors[top_length / 2].contribution)
                ? 0
                : (top_length / 2 + 1);
@@ -179,12 +204,12 @@ static inline uint32 CS_AID_INDEX(
 
 static inline void CS_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    uint32 top_length,
+    unsigned int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE contribution)
 {
-  uint32 insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
-  uint32 capacity = state->top_contributors_length;
+  unsigned int insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
+  unsigned int capacity = state->top_contributors_length;
   size_t elements;
 
   if (insertion_index == capacity)
@@ -209,13 +234,13 @@ static inline void CS_INSERT_CONTRIBUTOR(
 
 static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    uint32 top_length,
+    unsigned int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE old_contribution,
     CS_CONTRIBUTION_TYPE new_contribution)
 {
-  uint32 aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
-  uint32 insertion_index;
+  unsigned int aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
+  unsigned int insertion_index;
   size_t elements;
 
   if (aid_index == top_length)
@@ -239,11 +264,16 @@ static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
   state->top_contributors[insertion_index].contribution = new_contribution;
 }
 
-CS_CONTRIBUTION_STATE *CS_STATE_NEW(MemoryContext context, uint32 top_contributors_length)
+/* API Functions */
+
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
+    MemoryContext context,
+    unsigned int top_contributors_length)
 {
   CS_CONTRIBUTION_STATE *state = (CS_CONTRIBUTION_STATE *)
       MemoryContextAlloc(context, sizeof(CS_CONTRIBUTION_STATE) + top_contributors_length * sizeof(CS_CONTRIBUTOR));
 
+  state->context = context;
   state->distinct_aids = 0;
   state->all_contributors = CS_TABLE_CREATE(context, 128, NULL);
   state->top_contributors_length = top_contributors_length;
@@ -255,10 +285,32 @@ CS_CONTRIBUTION_STATE *CS_STATE_NEW(MemoryContext context, uint32 top_contributo
   return state;
 }
 
-void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CONTRIBUTION_TYPE contribution)
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(
+    PG_FUNCTION_ARGS,
+    unsigned int top_contributors_length)
+{
+  MemoryContext agg_context;
+
+  if (!PG_ARGISNULL(0))
+  {
+    return (CS_CONTRIBUTION_STATE *)PG_GETARG_POINTER(0);
+  }
+
+  if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
+  {
+    ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
+  }
+
+  return CS_STATE_NEW(agg_context, top_contributors_length);
+}
+
+CS_SCOPE void CS_STATE_UPDATE(
+    CS_CONTRIBUTION_STATE *state,
+    CS_AID_TYPE aid,
+    CS_CONTRIBUTION_TYPE contribution)
 {
   bool found;
-  uint32 top_length = Min(state->distinct_aids, state->top_contributors_length);
+  unsigned int top_length = Min(state->distinct_aids, state->top_contributors_length);
   CS_CONTRIBUTION_TYPE contribution_old;
   CS_CONTRIBUTION_TYPE min_top_contribution;
   CS_TABLE_ENTRY *entry = CS_TABLE_INSERT(state->all_contributors, aid, &found);
@@ -340,6 +392,7 @@ void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CONTRIBUT
 #undef CS_CONTRIBUTION_EQUAL
 #undef CS_CONTRIBUTION_COMBINE
 #undef CS_OVERALL_CONTRIBUTION_INITIAL
+#undef CS_SCOPE
 #undef CS_DECLARE
 #undef CS_DEFINE
 
@@ -354,6 +407,7 @@ void CS_STATE_UPDATE(CS_CONTRIBUTION_STATE *state, CS_AID_TYPE aid, CS_CONTRIBUT
 
 /* API Functions */
 #undef CS_STATE_NEW
+#undef CS_STATE_GETARG0
 #undef CS_STATE_UPDATE
 
 /* Types for table */
