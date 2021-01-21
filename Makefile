@@ -4,6 +4,7 @@ OBJS = \
 	src/validation.o \
 	src/config.o \
 	src/hooks.o \
+	src/aggregates.o \
 	pg_opendiffix.o
 
 EXTENSION = pg_opendiffix
