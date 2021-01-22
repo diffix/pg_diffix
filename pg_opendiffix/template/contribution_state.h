@@ -20,7 +20,8 @@
  * CS_OVERALL_CONTRIBUTION_INITIAL - if CS_TRACK_CONTRIBUTION
  *
  * --- Optional ---
- * CS_INIT_ENTRY(state, entry) - callback to initialize hash table entries
+ * CS_INIT_AID_HASH(state, aid, aid_hash) - override initial AID hash calculation
+ * CS_INIT_ENTRY(state, entry)            - callback to initialize hash table entries
  *
  * --- What to yield? ---
  * CS_SCOPE
@@ -355,7 +356,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(PG_FUNCTION_ARGS)
   return CS_STATE_NEW(agg_context, 10);
 #else
   return CS_STATE_NEW(agg_context);
-#endif /* CS_TRACK_CONTRIBUTION */
+#endif
 }
 
 CS_SCOPE void CS_STATE_UPDATE_AID(
@@ -363,8 +364,16 @@ CS_SCOPE void CS_STATE_UPDATE_AID(
     CS_AID_TYPE aid)
 {
   bool found;
-  uint32 aid_hash = CS_AID_HASH(aid);
-  CS_TABLE_ENTRY *entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid_hash, aid, &found);
+  uint32 aid_hash;
+  CS_TABLE_ENTRY *entry;
+
+#ifdef CS_INIT_AID_HASH
+  CS_INIT_AID_HASH(state, aid, aid_hash);
+#else
+  aid_hash = CS_AID_HASH(aid);
+#endif
+
+  entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid, aid_hash, &found);
   if (!found)
   {
     state->distinct_aids++;
@@ -384,11 +393,26 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
     CS_CONTRIBUTION_TYPE contribution)
 {
   bool found;
-  uint32 aid_hash = CS_AID_HASH(aid);
-  CS_TABLE_ENTRY *entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid_hash, aid, &found);
-  unsigned int top_length = Min(state->distinct_aids, state->top_contributors_length);
+  uint32 aid_hash;
+  unsigned int top_length;
+  CS_TABLE_ENTRY *entry;
   CS_CONTRIBUTION_TYPE contribution_old;
   CS_CONTRIBUTION_TYPE min_top_contribution;
+
+#ifdef CS_INIT_AID_HASH
+  CS_INIT_AID_HASH(state, aid, aid_hash);
+#else
+  aid_hash = CS_AID_HASH(aid);
+#endif
+
+  entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid, aid_hash, &found);
+  /*
+   * Careful!
+   * If aid is a reference type, then entry->aid may be different to aid.
+   * From this point entry->aid will be used because it's bound to the state context.
+   */
+
+  top_length = Min(state->distinct_aids, state->top_contributors_length);
 
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   state->overall_contribution = CS_CONTRIBUTION_COMBINE(state->overall_contribution, contribution);
@@ -412,7 +436,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
         /* - contribution is greater than the lowest top contribution */
         CS_CONTRIBUTION_GREATER(contribution, state->top_contributors[top_length - 1].contribution))
     {
-      CS_INSERT_CONTRIBUTOR(state, top_length, aid, contribution);
+      CS_INSERT_CONTRIBUTOR(state, top_length, entry->aid, contribution);
     }
 
     return;
@@ -425,7 +449,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
     if (top_length != state->top_contributors_length ||
         CS_CONTRIBUTION_GREATER(contribution, state->top_contributors[top_length - 1].contribution))
     {
-      CS_INSERT_CONTRIBUTOR(state, top_length, aid, contribution);
+      CS_INSERT_CONTRIBUTOR(state, top_length, entry->aid, contribution);
     }
 
     return;
@@ -443,7 +467,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   if (top_length != state->top_contributors_length)
   {
     /* We know AID is already a top contributor because top_contributors is not full. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, aid, contribution_old, entry->contribution);
+    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
     return;
   }
 
@@ -452,7 +476,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   if (CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
   {
     /* We know AID is already a top contributor because old contribution is greater than the lowest top contribution. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, aid, contribution_old, entry->contribution);
+    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
     return;
   }
 
@@ -466,7 +490,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
    * We don't know whether AID is a top contributor or not because of possible equality.
    * We have to check for existence first. If it exists we bump, otherwise we insert.
    */
-  CS_BUMP_OR_INSERT_CONTRIBUTOR(state, top_length, aid, contribution_old, entry->contribution);
+  CS_BUMP_OR_INSERT_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
 }
 
 #endif /* CS_TRACK_CONTRIBUTION */
@@ -501,6 +525,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 #undef CS_CONTRIBUTION_EQUAL
 #undef CS_CONTRIBUTION_COMBINE
 #undef CS_OVERALL_CONTRIBUTION_INITIAL
+#undef CS_INIT_AID_HASH
 #undef CS_INIT_ENTRY
 #undef CS_SCOPE
 #undef CS_DECLARE
