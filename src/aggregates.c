@@ -9,6 +9,7 @@
  */
 
 #define AGG_AID_LABEL int4
+#define AGG_AID_FMT "%i"
 #define AGG_AID_TYPE int32
 #define AGG_AID_EQUAL(a, b) (a == b)
 #define AGG_AID_HASH(aid) hash_bytes_uint32(aid)
@@ -17,6 +18,7 @@
 #include "pg_opendiffix/template/agg_count_a.h"
 
 #undef AGG_AID_LABEL
+#undef AGG_AID_FMT
 #undef AGG_AID_TYPE
 #undef AGG_AID_EQUAL
 #undef AGG_AID_HASH
@@ -29,6 +31,7 @@
 
 typedef char *cstr;
 #define AGG_AID_LABEL text
+#define AGG_AID_FMT "%s"
 #define AGG_AID_TYPE cstr
 #define AGG_AID_EQUAL(a, b) (strcmp(a, b) == 0)
 #define AGG_AID_HASH(aid) hash_bytes((unsigned char *)aid, strlen(aid))
@@ -55,3 +58,12 @@ typedef char *cstr;
   } while (0)
 
 #include "pg_opendiffix/template/agg_count_a.h"
+
+#undef AGG_AID_LABEL
+#undef AGG_AID_FMT
+#undef AGG_AID_TYPE
+#undef AGG_AID_EQUAL
+#undef AGG_AID_HASH
+#undef AGG_AID_GETARG
+#undef AGG_INIT_AID_HASH
+#undef AGG_INIT_ENTRY

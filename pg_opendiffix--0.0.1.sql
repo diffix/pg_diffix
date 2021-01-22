@@ -21,16 +21,33 @@ RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
+CREATE FUNCTION diffix_int4_count_explain_finalfn(internal)
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
 CREATE AGGREGATE diffix_count(int4) (
   sfunc = diffix_int4_count_star_transfn,
   stype = internal,
   finalfunc = diffix_int4_count_finalfn
 );
 
+CREATE AGGREGATE explain_diffix_count(int4) (
+  sfunc = diffix_int4_count_star_transfn,
+  stype = internal,
+  finalfunc = diffix_int4_count_explain_finalfn
+);
+
 CREATE AGGREGATE diffix_count(int4, anyelement) (
   sfunc = diffix_int4_count_transfn,
   stype = internal,
   finalfunc = diffix_int4_count_finalfn
+);
+
+CREATE AGGREGATE explain_diffix_count(int4, anyelement) (
+  sfunc = diffix_int4_count_transfn,
+  stype = internal,
+  finalfunc = diffix_int4_count_explain_finalfn
 );
 
 
@@ -54,14 +71,31 @@ RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
+CREATE FUNCTION diffix_text_count_explain_finalfn(internal)
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
 CREATE AGGREGATE diffix_count(text) (
   sfunc = diffix_text_count_star_transfn,
   stype = internal,
   finalfunc = diffix_text_count_finalfn
 );
 
+CREATE AGGREGATE explain_diffix_count(text) (
+  sfunc = diffix_text_count_star_transfn,
+  stype = internal,
+  finalfunc = diffix_text_count_explain_finalfn
+);
+
 CREATE AGGREGATE diffix_count(text, anyelement) (
   sfunc = diffix_text_count_transfn,
   stype = internal,
   finalfunc = diffix_text_count_finalfn
+);
+
+CREATE AGGREGATE explain_diffix_count(text, anyelement) (
+  sfunc = diffix_text_count_transfn,
+  stype = internal,
+  finalfunc = diffix_text_count_explain_finalfn
 );

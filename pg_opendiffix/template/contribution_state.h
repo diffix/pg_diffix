@@ -121,7 +121,7 @@ typedef struct CS_CONTRIBUTION_STATE
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   CS_CONTRIBUTION_TYPE overall_contribution; /* Total contribution from all contributors */
 #endif
-  unsigned int top_contributors_length;                       /* Length of top_contributors array */
+  int top_contributors_length;                                /* Length of top_contributors array */
   CS_TOP_CONTRIBUTOR top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
 
 #endif /* CS_TRACK_CONTRIBUTION */
@@ -133,7 +133,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
     MemoryContext context
 #ifdef CS_TRACK_CONTRIBUTION
     ,
-    unsigned int top_contributors_length
+    int top_contributors_length
 #endif
 );
 
@@ -193,19 +193,18 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 
 #ifdef CS_TRACK_CONTRIBUTION
 
-static inline unsigned int CS_INSERTION_INDEX(
+static inline int CS_INSERTION_INDEX(
     CS_CONTRIBUTION_STATE *state,
-    unsigned int top_length,
+    int top_length,
     CS_CONTRIBUTION_TYPE contribution)
 {
-  unsigned int i;
   /*
    * Do a single comparison in the middle to halve lookup steps.
    * No. elements won't be large enough to bother with a full binary search.
    */
-  for (i = CS_CONTRIBUTION_GREATER(contribution, state->top_contributors[top_length / 2].contribution)
-               ? 0
-               : (top_length / 2 + 1);
+  for (int i = CS_CONTRIBUTION_GREATER(contribution, state->top_contributors[top_length / 2].contribution)
+                   ? 0
+                   : (top_length / 2 + 1);
        i < top_length;
        i++)
   {
@@ -218,16 +217,15 @@ static inline unsigned int CS_INSERTION_INDEX(
   return top_length;
 }
 
-static inline unsigned int CS_AID_INDEX(
+static inline int CS_AID_INDEX(
     CS_CONTRIBUTION_STATE *state,
-    unsigned int top_length,
+    int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE old_contribution)
 {
-  unsigned int i;
-  for (i = CS_CONTRIBUTION_GREATER(old_contribution, state->top_contributors[top_length / 2].contribution)
-               ? 0
-               : (top_length / 2 + 1);
+  for (int i = CS_CONTRIBUTION_GREATER(old_contribution, state->top_contributors[top_length / 2].contribution)
+                   ? 0
+                   : (top_length / 2 + 1);
        i < top_length;
        i++)
   {
@@ -242,12 +240,12 @@ static inline unsigned int CS_AID_INDEX(
 
 static inline void CS_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    unsigned int top_length,
+    int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE contribution)
 {
-  unsigned int insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
-  unsigned int capacity = state->top_contributors_length;
+  int insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
+  int capacity = state->top_contributors_length;
   size_t elements;
 
   if (insertion_index == capacity)
@@ -272,13 +270,13 @@ static inline void CS_INSERT_CONTRIBUTOR(
 
 static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    unsigned int top_length,
+    int top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE old_contribution,
     CS_CONTRIBUTION_TYPE new_contribution)
 {
-  unsigned int aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
-  unsigned int insertion_index;
+  int aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
+  int insertion_index;
   size_t elements;
 
   if (aid_index == top_length)
@@ -311,7 +309,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
     MemoryContext context
 #ifdef CS_TRACK_CONTRIBUTION
     ,
-    unsigned int top_contributors_length
+    int top_contributors_length
 #endif
 )
 {
@@ -394,7 +392,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 {
   bool found;
   uint32 aid_hash;
-  unsigned int top_length;
+  int top_length;
   CS_TABLE_ENTRY *entry;
   CS_CONTRIBUTION_TYPE contribution_old;
   CS_CONTRIBUTION_TYPE min_top_contribution;
@@ -408,7 +406,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid, aid_hash, &found);
   /*
    * Careful!
-   * If aid is a reference type, then entry->aid may be different to aid.
+   * If aid is a reference type, then entry->aid may be different from aid.
    * From this point entry->aid will be used because it's bound to the state context.
    */
 
