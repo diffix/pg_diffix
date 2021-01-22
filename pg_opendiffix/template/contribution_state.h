@@ -6,16 +6,18 @@
  * --- Base macros ---
  * CS_PREFIX
  * CS_AID_TYPE
- * CS_CONTRIBUTION_TYPE
- * CS_OVERALL_CONTRIBUTION_CALCULATE
+ *
+ * CS_TRACK_CONTRIBUTION             - whether to track contribution
+ * CS_CONTRIBUTION_TYPE              - if CS_TRACK_CONTRIBUTION
+ * CS_OVERALL_CONTRIBUTION_CALCULATE - if CS_TRACK_CONTRIBUTION
  *
  * --- Required for definition ---
  * CS_AID_EQUAL(a, b)
  * CS_AID_HASH(aid)
- * CS_CONTRIBUTION_GREATER(a, b)
- * CS_CONTRIBUTION_EQUAL(a, b)
- * CS_CONTRIBUTION_COMBINE(a, b)
- * CS_OVERALL_CONTRIBUTION_INITIAL
+ * CS_CONTRIBUTION_GREATER(a, b)   - if CS_TRACK_CONTRIBUTION
+ * CS_CONTRIBUTION_EQUAL(a, b)     - if CS_TRACK_CONTRIBUTION
+ * CS_CONTRIBUTION_COMBINE(a, b)   - if CS_TRACK_CONTRIBUTION
+ * CS_OVERALL_CONTRIBUTION_INITIAL - if CS_TRACK_CONTRIBUTION
  *
  * --- Optional ---
  * CS_INIT_ENTRY(state, entry) - callback to initialize hash table entries
@@ -75,9 +77,11 @@ typedef struct CS_TABLE_ENTRY
 {
   uint32 hash;
   CS_AID_TYPE aid;
+#ifdef CS_TRACK_CONTRIBUTION
   CS_CONTRIBUTION_TYPE contribution;
-  char status;
+#endif
   bool has_contribution;
+  char status;
 } CS_TABLE_ENTRY;
 
 /* Hash table setup */
@@ -94,11 +98,15 @@ typedef struct CS_TABLE_ENTRY
 #define SH_DECLARE
 #include "lib/simplehash.h"
 
+#ifdef CS_TRACK_CONTRIBUTION
+
 typedef struct CS_TOP_CONTRIBUTOR
 {
   CS_AID_TYPE aid;
   CS_CONTRIBUTION_TYPE contribution;
 } CS_TOP_CONTRIBUTOR;
+
+#endif
 
 typedef struct CS_CONTRIBUTION_STATE
 {
@@ -106,31 +114,40 @@ typedef struct CS_CONTRIBUTION_STATE
   uint32 aid_seed;                 /* Seed derived from unique AIDs */
   MemoryContext context;           /* Where the hash table lives */
   CS_TABLE_HASH *all_contributors; /* All contributors (map of AID -> TableEntry) */
+
+#ifdef CS_TRACK_CONTRIBUTION
+
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   CS_CONTRIBUTION_TYPE overall_contribution; /* Total contribution from all contributors */
 #endif
   unsigned int top_contributors_length;                       /* Length of top_contributors array */
   CS_TOP_CONTRIBUTOR top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
+
+#endif /* CS_TRACK_CONTRIBUTION */
 } CS_CONTRIBUTION_STATE;
 
 /* API Functions */
 
 CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
-    MemoryContext context,
-    unsigned int top_contributors_length);
+    MemoryContext context
+#ifdef CS_TRACK_CONTRIBUTION
+    ,
+    unsigned int top_contributors_length
+#endif
+);
 
-CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(
-    PG_FUNCTION_ARGS,
-    unsigned int top_contributors_length);
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(PG_FUNCTION_ARGS);
 
 CS_SCOPE void CS_STATE_UPDATE_AID(
     CS_CONTRIBUTION_STATE *state,
     CS_AID_TYPE aid);
 
+#ifdef CS_TRACK_CONTRIBUTION
 CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
     CS_CONTRIBUTION_STATE *state,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE contribution);
+#endif
 
 #endif /* CS_DECLARE */
 
@@ -172,6 +189,8 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 #define SH_SCOPE static inline
 #define SH_DEFINE
 #include "lib/simplehash.h"
+
+#ifdef CS_TRACK_CONTRIBUTION
 
 static inline unsigned int CS_INSERTION_INDEX(
     CS_CONTRIBUTION_STATE *state,
@@ -269,9 +288,10 @@ static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
 
   insertion_index = CS_INSERTION_INDEX(state, top_length, new_contribution);
 
-  if (aid_index > insertion_index) /* sanity check */
+  Assert(aid_index > insertion_index); /* sanity check */
+  elements = aid_index - insertion_index;
+  if (elements)
   {
-    elements = aid_index - insertion_index;
     memmove(
         &state->top_contributors[insertion_index + 1],
         &state->top_contributors[insertion_index],
@@ -282,31 +302,42 @@ static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
   state->top_contributors[insertion_index].contribution = new_contribution;
 }
 
+#endif /* CS_TRACK_CONTRIBUTION */
+
 /* API Functions */
 
 CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
-    MemoryContext context,
-    unsigned int top_contributors_length)
+    MemoryContext context
+#ifdef CS_TRACK_CONTRIBUTION
+    ,
+    unsigned int top_contributors_length
+#endif
+)
 {
   CS_CONTRIBUTION_STATE *state = (CS_CONTRIBUTION_STATE *)MemoryContextAlloc(
-      context, sizeof(CS_CONTRIBUTION_STATE) + top_contributors_length * sizeof(CS_TOP_CONTRIBUTOR));
+      context, sizeof(CS_CONTRIBUTION_STATE)
+#ifdef CS_TRACK_CONTRIBUTION
+                   + top_contributors_length * sizeof(CS_TOP_CONTRIBUTOR)
+#endif
+  );
 
   state->distinct_aids = 0;
   state->aid_seed = CS_SEED_INITIAL;
   state->context = context;
   state->all_contributors = CS_TABLE_CREATE(context, 128, NULL);
+
+#ifdef CS_TRACK_CONTRIBUTION
   state->top_contributors_length = top_contributors_length;
 
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   state->overall_contribution = CS_OVERALL_CONTRIBUTION_INITIAL;
 #endif
+#endif /* CS_TRACK_CONTRIBUTION */
 
   return state;
 }
 
-CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(
-    PG_FUNCTION_ARGS,
-    unsigned int top_contributors_length)
+CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(PG_FUNCTION_ARGS)
 {
   MemoryContext agg_context;
 
@@ -320,7 +351,11 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(
     ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
   }
 
-  return CS_STATE_NEW(agg_context, top_contributors_length);
+#ifdef CS_TRACK_CONTRIBUTION
+  return CS_STATE_NEW(agg_context, 10);
+#else
+  return CS_STATE_NEW(agg_context);
+#endif /* CS_TRACK_CONTRIBUTION */
 }
 
 CS_SCOPE void CS_STATE_UPDATE_AID(
@@ -340,6 +375,8 @@ CS_SCOPE void CS_STATE_UPDATE_AID(
 #endif
   }
 }
+
+#ifdef CS_TRACK_CONTRIBUTION
 
 CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
     CS_CONTRIBUTION_STATE *state,
@@ -432,6 +469,8 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   CS_BUMP_OR_INSERT_CONTRIBUTOR(state, top_length, aid, contribution_old, entry->contribution);
 }
 
+#endif /* CS_TRACK_CONTRIBUTION */
+
 /* Functions for table */
 #undef CS_TABLE_CREATE
 #undef CS_TABLE_INSERT_HASH
@@ -453,6 +492,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 /* Input macros */
 #undef CS_PREFIX
 #undef CS_AID_TYPE
+#undef CS_TRACK_CONTRIBUTION
 #undef CS_CONTRIBUTION_TYPE
 #undef CS_OVERALL_CONTRIBUTION_CALCULATE
 #undef CS_AID_EQUAL
