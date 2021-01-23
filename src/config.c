@@ -9,20 +9,28 @@
 static RelationConfig *
 make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
 
-static OpenDiffixConfig current_config = {NULL};
+OpenDiffixConfig Config = {
+    .noise_seed = INITIAL_NOISE_SEED,
+    .noise_sigma = INITIAL_NOISE_SIGMA,
 
-/*
- * Gets cached configuration.
- */
-OpenDiffixConfig *get_opendiffix_config(void)
-{
-  return &current_config;
-}
+    .low_count_threshold_min = INITIAL_LOW_COUNT_THRESHOLD_MIN,
+    .low_count_threshold = INITIAL_LOW_COUNT_THRESHOLD,
+    .low_count_threshold_sigma = INITIAL_LOW_COUNT_THRESHOLD_SIGMA,
+
+    .outlier_count_min = INITIAL_OUTLIER_COUNT_MIN,
+    .outlier_count_max = INITIAL_OUTLIER_COUNT_MAX,
+    .outlier_count_sigma = INITIAL_OUTLIER_COUNT_SIGMA,
+
+    .top_count_min = INITIAL_TOP_COUNT_MIN,
+    .top_count_max = INITIAL_TOP_COUNT_MAX,
+    .top_count_sigma = INITIAL_TOP_COUNT_SIGMA,
+
+    .relations = NIL};
 
 /*
  * Loads and caches configuration.
  */
-OpenDiffixConfig *load_opendiffix_config(void)
+void load_opendiffix_config(void)
 {
   MemoryContext oldcontext;
 
@@ -34,13 +42,11 @@ OpenDiffixConfig *load_opendiffix_config(void)
 
   /* Data will be fetched from config tables here... */
 
-  current_config.relations = list_make1(
+  Config.relations = list_make1(
       make_relation_config("public", "users", "id") /* Hard-coded for now. */
   );
 
   MemoryContextSwitchTo(oldcontext);
-
-  return &current_config;
 }
 
 /*
@@ -48,10 +54,10 @@ OpenDiffixConfig *load_opendiffix_config(void)
  */
 void free_opendiffix_config()
 {
-  if (current_config.relations)
+  if (Config.relations)
   {
-    list_free_deep(current_config.relations);
-    current_config.relations = NULL;
+    list_free_deep(Config.relations);
+    Config.relations = NIL;
   }
 }
 

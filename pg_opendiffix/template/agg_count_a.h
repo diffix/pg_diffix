@@ -39,6 +39,7 @@
 #define CS_AID_TYPE AGG_AID_TYPE
 #define CS_AID_EQUAL(a, b) AGG_AID_EQUAL(a, b)
 #define CS_AID_HASH(aid) AGG_AID_HASH(aid)
+#define CS_SEED_INITIAL 0x48a31f9f
 #define CS_TRACK_CONTRIBUTION
 #define CS_CONTRIBUTION_TYPE uint64
 #define CS_CONTRIBUTION_GREATER(a, b) (a > b)

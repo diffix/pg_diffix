@@ -13,14 +13,12 @@ void _PG_fini(void);
 void _PG_init(void)
 {
   static int activation_count = 1;
-
-  OpenDiffixConfig *config;
   char *config_string;
 
   DEBUG_LOG("Activating OpenDiffix extension (%i)...", activation_count++);
 
-  config = load_opendiffix_config();
-  config_string = config_to_string(config);
+  load_opendiffix_config();
+  config_string = config_to_string(&Config);
 
   DEBUG_LOG("Config %s", config_string);
   pfree(config_string);

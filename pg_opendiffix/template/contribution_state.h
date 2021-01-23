@@ -14,6 +14,7 @@
  * --- Required for definition ---
  * CS_AID_EQUAL(a, b)
  * CS_AID_HASH(aid)
+ * CS_SEED_INITIAL                 - initial AID seed
  * CS_CONTRIBUTION_GREATER(a, b)   - if CS_TRACK_CONTRIBUTION
  * CS_CONTRIBUTION_EQUAL(a, b)     - if CS_TRACK_CONTRIBUTION
  * CS_CONTRIBUTION_COMBINE(a, b)   - if CS_TRACK_CONTRIBUTION
@@ -37,8 +38,9 @@
 #include "postgres.h"
 #include "fmgr.h"
 
+#include "pg_opendiffix/config.h"
+
 #define CS_HASH_COMBINE(a, b) (a ^ b)
-#define CS_SEED_INITIAL 0
 
 #endif /* PG_OPENDIFFIX_CONTRIBUTION_STATE_H */
 
@@ -112,6 +114,8 @@ typedef struct CS_TOP_CONTRIBUTOR
 typedef struct CS_CONTRIBUTION_STATE
 {
   uint64 distinct_aids;            /* Number of distinct AIDs being tracked */
+  uint64 distinct_contributors;    /* Number of distinct AIDs that contributed at least once */
+  uint64 total_contributions;      /* Total number of contributions */
   uint32 aid_seed;                 /* Seed derived from unique AIDs */
   MemoryContext context;           /* Where the hash table lives */
   CS_TABLE_HASH *all_contributors; /* All contributors (map of AID -> TableEntry) */
@@ -321,6 +325,8 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
   );
 
   state->distinct_aids = 0;
+  state->distinct_contributors = 0;
+  state->total_contributions = 0;
   state->aid_seed = CS_SEED_INITIAL;
   state->context = context;
   state->all_contributors = CS_TABLE_CREATE(context, 128, NULL);
@@ -351,7 +357,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_GETARG0(PG_FUNCTION_ARGS)
   }
 
 #ifdef CS_TRACK_CONTRIBUTION
-  return CS_STATE_NEW(agg_context, 10);
+  return CS_STATE_NEW(agg_context, Config.outlier_count_max + Config.top_count_max);
 #else
   return CS_STATE_NEW(agg_context);
 #endif
@@ -411,6 +417,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
    */
 
   top_length = Min(state->distinct_aids, state->top_contributors_length);
+  state->total_contributions++;
 
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   state->overall_contribution = CS_CONTRIBUTION_COMBINE(state->overall_contribution, contribution);
@@ -420,6 +427,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   {
     /* AID does not exist in table. */
     state->distinct_aids++;
+    state->distinct_contributors++;
     state->aid_seed = CS_HASH_COMBINE(state->aid_seed, aid_hash);
     entry->has_contribution = true;
     entry->contribution = contribution;
@@ -442,6 +450,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   else if (!entry->has_contribution)
   {
     /* AID exists but hasn't contributed yet. */
+    state->distinct_contributors++;
     entry->has_contribution = true;
     entry->contribution = contribution;
     if (top_length != state->top_contributors_length ||
@@ -519,6 +528,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 #undef CS_OVERALL_CONTRIBUTION_CALCULATE
 #undef CS_AID_EQUAL
 #undef CS_AID_HASH
+#undef CS_SEED_INITIAL
 #undef CS_CONTRIBUTION_GREATER
 #undef CS_CONTRIBUTION_EQUAL
 #undef CS_CONTRIBUTION_COMBINE

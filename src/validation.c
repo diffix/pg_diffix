@@ -22,7 +22,6 @@ static void verify_join_tree(Query *query);
  */
 bool requires_anonymization(Query *query)
 {
-  OpenDiffixConfig *config;
   ListCell *lc;
 
   /*
@@ -34,14 +33,12 @@ bool requires_anonymization(Query *query)
     return false;
   }
 
-  config = get_opendiffix_config();
-
   foreach (lc, query->rtable)
   {
     RangeTblEntry *rte = (RangeTblEntry *)lfirst(lc);
 
     /* Check if relation OID is present in config. */
-    if (rte->relid && get_relation_config(config, rte->relid) != NULL)
+    if (rte->relid && get_relation_config(&Config, rte->relid) != NULL)
     {
       return true;
     }
