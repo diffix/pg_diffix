@@ -21,12 +21,25 @@
 #define PG_OPENDIFFIX_AGG_COUNT_A_H
 
 #include "postgres.h"
-#include "fmgr.h"
 
+#include <math.h>
+
+#include "fmgr.h"
 #include "utils/builtins.h"
 #include "lib/stringinfo.h"
 
+#include "pg_opendiffix/random.h"
+
 #define ARGS fcinfo
+
+typedef struct CountResult
+{
+  uint64 true_count;
+  uint64 anonymized_count;
+  uint64 noisy_count;
+  int noisy_outlier_count;
+  int noisy_top_count;
+} CountResult;
 
 #endif /* PG_OPENDIFFIX_AGG_COUNT_A_H */
 
@@ -58,15 +71,21 @@
 #endif
 #include "pg_opendiffix/template/contribution_state.h"
 
+/* Exported UDFs */
 #define AGG_STAR_TRANSFN AGG_MAKE_NAME(count_star_transfn)
 #define AGG_TRANSFN AGG_MAKE_NAME(count_transfn)
 #define AGG_FINALFN AGG_MAKE_NAME(count_finalfn)
 #define AGG_EXPLAIN_FINALFN AGG_MAKE_NAME(count_explain_finalfn)
 
+/* Functions from contribution_state.h */
 #define AGG_CONTRIBUTION_STATE AGG_MAKE_NAME(count_ContributionState)
 #define AGG_GET_STATE AGG_MAKE_NAME(count_state_getarg0)
 #define AGG_UPDATE_AID AGG_MAKE_NAME(count_state_update_aid)
 #define AGG_UPDATE_CONTRIBUTION AGG_MAKE_NAME(count_state_update_contribution)
+
+/* Helpers */
+#define AGG_CALCULATE_FINAL AGG_MAKE_NAME(count_calculcate_final)
+static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state);
 
 PG_FUNCTION_INFO_V1(AGG_STAR_TRANSFN);
 PG_FUNCTION_INFO_V1(AGG_TRANSFN);
@@ -107,7 +126,8 @@ Datum AGG_TRANSFN(PG_FUNCTION_ARGS)
 Datum AGG_FINALFN(PG_FUNCTION_ARGS)
 {
   AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
-  PG_RETURN_INT64(state->distinct_aids);
+  CountResult result = AGG_CALCULATE_FINAL(state);
+  PG_RETURN_INT64(result.noisy_count);
 }
 
 Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
@@ -115,6 +135,9 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
   AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
   StringInfoData string;
   int top_length = Min(state->top_contributors_length, state->distinct_aids);
+  CountResult result = AGG_CALCULATE_FINAL(state);
+
+  top_length = Min(top_length, result.noisy_outlier_count + result.noisy_top_count);
 
   initStringInfo(&string);
 
@@ -128,7 +151,12 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
     appendStringInfo(&string, AGG_AID_FMT "\u2794%lu",
                      state->top_contributors[i].aid,
                      state->top_contributors[i].contribution);
-    if (i < top_length - 1)
+
+    if (i == result.noisy_outlier_count - 1)
+    {
+      appendStringInfo(&string, " | ");
+    }
+    else if (i < top_length - 1)
     {
       appendStringInfo(&string, ", ");
     }
@@ -136,12 +164,72 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   appendStringInfo(&string, "]");
 
-  appendStringInfo(&string, "\ntrue=%li, anon=%li, final=%li",
-                   state->overall_contribution,
-                   state->overall_contribution,
-                   state->overall_contribution);
+  appendStringInfo(&string, "\ntrue=%li, flat=%li, final=%li",
+                   result.true_count,
+                   result.anonymized_count,
+                   result.noisy_count);
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
+}
+
+static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
+{
+  CountResult result;
+  uint64 seed = make_seed(state->aid_seed);
+  int top_length = Min(state->top_contributors_length, state->distinct_aids);
+  int actual_top_count;
+
+  int outlier_end_index;
+  int top_end_index;
+  /* Casting a possibly negative double directly to uint64 sounds dangerous... */
+  double temp_noisy_count;
+
+  result.true_count = state->overall_contribution;
+
+  result.noisy_outlier_count = next_int_in_range(
+      &seed,
+      Config.outlier_count_min,
+      Config.outlier_count_max,
+      Config.outlier_count_sigma);
+
+  result.noisy_top_count = next_int_in_range(
+      &seed,
+      Config.top_count_min,
+      Config.top_count_max,
+      Config.top_count_sigma);
+
+  result.anonymized_count = result.true_count;
+
+  outlier_end_index = Min(top_length, result.noisy_outlier_count);
+  for (int i = 0; i < outlier_end_index; i++)
+  {
+    result.anonymized_count -= state->top_contributors[i].contribution;
+  }
+
+  top_end_index = Min(top_length, result.noisy_outlier_count + result.noisy_top_count);
+  actual_top_count = top_end_index - result.noisy_outlier_count;
+
+  if (actual_top_count > 0)
+  {
+    uint64 outlier_compensation;
+    uint64 top_contribution = 0;
+
+    for (int i = result.noisy_outlier_count; i < top_end_index; i++)
+    {
+      top_contribution += state->top_contributors[i].contribution;
+    }
+
+    outlier_compensation = round((double)top_contribution * result.noisy_outlier_count / actual_top_count);
+    result.anonymized_count += outlier_compensation;
+  }
+
+  temp_noisy_count = round((double)result.anonymized_count + next_double(&seed, Config.noise_sigma));
+
+  /* Make sure counts are above the min LCF threshold. */
+  result.anonymized_count = Max(Config.low_count_threshold_min, result.anonymized_count);
+  result.noisy_count = Max(Config.low_count_threshold_min, temp_noisy_count);
+
+  return result;
 }
 
 /* Clean up only locally used macros. */
@@ -154,3 +242,5 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 #undef AGG_GET_STATE
 #undef AGG_UPDATE_AID
 #undef AGG_UPDATE_CONTRIBUTION
+
+#undef AGG_CALCULATE_FINAL
