@@ -3,13 +3,15 @@
 #include "common/hashfn.h"
 #include "utils/builtins.h"
 
+#include <inttypes.h>
+
 /* ----------------------------------------------------------------
  * AID: int4
  * ----------------------------------------------------------------
  */
 
 #define AGG_AID_LABEL int4
-#define AGG_AID_FMT "%i"
+#define AGG_AID_FMT "%" PRIi32
 #define AGG_AID_TYPE int32
 #define AGG_AID_EQUAL(a, b) (a == b)
 #define AGG_AID_HASH(aid) hash_bytes_uint32(aid)

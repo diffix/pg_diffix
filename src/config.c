@@ -14,22 +14,16 @@ DiffixConfig Config = {
     .noise_sigma = INITIAL_NOISE_SIGMA,
 
     .low_count_threshold_min = INITIAL_LOW_COUNT_THRESHOLD_MIN,
-    .low_count_threshold = INITIAL_LOW_COUNT_THRESHOLD,
-    .low_count_threshold_sigma = INITIAL_LOW_COUNT_THRESHOLD_SIGMA,
+    .low_count_threshold_max = INITIAL_LOW_COUNT_THRESHOLD_MAX,
 
     .outlier_count_min = INITIAL_OUTLIER_COUNT_MIN,
     .outlier_count_max = INITIAL_OUTLIER_COUNT_MAX,
-    .outlier_count_sigma = INITIAL_OUTLIER_COUNT_SIGMA,
 
     .top_count_min = INITIAL_TOP_COUNT_MIN,
     .top_count_max = INITIAL_TOP_COUNT_MAX,
-    .top_count_sigma = INITIAL_TOP_COUNT_SIGMA,
 
     .relations = NIL};
 
-/*
- * Loads and caches configuration.
- */
 void load_diffix_config(void)
 {
   MemoryContext oldcontext;
@@ -49,9 +43,6 @@ void load_diffix_config(void)
   MemoryContextSwitchTo(oldcontext);
 }
 
-/*
- * Frees memory associated with cached configuration.
- */
 void free_diffix_config()
 {
   if (Config.relations)
@@ -61,43 +52,6 @@ void free_diffix_config()
   }
 }
 
-/*
- * Formats config to a palloc'd string.
- */
-char *config_to_string(DiffixConfig *config)
-{
-  StringInfoData string;
-  ListCell *lc;
-
-  initStringInfo(&string);
-  appendStringInfo(&string, "{DIFFIX_CONFIG :tables (");
-
-  foreach (lc, config->relations)
-  {
-    RelationConfig *relation = (RelationConfig *)lfirst(lc);
-    appendStringInfo(&string, "{TABLE_CONFIG "
-                              ":rel_namespace_name \"%s\" "
-                              ":rel_namespace_oid %u "
-                              ":rel_name \"%s\" "
-                              ":rel_oid %u "
-                              ":aid_attname \"%s\" "
-                              ":aid_attnum %hi}",
-                     relation->rel_namespace_name,
-                     relation->rel_namespace_oid,
-                     relation->rel_name,
-                     relation->rel_oid,
-                     relation->aid_attname,
-                     relation->aid_attnum);
-  }
-
-  appendStringInfo(&string, ")}");
-  return string.data;
-}
-
-/*
- * Looks up relation config by OID.
- * Returns NULL if the relation is not configured.
- */
 RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid)
 {
   ListCell *lc;
@@ -135,4 +89,34 @@ make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname
   relation->aid_attnum = aid_attnum;
 
   return relation;
+}
+
+char *config_to_string(DiffixConfig *config)
+{
+  StringInfoData string;
+  ListCell *lc;
+
+  initStringInfo(&string);
+  appendStringInfo(&string, "{DIFFIX_CONFIG :tables (");
+
+  foreach (lc, config->relations)
+  {
+    RelationConfig *relation = (RelationConfig *)lfirst(lc);
+    appendStringInfo(&string, "{TABLE_CONFIG "
+                              ":rel_namespace_name \"%s\" "
+                              ":rel_namespace_oid %u "
+                              ":rel_name \"%s\" "
+                              ":rel_oid %u "
+                              ":aid_attname \"%s\" "
+                              ":aid_attnum %hi}",
+                     relation->rel_namespace_name,
+                     relation->rel_namespace_oid,
+                     relation->rel_name,
+                     relation->rel_oid,
+                     relation->aid_attname,
+                     relation->aid_attnum);
+  }
+
+  appendStringInfo(&string, ")}");
+  return string.data;
 }

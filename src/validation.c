@@ -16,10 +16,6 @@
 static void verify_rtable(Query *query);
 static void verify_join_tree(Query *query);
 
-/*
- * Returns true if query range contains any sensitive relation.
- * See config.h for relation configuration.
- */
 bool requires_anonymization(Query *query)
 {
   ListCell *lc;
@@ -52,10 +48,6 @@ bool requires_anonymization(Query *query)
   return false;
 }
 
-/*
- * Verifies that a query matches current anonymization restrictions and limitations.
- * If requirements are not met, an error is reported and execution is halted.
- */
 void verify_anonymization_requirements(Query *query)
 {
   NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");

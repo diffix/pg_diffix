@@ -3,14 +3,20 @@
 
 #include "postgres.h"
 
-extern uint64 make_seed(uint32 aid_seed);
+/*
+ * Combines the given 32-bit noise layer seed with
+ * the seed from config and produces a 64-bit output.
+ */
+extern uint64 make_seed(uint32 noise_layer_seed);
 
-extern double next_double(
-    uint64 *seed,
-    double stddev);
+/*
+ * Generates a zero-mean gaussian double with given stddev.
+ */
+extern double next_gaussian_double(uint64 *seed, double stddev);
 
-extern int next_int_in_range(
-    uint64 *seed,
-    int min, int max, double stddev);
+/*
+ * Generates a uniform integer in interval [min, max).
+ */
+extern int next_uniform_int(uint64 *seed, int min, int max);
 
 #endif /* PG_DIFFIX_RANDOM_H */
