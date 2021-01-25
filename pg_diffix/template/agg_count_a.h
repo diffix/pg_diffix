@@ -35,7 +35,7 @@ typedef struct CountResult
 {
   uint64 random_seed;
   uint64 true_count;
-  uint64 anonymized_count;
+  uint64 flattened_count;
   uint64 noisy_count;
   int noisy_outlier_count;
   int noisy_top_count;
@@ -176,7 +176,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   appendStringInfo(&string, "\ntrue=%" PRIu64 ", flat=%" PRIu64 ", final=%" PRIu64,
                    result.true_count,
-                   result.anonymized_count,
+                   result.flattened_count,
                    result.noisy_count);
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
@@ -206,12 +206,12 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
       Config.top_count_min,
       Config.top_count_max + 1);
 
-  result.anonymized_count = result.true_count;
+  result.flattened_count = result.true_count;
 
   outlier_end_index = Min(top_length, result.noisy_outlier_count);
   for (int i = 0; i < outlier_end_index; i++)
   {
-    result.anonymized_count -= state->top_contributors[i].contribution;
+    result.flattened_count -= state->top_contributors[i].contribution;
   }
 
   top_end_index = Min(top_length, result.noisy_outlier_count + result.noisy_top_count);
@@ -228,26 +228,27 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
     }
 
     outlier_compensation = round((double)top_contribution * result.noisy_outlier_count / actual_top_count);
-    result.anonymized_count += outlier_compensation;
+    result.flattened_count += outlier_compensation;
   }
 
-  /* Make sure counts are above the min LCF threshold. */
-  result.anonymized_count = Max(Config.low_count_threshold_min, result.anonymized_count);
-  result.noisy_count = result.anonymized_count;
+  result.noisy_count = result.flattened_count;
 
   count_noise = round(next_gaussian_double(&seed, Config.noise_sigma));
-  if (count_noise >= 0)
-  {
-    result.noisy_count += count_noise;
-  }
+
   /* Make sure not to accidentally overflow by subtracting. */
-  else if (result.noisy_count < -count_noise)
+  if (count_noise < 0 && result.noisy_count < -count_noise)
   {
-    result.noisy_count = Config.low_count_threshold_min;
+    result.noisy_count = 0;
   }
   else
   {
-    result.noisy_count = Max(result.noisy_count + count_noise, result.anonymized_count);
+    result.noisy_count += count_noise;
+  }
+
+  /* Make sure final count is at or above the min LCF threshold. */
+  if (result.noisy_count < Config.low_count_threshold_min)
+  {
+    result.noisy_count = Config.low_count_threshold_min;
   }
 
   return result;
