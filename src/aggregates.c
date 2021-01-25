@@ -18,6 +18,7 @@
 #define AGG_AID_GETARG(state, arg) PG_GETARG_INT32(arg)
 
 #include "pg_diffix/template/agg_count_a.h"
+#include "pg_diffix/template/agg_lcf_a.h"
 
 #undef AGG_AID_LABEL
 #undef AGG_AID_FMT
@@ -60,6 +61,7 @@ typedef char *cstr;
   } while (0)
 
 #include "pg_diffix/template/agg_count_a.h"
+#include "pg_diffix/template/agg_lcf_a.h"
 
 #undef AGG_AID_LABEL
 #undef AGG_AID_FMT

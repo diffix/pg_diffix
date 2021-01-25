@@ -31,8 +31,6 @@
 
 #include "pg_diffix/random.h"
 
-#define ARGS fcinfo
-
 typedef struct CountResult
 {
   uint64 random_seed;
@@ -81,11 +79,12 @@ typedef struct CountResult
 
 /* Functions from contribution_state.h */
 #define AGG_CONTRIBUTION_STATE AGG_MAKE_NAME(count_ContributionState)
-#define AGG_GET_STATE AGG_MAKE_NAME(count_state_getarg0)
+#define AGG_GET_STATE AGG_MAKE_NAME(count_state_getarg)
 #define AGG_UPDATE_AID AGG_MAKE_NAME(count_state_update_aid)
 #define AGG_UPDATE_CONTRIBUTION AGG_MAKE_NAME(count_state_update_contribution)
 
 /* Helpers */
+#define ARGS fcinfo
 #define AGG_CALCULATE_FINAL AGG_MAKE_NAME(count_calculcate_final)
 static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state);
 
@@ -96,7 +95,7 @@ PG_FUNCTION_INFO_V1(AGG_EXPLAIN_FINALFN);
 
 Datum AGG_STAR_TRANSFN(PG_FUNCTION_ARGS)
 {
-  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
+  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
 
   if (!PG_ARGISNULL(1))
   {
@@ -108,7 +107,7 @@ Datum AGG_STAR_TRANSFN(PG_FUNCTION_ARGS)
 
 Datum AGG_TRANSFN(PG_FUNCTION_ARGS)
 {
-  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
+  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
 
   if (!PG_ARGISNULL(1))
   {
@@ -127,14 +126,14 @@ Datum AGG_TRANSFN(PG_FUNCTION_ARGS)
 
 Datum AGG_FINALFN(PG_FUNCTION_ARGS)
 {
-  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
+  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
   CountResult result = AGG_CALCULATE_FINAL(state);
   PG_RETURN_INT64(result.noisy_count);
 }
 
 Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 {
-  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS);
+  AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
   StringInfoData string;
   int top_length = Min(state->top_contributors_length, state->distinct_aids);
   CountResult result = AGG_CALCULATE_FINAL(state);
@@ -148,14 +147,12 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   initStringInfo(&string);
 
-  appendStringInfo(&string, "uniq_aid=%" PRIu64, state->distinct_aids);
+  appendStringInfo(&string, "uniq=%" PRIu64, state->distinct_aids);
 
   /* Print only effective part of the seed. */
   appendStringInfo(&string,
                    ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
-                   random_seed[0],
-                   random_seed[1],
-                   random_seed[2]);
+                   random_seed[0], random_seed[1], random_seed[2]);
 
   appendStringInfo(&string, "\ntop=[");
 
@@ -177,7 +174,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   appendStringInfo(&string, "]");
 
-  appendStringInfo(&string, "\ntrue=%" PRIu64 ", flat=%" PRIu64 ", final=%" PRIu64 "",
+  appendStringInfo(&string, "\ntrue=%" PRIu64 ", flat=%" PRIu64 ", final=%" PRIu64,
                    result.true_count,
                    result.anonymized_count,
                    result.noisy_count);
@@ -257,6 +254,9 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
 }
 
 /* Clean up only locally used macros. */
+#undef AGG_CONCAT_HELPER
+#undef AGG_MAKE_NAME
+
 #undef AGG_STAR_TRANSFN
 #undef AGG_TRANSFN
 #undef AGG_FINALFN
@@ -267,4 +267,5 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
 #undef AGG_UPDATE_AID
 #undef AGG_UPDATE_CONTRIBUTION
 
+#undef ARGS
 #undef AGG_CALCULATE_FINAL
