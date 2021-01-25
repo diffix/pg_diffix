@@ -1,5 +1,5 @@
-#ifndef PG_OPENDIFFIX_RANDOM_H
-#define PG_OPENDIFFIX_RANDOM_H
+#ifndef PG_DIFFIX_RANDOM_H
+#define PG_DIFFIX_RANDOM_H
 
 #include "postgres.h"
 
@@ -13,4 +13,4 @@ extern int next_int_in_range(
     uint64 *seed,
     int min, int max, double stddev);
 
-#endif /* PG_OPENDIFFIX_RANDOM_H */
+#endif /* PG_DIFFIX_RANDOM_H */

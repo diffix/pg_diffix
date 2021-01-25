@@ -1,5 +1,5 @@
 #include <math.h>
-#include "pg_opendiffix/random.h"
+#include "pg_diffix/random.h"
 
 /* TODO */
 

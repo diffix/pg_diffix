@@ -30,19 +30,19 @@
  * CS_DEFINE
  */
 
-#ifndef PG_OPENDIFFIX_CONTRIBUTION_STATE_H
-#define PG_OPENDIFFIX_CONTRIBUTION_STATE_H
+#ifndef PG_DIFFIX_CONTRIBUTION_STATE_H
+#define PG_DIFFIX_CONTRIBUTION_STATE_H
 
 /* Non-template stuff should go here. */
 
 #include "postgres.h"
 #include "fmgr.h"
 
-#include "pg_opendiffix/config.h"
+#include "pg_diffix/config.h"
 
 #define CS_HASH_COMBINE(a, b) (a ^ b)
 
-#endif /* PG_OPENDIFFIX_CONTRIBUTION_STATE_H */
+#endif /* PG_DIFFIX_CONTRIBUTION_STATE_H */
 
 /* ----------------------------------------------------------------
  * Internal macros

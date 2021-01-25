@@ -15,7 +15,7 @@
 #define AGG_AID_HASH(aid) hash_bytes_uint32(aid)
 #define AGG_AID_GETARG(state, arg) PG_GETARG_INT32(arg)
 
-#include "pg_opendiffix/template/agg_count_a.h"
+#include "pg_diffix/template/agg_count_a.h"
 
 #undef AGG_AID_LABEL
 #undef AGG_AID_FMT
@@ -57,7 +57,7 @@ typedef char *cstr;
     entry->aid = aid_copy;                                                  \
   } while (0)
 
-#include "pg_opendiffix/template/agg_count_a.h"
+#include "pg_diffix/template/agg_count_a.h"
 
 #undef AGG_AID_LABEL
 #undef AGG_AID_FMT

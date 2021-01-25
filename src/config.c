@@ -4,12 +4,12 @@
 #include "utils/lsyscache.h"
 #include "lib/stringinfo.h"
 
-#include "pg_opendiffix/config.h"
+#include "pg_diffix/config.h"
 
 static RelationConfig *
 make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
 
-OpenDiffixConfig Config = {
+DiffixConfig Config = {
     .noise_seed = INITIAL_NOISE_SEED,
     .noise_sigma = INITIAL_NOISE_SIGMA,
 
@@ -30,12 +30,12 @@ OpenDiffixConfig Config = {
 /*
  * Loads and caches configuration.
  */
-void load_opendiffix_config(void)
+void load_diffix_config(void)
 {
   MemoryContext oldcontext;
 
   /* If it's a reload we make sure previous config is freed. */
-  free_opendiffix_config();
+  free_diffix_config();
 
   /* Global context isn't ideal, but we need to reuse the config multiple times. */
   oldcontext = MemoryContextSwitchTo(TopMemoryContext);
@@ -52,7 +52,7 @@ void load_opendiffix_config(void)
 /*
  * Frees memory associated with cached configuration.
  */
-void free_opendiffix_config()
+void free_diffix_config()
 {
   if (Config.relations)
   {
@@ -64,13 +64,13 @@ void free_opendiffix_config()
 /*
  * Formats config to a palloc'd string.
  */
-char *config_to_string(OpenDiffixConfig *config)
+char *config_to_string(DiffixConfig *config)
 {
   StringInfoData string;
   ListCell *lc;
 
   initStringInfo(&string);
-  appendStringInfo(&string, "{OPENDIFFIX_CONFIG :tables (");
+  appendStringInfo(&string, "{DIFFIX_CONFIG :tables (");
 
   foreach (lc, config->relations)
   {
@@ -98,7 +98,7 @@ char *config_to_string(OpenDiffixConfig *config)
  * Looks up relation config by OID.
  * Returns NULL if the relation is not configured.
  */
-RelationConfig *get_relation_config(OpenDiffixConfig *config, Oid rel_oid)
+RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid)
 {
   ListCell *lc;
 

@@ -17,8 +17,8 @@
  * diffix_<AID_LABEL>_count_<function>
  */
 
-#ifndef PG_OPENDIFFIX_AGG_COUNT_A_H
-#define PG_OPENDIFFIX_AGG_COUNT_A_H
+#ifndef PG_DIFFIX_AGG_COUNT_A_H
+#define PG_DIFFIX_AGG_COUNT_A_H
 
 #include "postgres.h"
 
@@ -28,7 +28,7 @@
 #include "utils/builtins.h"
 #include "lib/stringinfo.h"
 
-#include "pg_opendiffix/random.h"
+#include "pg_diffix/random.h"
 
 #define ARGS fcinfo
 
@@ -41,7 +41,7 @@ typedef struct CountResult
   int noisy_top_count;
 } CountResult;
 
-#endif /* PG_OPENDIFFIX_AGG_COUNT_A_H */
+#endif /* PG_DIFFIX_AGG_COUNT_A_H */
 
 #define AGG_CONCAT_HELPER(a, b) CppConcat(a, b)
 #define AGG_MAKE_NAME(name) \
@@ -69,7 +69,7 @@ typedef struct CountResult
 #ifdef AGG_INIT_ENTRY
 #define CS_INIT_ENTRY(state, entry) AGG_INIT_ENTRY(state, entry)
 #endif
-#include "pg_opendiffix/template/contribution_state.h"
+#include "pg_diffix/template/contribution_state.h"
 
 /* Exported UDFs */
 #define AGG_STAR_TRANSFN AGG_MAKE_NAME(count_star_transfn)

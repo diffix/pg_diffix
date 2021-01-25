@@ -1,5 +1,5 @@
-#ifndef PG_OPENDIFFIX_CONFIG_H
-#define PG_OPENDIFFIX_CONFIG_H
+#ifndef PG_DIFFIX_CONFIG_H
+#define PG_DIFFIX_CONFIG_H
 
 #include "postgres.h"
 #include "nodes/pg_list.h"
@@ -30,7 +30,7 @@ typedef struct RelationConfig
   AttrNumber aid_attnum;    /* AID column AttNumber */
 } RelationConfig;
 
-typedef struct OpenDiffixConfig
+typedef struct DiffixConfig
 {
   char *noise_seed;
   double noise_sigma;
@@ -48,16 +48,16 @@ typedef struct OpenDiffixConfig
   double top_count_sigma;
 
   List *relations; /* Registered tables (of RelationConfig) */
-} OpenDiffixConfig;
+} DiffixConfig;
 
-extern OpenDiffixConfig Config;
+extern DiffixConfig Config;
 
-extern void load_opendiffix_config(void);
+extern void load_diffix_config(void);
 
-extern void free_opendiffix_config(void);
+extern void free_diffix_config(void);
 
-extern RelationConfig *get_relation_config(OpenDiffixConfig *config, Oid rel_oid);
+extern RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid);
 
-extern char *config_to_string(OpenDiffixConfig *config);
+extern char *config_to_string(DiffixConfig *config);
 
-#endif /* PG_OPENDIFFIX_CONFIG_H */
+#endif /* PG_DIFFIX_CONFIG_H */

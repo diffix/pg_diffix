@@ -1,4 +1,4 @@
-# PG OpenDiffix
+# PG Diffix
 
 ## Installation
 
@@ -19,7 +19,7 @@ $ make install
 
 You probably need to run it with superuser permission as `sudo make install`.
 
-In `psql`, you have to activate the extension with `load 'pg_opendiffix';` each time you open a connection.
+In `psql`, you have to install the extension with `create extension pg_diffix;`.
 
 To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 

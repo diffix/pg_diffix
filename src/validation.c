@@ -2,10 +2,10 @@
 
 #include "utils/elog.h"
 
-#include "pg_opendiffix/validation.h"
-#include "pg_opendiffix/config.h"
+#include "pg_diffix/validation.h"
+#include "pg_diffix/config.h"
 
-#define FAILWITH(...) ereport(ERROR, (errmsg("[PG_OPENDIFFIX] " __VA_ARGS__)))
+#define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
 #define NOT_SUPPORTED(cond, feature)                                 \
   if (cond)                                                          \
