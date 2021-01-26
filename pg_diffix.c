@@ -1,9 +1,13 @@
 #include "postgres.h"
 #include "fmgr.h"
 
+#include "utils/guc.h"
+
 #include "pg_diffix/utils.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/config.h"
+
+#define MAX_NUMERIC_CONFIG 1000
 
 PG_MODULE_MAGIC;
 
@@ -23,6 +27,122 @@ void _PG_init(void)
   DEBUG_LOG("Config %s", config_string);
   pfree(config_string);
 
+  /*
+   * Variables
+   */
+  DefineCustomStringVariable(
+      "pg_diffix.noise_seed",                     /* name */
+      "Seed used for initializing noise layers.", /* short_desc */
+      NULL,                                       /* long_desc */
+      &Config.noise_seed,                         /* valueAddr */
+      INITIAL_NOISE_SEED,                         /* bootValue */
+      PGC_SUSET,                                  /* context */
+      0,                                          /* flags */
+      NULL,                                       /* check_hook */
+      NULL,                                       /* assign_hook */
+      NULL);                                      /* show_hook */
+
+  DefineCustomRealVariable(
+      "pg_diffix.noise_sigma",                            /* name */
+      "Standard deviation of noise added to aggregates.", /* short_desc */
+      NULL,                                               /* long_desc */
+      &Config.noise_sigma,                                /* valueAddr */
+      INITIAL_NOISE_SIGMA,                                /* bootValue */
+      0,                                                  /* minValue */
+      MAX_NUMERIC_CONFIG,                                 /* maxValue */
+      PGC_SUSET,                                          /* context */
+      0,                                                  /* flags */
+      NULL,                                               /* check_hook */
+      NULL,                                               /* assign_hook */
+      NULL);                                              /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.low_count_threshold_min",        /* name */
+      "Minimum low count threshold (inclusive).", /* short_desc */
+      NULL,                                       /* long_desc */
+      &Config.low_count_threshold_min,            /* valueAddr */
+      INITIAL_LOW_COUNT_THRESHOLD_MIN,            /* bootValue */
+      0,                                          /* minValue */
+      MAX_NUMERIC_CONFIG,                         /* maxValue */
+      PGC_SUSET,                                  /* context */
+      0,                                          /* flags */
+      NULL,                                       /* check_hook */
+      NULL,                                       /* assign_hook */
+      NULL);                                      /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.low_count_threshold_max",        /* name */
+      "Maximum low count threshold (inclusive).", /* short_desc */
+      NULL,                                       /* long_desc*/
+      &Config.low_count_threshold_max,            /* valueAddr*/
+      INITIAL_LOW_COUNT_THRESHOLD_MAX,            /* bootValue */
+      0,                                          /* minValue */
+      MAX_NUMERIC_CONFIG,                         /* maxValue */
+      PGC_SUSET,                                  /* context */
+      0,                                          /* flags */
+      NULL,                                       /* check_hook */
+      NULL,                                       /* assign_hook */
+      NULL);                                      /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.outlier_count_min",        /* name */
+      "Minimum outlier count (inclusive).", /* short_desc */
+      NULL,                                 /* long_desc */
+      &Config.outlier_count_min,            /* valueAddr */
+      INITIAL_OUTLIER_COUNT_MIN,            /* bootValue */
+      0,                                    /* minValue */
+      MAX_NUMERIC_CONFIG,                   /* maxValue */
+      PGC_SUSET,                            /* context */
+      0,                                    /* flags */
+      NULL,                                 /* check_hook */
+      NULL,                                 /* assign_hook */
+      NULL);                                /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.outlier_count_max",        /* name */
+      "Maximum outlier count (inclusive).", /* short_desc */
+      NULL,                                 /* long_desc */
+      &Config.outlier_count_max,            /* valueAddr */
+      INITIAL_OUTLIER_COUNT_MAX,            /* bootValue */
+      0,                                    /* minValue */
+      MAX_NUMERIC_CONFIG,                   /* maxValue */
+      PGC_SUSET,                            /* context */
+      0,                                    /* flags */
+      NULL,                                 /* check_hook */
+      NULL,                                 /* assign_hook */
+      NULL);                                /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.top_count_min",                     /* name */
+      "Minimum top contributors count (inclusive).", /* short_desc */
+      NULL,                                          /* long_desc */
+      &Config.top_count_min,                         /* valueAddr */
+      INITIAL_TOP_COUNT_MIN,                         /* bootValue */
+      0,                                             /* minValue */
+      MAX_NUMERIC_CONFIG,                            /* maxValue */
+      PGC_SUSET,                                     /* context */
+      0,                                             /* flags */
+      NULL,                                          /* check_hook */
+      NULL,                                          /* assign_hook */
+      NULL);                                         /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.top_count_max",                     /* name */
+      "Maximum top contributors count (inclusive).", /* short_desc */
+      NULL,                                          /* long_desc */
+      &Config.top_count_max,                         /* valueAddr */
+      INITIAL_TOP_COUNT_MAX,                         /* bootValue */
+      0,                                             /* minValue */
+      MAX_NUMERIC_CONFIG,                            /* maxValue */
+      PGC_SUSET,                                     /* context */
+      0,                                             /* flags */
+      NULL,                                          /* check_hook */
+      NULL,                                          /* assign_hook */
+      NULL);                                         /* show_hook */
+
+  /*
+   * Hooks
+   */
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
   post_parse_analyze_hook = pg_diffix_post_parse_analyze;
 
