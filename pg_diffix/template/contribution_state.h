@@ -229,7 +229,7 @@ static inline int CS_AID_INDEX(
 {
   for (int i = CS_CONTRIBUTION_GREATER(old_contribution, state->top_contributors[top_length / 2].contribution)
                    ? 0
-                   : (top_length / 2 + 1);
+                   : (top_length / 2);
        i < top_length;
        i++)
   {
@@ -291,7 +291,7 @@ static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
 
   insertion_index = CS_INSERTION_INDEX(state, top_length, new_contribution);
 
-  Assert(aid_index > insertion_index); /* sanity check */
+  Assert(insertion_index <= aid_index); /* sanity check */
   elements = aid_index - insertion_index;
   if (elements)
   {
