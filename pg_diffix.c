@@ -56,6 +56,20 @@ void _PG_init(void)
       NULL,                                               /* assign_hook */
       NULL);                                              /* show_hook */
 
+  DefineCustomRealVariable(
+      "pg_diffix.noise_cutoff",        /* name */
+      "Maximum absolute noise value.", /* short_desc */
+      NULL,                            /* long_desc */
+      &Config.noise_cutoff,            /* valueAddr */
+      INITIAL_NOISE_CUTOFF,            /* bootValue */
+      0,                               /* minValue */
+      1e7,                             /* maxValue */
+      PGC_SUSET,                       /* context */
+      0,                               /* flags */
+      NULL,                            /* check_hook */
+      NULL,                            /* assign_hook */
+      NULL);                           /* show_hook */
+
   DefineCustomIntVariable(
       "pg_diffix.low_count_threshold_min",        /* name */
       "Minimum low count threshold (inclusive).", /* short_desc */

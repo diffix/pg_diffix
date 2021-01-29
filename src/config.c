@@ -12,6 +12,7 @@ make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname
 DiffixConfig Config = {
     .noise_seed = INITIAL_NOISE_SEED,
     .noise_sigma = INITIAL_NOISE_SIGMA,
+    .noise_cutoff = INITIAL_NOISE_CUTOFF,
 
     .low_count_threshold_min = INITIAL_LOW_COUNT_THRESHOLD_MIN,
     .low_count_threshold_max = INITIAL_LOW_COUNT_THRESHOLD_MAX,

@@ -41,6 +41,21 @@ typedef struct CountResult
   int noisy_top_count;
 } CountResult;
 
+static inline clamp_noise(double noise)
+{
+  if (noise >= Config.noise_cutoff)
+  {
+    return Config.noise_cutoff;
+  }
+
+  if (noise <= -Config.noise_cutoff)
+  {
+    return -Config.noise_cutoff;
+  }
+
+  return noise;
+}
+
 #endif /* PG_DIFFIX_AGG_COUNT_A_H */
 
 #define AGG_CONCAT_HELPER(a, b) CppConcat(a, b)
@@ -233,7 +248,7 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
 
   result.noisy_count = result.flattened_count;
 
-  count_noise = round(next_gaussian_double(&seed, Config.noise_sigma));
+  count_noise = round(clamp_noise(next_gaussian_double(&seed, Config.noise_sigma)));
 
   /* Make sure not to accidentally overflow by subtracting. */
   if (count_noise < 0 && result.noisy_count < -count_noise)
