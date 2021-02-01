@@ -29,6 +29,7 @@
 #include "utils/builtins.h"
 #include "lib/stringinfo.h"
 
+#include "pg_diffix/config.h"
 #include "pg_diffix/random.h"
 
 typedef struct CountResult
