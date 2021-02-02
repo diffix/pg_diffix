@@ -6,8 +6,10 @@
 
 #include "pg_diffix/config.h"
 
-static RelationConfig *
-make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname);
+static RelationConfig *make_relation_config(
+    char *rel_namespace_name,
+    char *rel_name,
+    char *aid_attname);
 
 DiffixConfig Config = {
     .noise_seed = INITIAL_NOISE_SEED,
@@ -69,8 +71,10 @@ RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid)
   return NULL;
 }
 
-static RelationConfig *
-make_relation_config(char *rel_namespace_name, char *rel_name, char *aid_attname)
+static RelationConfig *make_relation_config(
+    char *rel_namespace_name,
+    char *rel_name,
+    char *aid_attname)
 {
   RelationConfig *relation;
   Oid rel_namespace_oid;

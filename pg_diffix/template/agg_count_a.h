@@ -42,7 +42,7 @@ typedef struct CountResult
   int noisy_top_count;
 } CountResult;
 
-static inline clamp_noise(double noise)
+static inline double clamp_noise(double noise)
 {
   if (noise >= Config.noise_cutoff)
   {
