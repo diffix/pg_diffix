@@ -18,6 +18,35 @@
 #define INITIAL_TOP_COUNT_MIN 4
 #define INITIAL_TOP_COUNT_MAX 6
 
+/*
+ * OIDs of default Postgres aggregates.
+ */
+typedef struct DefaultAggregateOids
+{
+  Oid count;     /* count(*) */
+  Oid count_any; /* count(any) */
+} DefaultAggregateOids;
+
+/*
+ * OIDs of Diffix aggregates for some particular AID type.
+ */
+typedef struct DiffixAggregateOids
+{
+  Oid diffix_count;     /* diffix_count(aid) */
+  Oid diffix_count_any; /* diffix_count(aid, any) */
+  Oid diffix_lcf;       /* diffix_lcf(aid) */
+} DiffixAggregateOids;
+
+typedef struct OidCache
+{
+  DefaultAggregateOids postgres; /* Default aggregates */
+  DiffixAggregateOids aid_int4;  /* Aggregates for int4 AID */
+  DiffixAggregateOids aid_text;  /* Aggregates for text AID */
+} OidCache;
+
+/*
+ * Configuration for a single relation.
+ */
 typedef struct RelationConfig
 {
   char *rel_namespace_name; /* Namespace name */
@@ -28,6 +57,9 @@ typedef struct RelationConfig
   AttrNumber aid_attnum;    /* AID column AttNumber */
 } RelationConfig;
 
+/*
+ * Root configuration object.
+ */
 typedef struct DiffixConfig
 {
   char *noise_seed;
@@ -44,8 +76,17 @@ typedef struct DiffixConfig
   int top_count_max;
 
   List *relations; /* Registered tables (of RelationConfig) */
+
+  /*
+   * OIDs that we need to rewrite aggregates.
+   * Not strictly configuration, but convenient to load along with config.
+   */
+  OidCache oids;
 } DiffixConfig;
 
+/*
+ * Global instance of root configuration.
+ */
 extern DiffixConfig Config;
 
 /*
