@@ -3,9 +3,10 @@
 
 #include "utils/guc.h"
 
-#include "pg_diffix/utils.h"
-#include "pg_diffix/hooks.h"
 #include "pg_diffix/config.h"
+#include "pg_diffix/hooks.h"
+#include "pg_diffix/oid_cache.h"
+#include "pg_diffix/utils.h"
 
 #define MAX_NUMERIC_CONFIG 1000
 
@@ -181,6 +182,7 @@ void _PG_fini(void)
   DEBUG_PRINT("Deactivating Diffix extension...");
 
   free_diffix_config();
+  free_oid_cache();
 
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;

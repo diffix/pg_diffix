@@ -3,7 +3,6 @@
 #include "utils/memutils.h"
 #include "utils/lsyscache.h"
 #include "lib/stringinfo.h"
-#include "parser/parse_func.h"
 
 #include "pg_diffix/config.h"
 
@@ -11,11 +10,6 @@ static RelationConfig *make_relation_config(
     char *rel_namespace_name,
     char *rel_name,
     char *aid_attname);
-
-static void load_oid_cache(void);
-
-static void append_default_oids(StringInfo string, DefaultAggregateOids *oids);
-static void append_diffix_oids(StringInfo string, DiffixAggregateOids *oids);
 
 DiffixConfig Config = {
     .noise_seed = INITIAL_NOISE_SEED,
@@ -50,8 +44,6 @@ void load_diffix_config(void)
   );
 
   MemoryContextSwitchTo(oldcontext);
-
-  load_oid_cache();
 }
 
 static RelationConfig *make_relation_config(
@@ -77,11 +69,6 @@ static RelationConfig *make_relation_config(
   relation->aid_attnum = aid_attnum;
 
   return relation;
-}
-
-static void load_oid_cache(void)
-{
-  /* Todo: lookup functions */
 }
 
 void free_diffix_config()
@@ -151,40 +138,8 @@ char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, ")");
   /* end config->tables */
 
-  /* begin config->oids */
-  appendStringInfo(&string, " :oids {OID_CACHE");
-
-  appendStringInfo(&string, " :postgres ");
-  append_default_oids(&string, &config->oids.postgres);
-
-  appendStringInfo(&string, " :aid_int4 ");
-  append_diffix_oids(&string, &config->oids.aid_int4);
-
-  appendStringInfo(&string, " :aid_text ");
-  append_diffix_oids(&string, &config->oids.aid_text);
-
-  appendStringInfo(&string, "}");
-  /* end config->oids */
-
   appendStringInfo(&string, "}");
   /* end config */
 
   return string.data;
-}
-
-static void append_default_oids(StringInfo string, DefaultAggregateOids *oids)
-{
-  appendStringInfo(string, "{DEFAULT_AGGREGATE_OIDS");
-  appendStringInfo(string, " :count %u", oids->count);
-  appendStringInfo(string, " :count_any %u", oids->count_any);
-  appendStringInfo(string, "}");
-}
-
-static void append_diffix_oids(StringInfo string, DiffixAggregateOids *oids)
-{
-  appendStringInfo(string, "{DIFFIX_AGGREGATE_OIDS");
-  appendStringInfo(string, " :diffix_count %u", oids->diffix_count);
-  appendStringInfo(string, " :diffix_count_any %u", oids->diffix_count_any);
-  appendStringInfo(string, " :diffix_lcf %u", oids->diffix_lcf);
-  appendStringInfo(string, "}");
 }

@@ -5,6 +5,7 @@
 #include "utils/acl.h"
 
 #include "pg_diffix/hooks.h"
+#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/validation.h"
 
@@ -61,6 +62,12 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 
   /* At this point we have a sensitive query. */
   DEBUG_LOG("Sensitive query (Query ID=%lu) (User ID=%u).", query_id, GetUserId());
+
+  /*
+   * We load OIDs later because experimentation shows that UDFs may return
+   * INVALIDOID (0) during _PG_init. Does nothing if OIDs are already loaded.
+   */
+  load_oid_cache();
 
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
