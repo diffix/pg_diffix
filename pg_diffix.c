@@ -24,7 +24,7 @@ void _PG_init(void)
   load_diffix_config();
   config_string = config_to_string(&Config);
 
-  DEBUG_LOG("Config %s", config_string);
+  DEBUG_PRINT("Config %s", config_string);
   pfree(config_string);
 
   /*
@@ -178,7 +178,7 @@ void _PG_init(void)
 
 void _PG_fini(void)
 {
-  DEBUG_LOG("Deactivating Diffix extension...");
+  DEBUG_PRINT("Deactivating Diffix extension...");
 
   free_diffix_config();
 

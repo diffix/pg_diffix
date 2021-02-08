@@ -30,7 +30,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* Query ID may already be assigned to something. */
   if (query->queryId)
   {
-    DEBUG_LOG("Query ID is already assigned (%lu -> %lu).", query_id, query->queryId);
+    DEBUG_PRINT("Query ID is already assigned (%lu -> %lu).", query_id, query->queryId);
     query_id = query->queryId;
   }
   else
@@ -46,7 +46,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* Another hook may have changed the ID. */
   if (query->queryId != query_id)
   {
-    DEBUG_LOG("Query ID was changed by another extension (%lu -> %lu).", query_id, query->queryId);
+    DEBUG_PRINT("Query ID was changed by another extension (%lu -> %lu).", query_id, query->queryId);
     query_id = query->queryId;
   }
 
@@ -74,7 +74,7 @@ PlannedStmt *pg_diffix_planner(
 {
   PlannedStmt *plan;
 
-  DEBUG_LOG("pg_diffix_planner (Query ID=%lu)", parse->queryId);
+  DEBUG_PRINT("pg_diffix_planner (Query ID=%lu)", parse->queryId);
 
   if (prev_planner_hook)
   {
@@ -91,7 +91,7 @@ PlannedStmt *pg_diffix_planner(
 
 void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-  DEBUG_LOG("pg_diffix_ExecutorStart (Query ID=%lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_PRINT("pg_diffix_ExecutorStart (Query ID=%lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorStart_hook)
   {
@@ -109,7 +109,7 @@ void pg_diffix_ExecutorRun(
     uint64 count,
     bool execute_once)
 {
-  DEBUG_LOG("pg_diffix_ExecutorRun (Query ID=%lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_PRINT("pg_diffix_ExecutorRun (Query ID=%lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorRun_hook)
   {
@@ -123,7 +123,7 @@ void pg_diffix_ExecutorRun(
 
 void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 {
-  DEBUG_LOG("pg_diffix_ExecutorFinish (Query ID=%lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_PRINT("pg_diffix_ExecutorFinish (Query ID=%lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorFinish_hook)
   {
@@ -137,7 +137,7 @@ void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 
 void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 {
-  DEBUG_LOG("pg_diffix_ExecutorEnd (Query ID=%lu)", queryDesc->plannedstmt->queryId);
+  DEBUG_PRINT("pg_diffix_ExecutorEnd (Query ID=%lu)", queryDesc->plannedstmt->queryId);
 
   if (prev_ExecutorEnd_hook)
   {
