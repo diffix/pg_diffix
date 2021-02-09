@@ -5,7 +5,10 @@ OBJS = \
 
 EXTENSION = pg_diffix
 DATA = pg_diffix--0.0.1.sql
-REGRESS = tests
+
+TESTS        = $(wildcard test/sql/*.sql)
+REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test
 
 PG_CFLAGS = -std=c17
 
