@@ -31,7 +31,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* Query ID may already be assigned to something. */
   if (query->queryId)
   {
-    DEBUG_PRINT("Query ID is already assigned (%lu -> %lu).", query_id, query->queryId);
+    DEBUG_LOG("Query ID is already assigned (%lu -> %lu).", query_id, query->queryId);
     query_id = query->queryId;
   }
   else
@@ -47,21 +47,19 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* Another hook may have changed the ID. */
   if (query->queryId != query_id)
   {
-    DEBUG_PRINT("Query ID was changed by another extension (%lu -> %lu).", query_id, query->queryId);
+    DEBUG_LOG("Query ID was changed by another extension (%lu -> %lu).", query_id, query->queryId);
     query_id = query->queryId;
   }
-
-  DEBUG_DUMP_NODE("Query tree", query);
 
   /* If it's a non-sensitive query we let it pass through. */
   if (!requires_anonymization(query))
   {
-    DEBUG_LOG("Non-sensitive query (Query ID=%lu) (User ID=%u).", query_id, GetUserId());
+    DEBUG_LOG("Non-sensitive query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
     return;
   }
 
   /* At this point we have a sensitive query. */
-  DEBUG_LOG("Sensitive query (Query ID=%lu) (User ID=%u).", query_id, GetUserId());
+  DEBUG_LOG("Sensitive query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
 
   /*
    * We load OIDs later because experimentation shows that UDFs may return
@@ -81,8 +79,6 @@ PlannedStmt *pg_diffix_planner(
 {
   PlannedStmt *plan;
 
-  DEBUG_PRINT("pg_diffix_planner (Query ID=%lu)", parse->queryId);
-
   if (prev_planner_hook)
   {
     plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
@@ -92,14 +88,11 @@ PlannedStmt *pg_diffix_planner(
     plan = standard_planner(parse, query_string, cursorOptions, boundParams);
   }
 
-  /* DEBUG_DUMP_NODE("Query plan", plan); */
   return plan;
 }
 
 void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-  DEBUG_PRINT("pg_diffix_ExecutorStart (Query ID=%lu)", queryDesc->plannedstmt->queryId);
-
   if (prev_ExecutorStart_hook)
   {
     prev_ExecutorStart_hook(queryDesc, eflags);
@@ -116,8 +109,6 @@ void pg_diffix_ExecutorRun(
     uint64 count,
     bool execute_once)
 {
-  DEBUG_PRINT("pg_diffix_ExecutorRun (Query ID=%lu)", queryDesc->plannedstmt->queryId);
-
   if (prev_ExecutorRun_hook)
   {
     prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
@@ -130,8 +121,6 @@ void pg_diffix_ExecutorRun(
 
 void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 {
-  DEBUG_PRINT("pg_diffix_ExecutorFinish (Query ID=%lu)", queryDesc->plannedstmt->queryId);
-
   if (prev_ExecutorFinish_hook)
   {
     prev_ExecutorFinish_hook(queryDesc);
@@ -144,8 +133,6 @@ void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 
 void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 {
-  DEBUG_PRINT("pg_diffix_ExecutorEnd (Query ID=%lu)", queryDesc->plannedstmt->queryId);
-
   if (prev_ExecutorEnd_hook)
   {
     prev_ExecutorEnd_hook(queryDesc);
