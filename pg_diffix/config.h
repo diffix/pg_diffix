@@ -29,6 +29,7 @@ typedef struct RelationConfig
   Oid rel_oid;              /* Relation OID */
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
+  Oid aid_atttype;          /* AID column type OID */
 } RelationConfig;
 
 /*
