@@ -6,6 +6,9 @@
 *.bc
 *.typedefs
 
+results/
+regression.*
+
 # Node dumps for debugging
 *.pgnode
 pg_node_formatter/node_modules/

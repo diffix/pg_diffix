@@ -5,6 +5,7 @@ OBJS = \
 
 EXTENSION = pg_diffix
 DATA = pg_diffix--0.0.1.sql
+REGRESS = tests
 
 PG_CFLAGS = -std=c17
 

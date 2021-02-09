@@ -28,3 +28,7 @@ To enable automatic activation you need to configure [shared library preloading]
 Once installed, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
 Node dumps can be formatted to readable form by using `pg_node_formatter`.
+
+## Testing the extension
+
+Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
