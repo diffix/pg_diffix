@@ -67,6 +67,7 @@ static RelationConfig *make_relation_config(
   relation->rel_oid = rel_oid;
   relation->aid_attname = aid_attname;
   relation->aid_attnum = aid_attnum;
+  relation->aid_atttype = get_atttype(rel_oid, aid_attnum);
 
   return relation;
 }
@@ -121,19 +122,21 @@ char *config_to_string(DiffixConfig *config)
   foreach (lc, config->relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
-    appendStringInfo(&string, "{TABLE_CONFIG "
-                              ":rel_namespace_name \"%s\" "
-                              ":rel_namespace_oid %u "
-                              ":rel_name \"%s\" "
-                              ":rel_oid %u "
-                              ":aid_attname \"%s\" "
-                              ":aid_attnum %hi}",
+    appendStringInfo(&string, "{TABLE_CONFIG"
+                              " :rel_namespace_name \"%s\""
+                              " :rel_namespace_oid %u"
+                              " :rel_name \"%s\""
+                              " :rel_oid %u"
+                              " :aid_attname \"%s\""
+                              " :aid_attnum %hi"
+                              " :aid_atttype %u}",
                      relation->rel_namespace_name,
                      relation->rel_namespace_oid,
                      relation->rel_name,
                      relation->rel_oid,
                      relation->aid_attname,
-                     relation->aid_attnum);
+                     relation->aid_attnum,
+                     relation->aid_atttype);
   }
   appendStringInfo(&string, ")");
   /* end config->tables */
