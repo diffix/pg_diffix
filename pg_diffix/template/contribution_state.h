@@ -251,11 +251,7 @@ static inline void CS_INSERT_CONTRIBUTOR(
   uint32 capacity = state->top_contributors_length;
   size_t elements;
 
-  if (insertion_index == capacity)
-  {
-    /* Do nothing if out of capacity. */
-    return;
-  }
+  Assert(insertion_index < capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
   elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
