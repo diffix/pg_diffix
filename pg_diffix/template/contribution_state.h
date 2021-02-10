@@ -459,32 +459,21 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 
   contribution_old = entry->contribution;
   entry->contribution = CS_CONTRIBUTION_COMBINE(contribution_old, contribution);
-
-  if (CS_CONTRIBUTION_EQUAL(entry->contribution, contribution_old))
-  {
-    /* Nothing changed. */
-    return;
-  }
-
-  if (top_length != state->top_contributors_length)
-  {
-    /* We know AID is already a top contributor because top_contributors is not full. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
-    return;
-  }
-
   min_top_contribution = state->top_contributors[top_length - 1].contribution;
 
-  if (CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
+  if (CS_CONTRIBUTION_EQUAL(entry->contribution, contribution_old) ||
+      CS_CONTRIBUTION_GREATER(min_top_contribution, entry->contribution))
   {
-    /* We know AID is already a top contributor because old contribution is greater than the lowest top contribution. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
+    /* Nothing changed or lowest top contribution is greater than new contribution. Nothing to do here. */
     return;
   }
 
-  if (CS_CONTRIBUTION_GREATER(min_top_contribution, entry->contribution))
+  if (top_length < state->top_contributors_length ||
+      CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
   {
-    /* Lowest top contribution is greater than new contribution. Nothing to do here. */
+    /* We know AID is already a top contributor because top_contributors is not full
+    or old contribution is greater than the lowest top contribution. */
+    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
     return;
   }
 
