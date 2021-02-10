@@ -44,17 +44,7 @@ typedef struct CountResult
 
 static inline double clamp_noise(double noise)
 {
-  if (noise >= Config.noise_cutoff)
-  {
-    return Config.noise_cutoff;
-  }
-
-  if (noise <= -Config.noise_cutoff)
-  {
-    return -Config.noise_cutoff;
-  }
-
-  return noise;
+  return fmin(fmax(noise, -Config.noise_cutoff), Config.noise_cutoff);
 }
 
 #endif /* PG_DIFFIX_AGG_COUNT_A_H */
