@@ -112,7 +112,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   initStringInfo(&string);
 
-  appendStringInfo(&string, "uniq=%" PRIu64, state->distinct_aids);
+  appendStringInfo(&string, "uniq=%" PRIu32, state->distinct_aids);
 
   /* Print only effective part of the seed. */
   appendStringInfo(&string,

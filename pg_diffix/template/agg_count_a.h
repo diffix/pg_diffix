@@ -141,7 +141,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 {
   AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
   StringInfoData string;
-  int top_length = Min(state->top_contributors_length, state->distinct_aids);
+  uint32 top_length = Min(state->top_contributors_length, state->distinct_aids);
   CountResult result = AGG_CALCULATE_FINAL(state);
 
   /*
@@ -153,7 +153,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   initStringInfo(&string);
 
-  appendStringInfo(&string, "uniq=%" PRIu64, state->distinct_aids);
+  appendStringInfo(&string, "uniq=%" PRIu32, state->distinct_aids);
 
   /* Print only effective part of the seed. */
   appendStringInfo(&string,
@@ -162,7 +162,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   appendStringInfo(&string, "\ntop=[");
 
-  for (int i = 0; i < top_length; i++)
+  for (uint32 i = 0; i < top_length; i++)
   {
     appendStringInfo(&string, AGG_AID_FMT "\u2794%" PRIu64,
                      state->top_contributors[i].aid,
@@ -192,11 +192,11 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
 {
   CountResult result;
   uint64 seed = make_seed(state->aid_seed);
-  int top_length = Min(state->top_contributors_length, state->distinct_aids);
-  int actual_top_count;
+  uint32 top_length = Min(state->top_contributors_length, state->distinct_aids);
+  uint32 actual_top_count;
 
-  int outlier_end_index;
-  int top_end_index;
+  uint32 outlier_end_index;
+  uint32 top_end_index;
   int64 count_noise;
 
   result.random_seed = seed;
@@ -215,7 +215,7 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
   result.flattened_count = result.true_count;
 
   outlier_end_index = Min(top_length, result.noisy_outlier_count);
-  for (int i = 0; i < outlier_end_index; i++)
+  for (uint32 i = 0; i < outlier_end_index; i++)
   {
     result.flattened_count -= state->top_contributors[i].contribution;
   }
@@ -228,7 +228,7 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
     uint64 outlier_compensation;
     uint64 top_contribution = 0;
 
-    for (int i = result.noisy_outlier_count; i < top_end_index; i++)
+    for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
     {
       top_contribution += state->top_contributors[i].contribution;
     }
