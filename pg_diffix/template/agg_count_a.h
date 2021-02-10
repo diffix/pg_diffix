@@ -141,7 +141,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 {
   AGG_CONTRIBUTION_STATE *state = AGG_GET_STATE(ARGS, 0);
   StringInfoData string;
-  uint32 top_length = Min(state->top_contributors_length, state->distinct_aids);
+  uint32 top_length = Min(state->top_contributors_length, state->all_contributors->members);
   CountResult result = AGG_CALCULATE_FINAL(state);
 
   /*
@@ -153,7 +153,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   initStringInfo(&string);
 
-  appendStringInfo(&string, "uniq=%" PRIu32, state->distinct_aids);
+  appendStringInfo(&string, "uniq=%" PRIu32, state->all_contributors->members);
 
   /* Print only effective part of the seed. */
   appendStringInfo(&string,
@@ -192,7 +192,7 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
 {
   CountResult result;
   uint64 seed = make_seed(state->aid_seed);
-  uint32 top_length = Min(state->top_contributors_length, state->distinct_aids);
+  uint32 top_length = Min(state->top_contributors_length, state->all_contributors->members);
   uint32 actual_top_count;
 
   uint32 outlier_end_index;

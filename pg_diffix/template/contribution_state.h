@@ -113,7 +113,6 @@ typedef struct CS_TOP_CONTRIBUTOR
 
 typedef struct CS_CONTRIBUTION_STATE
 {
-  uint32 distinct_aids;            /* Number of distinct AIDs being tracked */
   uint32 distinct_contributors;    /* Number of distinct AIDs that contributed at least once */
   uint32 total_contributions;      /* Total number of contributions */
   uint32 aid_seed;                 /* Seed derived from unique AIDs */
@@ -324,7 +323,6 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
 #endif
   );
 
-  state->distinct_aids = 0;
   state->distinct_contributors = 0;
   state->total_contributions = 0;
   state->aid_seed = CS_SEED_INITIAL;
@@ -380,7 +378,6 @@ CS_SCOPE void CS_STATE_UPDATE_AID(
   entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid, aid_hash, &found);
   if (!found)
   {
-    state->distinct_aids++;
     state->aid_seed = CS_HASH_COMBINE(state->aid_seed, aid_hash);
     entry->has_contribution = false;
 #ifdef CS_INIT_ENTRY
@@ -398,7 +395,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 {
   bool found;
   uint32 aid_hash;
-  uint32 top_length;
+  uint32 top_length = Min(state->all_contributors->members, state->top_contributors_length);
   CS_TABLE_ENTRY *entry;
   CS_CONTRIBUTION_TYPE contribution_old;
   CS_CONTRIBUTION_TYPE min_top_contribution;
@@ -416,7 +413,6 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
    * From this point entry->aid will be used because it's bound to the state context.
    */
 
-  top_length = Min(state->distinct_aids, state->top_contributors_length);
   state->total_contributions++;
 
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
@@ -426,7 +422,6 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   if (!found)
   {
     /* AID does not exist in table. */
-    state->distinct_aids++;
     state->distinct_contributors++;
     state->aid_seed = CS_HASH_COMBINE(state->aid_seed, aid_hash);
     entry->has_contribution = true;
