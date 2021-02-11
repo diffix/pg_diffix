@@ -468,7 +468,8 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
       CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
   {
     /* We know AID is already a top contributor because top_contributors is not full
-    or old contribution is greater than the lowest top contribution. */
+     * or old contribution is greater than the lowest top contribution. 
+     */
     CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
     return;
   }
