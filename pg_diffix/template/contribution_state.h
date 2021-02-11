@@ -113,9 +113,8 @@ typedef struct CS_TOP_CONTRIBUTOR
 
 typedef struct CS_CONTRIBUTION_STATE
 {
-  uint64 distinct_aids;            /* Number of distinct AIDs being tracked */
-  uint64 distinct_contributors;    /* Number of distinct AIDs that contributed at least once */
-  uint64 total_contributions;      /* Total number of contributions */
+  uint32 distinct_contributors;    /* Number of distinct AIDs that contributed at least once */
+  uint32 total_contributions;      /* Total number of contributions */
   uint32 aid_seed;                 /* Seed derived from unique AIDs */
   MemoryContext context;           /* Where the hash table lives */
   CS_TABLE_HASH *all_contributors; /* All contributors (map of AID -> TableEntry) */
@@ -125,7 +124,7 @@ typedef struct CS_CONTRIBUTION_STATE
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
   CS_CONTRIBUTION_TYPE overall_contribution; /* Total contribution from all contributors */
 #endif
-  int top_contributors_length;                                /* Length of top_contributors array */
+  uint32 top_contributors_length;                             /* Length of top_contributors array */
   CS_TOP_CONTRIBUTOR top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
 
 #endif /* CS_TRACK_CONTRIBUTION */
@@ -137,7 +136,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
     MemoryContext context
 #ifdef CS_TRACK_CONTRIBUTION
     ,
-    int top_contributors_length
+    uint32 top_contributors_length
 #endif
 );
 
@@ -244,19 +243,15 @@ static inline int CS_AID_INDEX(
 
 static inline void CS_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    int top_length,
+    uint32 top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE contribution)
 {
-  int insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
-  int capacity = state->top_contributors_length;
+  uint32 insertion_index = CS_INSERTION_INDEX(state, top_length, contribution);
+  uint32 capacity = state->top_contributors_length;
   size_t elements;
 
-  if (insertion_index == capacity)
-  {
-    /* Do nothing if out of capacity. */
-    return;
-  }
+  Assert(insertion_index < capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
   elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
@@ -274,13 +269,13 @@ static inline void CS_INSERT_CONTRIBUTOR(
 
 static inline void CS_BUMP_OR_INSERT_CONTRIBUTOR(
     CS_CONTRIBUTION_STATE *state,
-    int top_length,
+    uint32 top_length,
     CS_AID_TYPE aid,
     CS_CONTRIBUTION_TYPE old_contribution,
     CS_CONTRIBUTION_TYPE new_contribution)
 {
-  int aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
-  int insertion_index;
+  uint32 aid_index = CS_AID_INDEX(state, top_length, aid, old_contribution);
+  uint32 insertion_index;
   size_t elements;
 
   if (aid_index == top_length)
@@ -313,7 +308,7 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
     MemoryContext context
 #ifdef CS_TRACK_CONTRIBUTION
     ,
-    int top_contributors_length
+    uint32 top_contributors_length
 #endif
 )
 {
@@ -324,7 +319,6 @@ CS_SCOPE CS_CONTRIBUTION_STATE *CS_STATE_NEW(
 #endif
   );
 
-  state->distinct_aids = 0;
   state->distinct_contributors = 0;
   state->total_contributions = 0;
   state->aid_seed = CS_SEED_INITIAL;
@@ -380,7 +374,6 @@ CS_SCOPE void CS_STATE_UPDATE_AID(
   entry = CS_TABLE_INSERT_HASH(state->all_contributors, aid, aid_hash, &found);
   if (!found)
   {
-    state->distinct_aids++;
     state->aid_seed = CS_HASH_COMBINE(state->aid_seed, aid_hash);
     entry->has_contribution = false;
 #ifdef CS_INIT_ENTRY
@@ -398,7 +391,7 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 {
   bool found;
   uint32 aid_hash;
-  int top_length;
+  uint32 top_length = Min(state->all_contributors->members, state->top_contributors_length);
   CS_TABLE_ENTRY *entry;
   CS_CONTRIBUTION_TYPE contribution_old;
   CS_CONTRIBUTION_TYPE min_top_contribution;
@@ -416,7 +409,6 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
    * From this point entry->aid will be used because it's bound to the state context.
    */
 
-  top_length = Min(state->distinct_aids, state->top_contributors_length);
   state->total_contributions++;
 
 #ifdef CS_OVERALL_CONTRIBUTION_CALCULATE
@@ -426,7 +418,6 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
   if (!found)
   {
     /* AID does not exist in table. */
-    state->distinct_aids++;
     state->distinct_contributors++;
     state->aid_seed = CS_HASH_COMBINE(state->aid_seed, aid_hash);
     entry->has_contribution = true;
@@ -464,32 +455,22 @@ CS_SCOPE void CS_STATE_UPDATE_CONTRIBUTION(
 
   contribution_old = entry->contribution;
   entry->contribution = CS_CONTRIBUTION_COMBINE(contribution_old, contribution);
-
-  if (CS_CONTRIBUTION_EQUAL(entry->contribution, contribution_old))
-  {
-    /* Nothing changed. */
-    return;
-  }
-
-  if (top_length != state->top_contributors_length)
-  {
-    /* We know AID is already a top contributor because top_contributors is not full. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
-    return;
-  }
-
   min_top_contribution = state->top_contributors[top_length - 1].contribution;
 
-  if (CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
+  if (CS_CONTRIBUTION_EQUAL(entry->contribution, contribution_old) ||
+      CS_CONTRIBUTION_GREATER(min_top_contribution, entry->contribution))
   {
-    /* We know AID is already a top contributor because old contribution is greater than the lowest top contribution. */
-    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
+    /* Nothing changed or lowest top contribution is greater than new contribution. Nothing to do here. */
     return;
   }
 
-  if (CS_CONTRIBUTION_GREATER(min_top_contribution, entry->contribution))
+  if (top_length < state->top_contributors_length ||
+      CS_CONTRIBUTION_GREATER(contribution_old, min_top_contribution))
   {
-    /* Lowest top contribution is greater than new contribution. Nothing to do here. */
+    /* We know AID is already a top contributor because top_contributors is not full
+     * or old contribution is greater than the lowest top contribution. 
+     */
+    CS_BUMP_CONTRIBUTOR(state, top_length, entry->aid, contribution_old, entry->contribution);
     return;
   }
 

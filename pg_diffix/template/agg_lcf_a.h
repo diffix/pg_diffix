@@ -112,7 +112,7 @@ Datum AGG_EXPLAIN_FINALFN(PG_FUNCTION_ARGS)
 
   initStringInfo(&string);
 
-  appendStringInfo(&string, "uniq=%" PRIu64, state->distinct_aids);
+  appendStringInfo(&string, "uniq=%" PRIu32, state->all_contributors->members);
 
   /* Print only effective part of the seed. */
   appendStringInfo(&string,
@@ -138,7 +138,7 @@ static inline LcfResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
       Config.low_count_threshold_min,
       Config.low_count_threshold_max + 1);
 
-  result.passes_lcf = state->distinct_aids >= result.noisy_threshold;
+  result.passes_lcf = state->all_contributors->members >= result.noisy_threshold;
 
   return result;
 }
