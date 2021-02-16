@@ -14,8 +14,6 @@
 #define SH_EQUAL(tb, a, b) a == b
 #define SH_HASH_KEY(tb, key) HASH_AID_32(key)
 #define SH_SCOPE inline
-#define SH_STORE_HASH
-#define SH_GET_HASH(tb, a) a->hash
 #define SH_DEFINE
 #include "lib/simplehash.h"
 

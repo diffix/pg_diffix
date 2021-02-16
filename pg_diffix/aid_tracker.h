@@ -8,7 +8,6 @@
 
 typedef struct AidTrackerHashEntry
 {
-  uint32 hash; /* Cached key hash */
   aid_t aid;   /* Entry key */
   char status; /* Required for hash table */
 } AidTrackerHashEntry;
