@@ -8,6 +8,11 @@
 
 extern double pg_erand48(unsigned short xseed[3]);
 
+static inline double clamp_noise(double noise)
+{
+  return fmin(fmax(noise, -Config.noise_cutoff), Config.noise_cutoff);
+}
+
 uint64 make_seed(uint64 noise_layer_seed)
 {
   uint64 base_seed = hash_bytes_extended(
@@ -45,4 +50,10 @@ double next_gaussian_double(uint64 *seed, double stddev)
 int next_uniform_int(uint64 *seed, int min, int max)
 {
   return min + pg_erand48((unsigned short *)seed) * (max - min);
+}
+
+int64 apply_noise(int64 value, uint64 *seed)
+{
+  value += round(clamp_noise(next_gaussian_double(seed, Config.noise_sigma)));
+  return Max(value, 0);
 }

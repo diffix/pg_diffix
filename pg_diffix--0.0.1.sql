@@ -2,6 +2,40 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 /* ----------------------------------------------------------------
+ * diffix_count_distinct(aid)
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION diffix_count_distinct_transfn(internal, anyelement)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix_count_distinct_finalfn(internal, anyelement)
+RETURNS int8
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix_count_distinct_explain_finalfn(internal, anyelement)
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE AGGREGATE diffix_count_distinct(anyelement) (
+  sfunc = diffix_count_distinct_transfn,
+  stype = internal,
+  finalfunc = diffix_count_distinct_finalfn,
+  finalfunc_extra
+);
+
+CREATE AGGREGATE explain_diffix_count_distinct(anyelement) (
+  sfunc = diffix_count_distinct_transfn,
+  stype = internal,
+  finalfunc = diffix_count_distinct_explain_finalfn,
+  finalfunc_extra
+);
+
+/* ----------------------------------------------------------------
  * AID: int4
  * ----------------------------------------------------------------
  */
