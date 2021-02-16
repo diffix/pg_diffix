@@ -8,16 +8,14 @@
 
 extern double pg_erand48(unsigned short xseed[3]);
 
-uint64 make_seed(uint32 noise_layer_seed)
+uint64 make_seed(uint64 noise_layer_seed)
 {
-  uint64 left = hash_bytes_extended(
+  uint64 base_seed = hash_bytes_extended(
       (unsigned char *)Config.noise_seed,
       strlen(Config.noise_seed),
       0);
 
-  uint64 right = hash_bytes_uint32_extended(noise_layer_seed, 0);
-
-  return hash_combine64(left, right);
+  return hash_combine64(base_seed, noise_layer_seed);
 }
 
 double next_gaussian_double(uint64 *seed, double stddev)

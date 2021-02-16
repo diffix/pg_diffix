@@ -72,6 +72,20 @@ void _PG_init(void)
       NULL);                           /* show_hook */
 
   DefineCustomIntVariable(
+      "pg_diffix.low_count_absolute_min",        /* name */
+      "Absolute minimum low count (inclusive).", /* short_desc */
+      NULL,                                      /* long_desc */
+      &Config.low_count_absolute_min,            /* valueAddr */
+      INITIAL_LOW_COUNT_ABSOLUTE_MIN,            /* bootValue */
+      0,                                         /* minValue */
+      MAX_NUMERIC_CONFIG,                        /* maxValue */
+      PGC_SUSET,                                 /* context */
+      0,                                         /* flags */
+      NULL,                                      /* check_hook */
+      NULL,                                      /* assign_hook */
+      NULL);                                     /* show_hook */
+
+  DefineCustomIntVariable(
       "pg_diffix.low_count_threshold_min",        /* name */
       "Minimum low count threshold (inclusive).", /* short_desc */
       NULL,                                       /* long_desc */

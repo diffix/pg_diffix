@@ -4,10 +4,10 @@
 #include "postgres.h"
 
 /*
- * Combines the given 32-bit noise layer seed with
+ * Combines the given 64-bit noise layer seed with
  * the seed from config and produces a 64-bit output.
  */
-extern uint64 make_seed(uint32 noise_layer_seed);
+extern uint64 make_seed(uint64 noise_layer_seed);
 
 /*
  * Generates a zero-mean gaussian double with given stddev.
