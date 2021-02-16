@@ -45,8 +45,8 @@ extern AidTrackerState *aid_tracker_new(
 extern void aid_tracker_update(AidTrackerState *state, Datum aid_datum);
 
 /*
- * Gets or creates the aggregation state from the argument at the given index.
+ * Gets or creates the aggregation state from the function arguments.
  */
-extern AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS, int index);
+extern AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS);
 
 #endif /* PG_DIFFIX_AID_TRACKER_H */
