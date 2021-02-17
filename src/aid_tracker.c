@@ -45,11 +45,14 @@ void aid_tracker_update(AidTrackerState *state, Datum aid_datum)
   }
 }
 
-AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS, int index)
+#define STATE_INDEX 0
+#define AID_INDEX 1
+
+AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
 {
-  if (!PG_ARGISNULL(index))
+  if (!PG_ARGISNULL(STATE_INDEX))
   {
-    return (AidTrackerState *)PG_GETARG_POINTER(index);
+    return (AidTrackerState *)PG_GETARG_POINTER(STATE_INDEX);
   }
 
   MemoryContext agg_context;
@@ -58,6 +61,7 @@ AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS, int index)
     ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
   }
 
-  AidSetup setup = setup_aid(get_fn_expr_argtype(fcinfo->flinfo, index));
+  Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
+  AidSetup setup = setup_aid(aid_type);
   return aid_tracker_new(agg_context, setup.make_aid, !setup.aid_is_hash, 0);
 }

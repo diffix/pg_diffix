@@ -40,7 +40,7 @@ AidSetup setup_aid(Oid aid_type)
     setup.aid_is_hash = true;
     break;
   default:
-    ereport(ERROR, (errmsg("Unsupported AID type")));
+    ereport(ERROR, (errmsg("Unsupported AID type (OID %u)", aid_type)));
     break;
   }
 

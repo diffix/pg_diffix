@@ -19,4 +19,9 @@ extern double next_gaussian_double(uint64 *seed, double stddev);
  */
 extern int next_uniform_int(uint64 *seed, int min, int max);
 
+/*
+ * Applies gaussian noise to the given value and returns a non-negative result.
+ */
+extern int64 apply_noise(int64 value, uint64 *seed);
+
 #endif /* PG_DIFFIX_RANDOM_H */
