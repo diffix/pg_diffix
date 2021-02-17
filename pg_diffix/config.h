@@ -9,9 +9,7 @@
 #define INITIAL_NOISE_SIGMA 1.0
 #define INITIAL_NOISE_CUTOFF 5.0
 
-#define INITIAL_LOW_COUNT_ABSOLUTE_MIN 2
-#define INITIAL_LOW_COUNT_THRESHOLD_MIN 2
-#define INITIAL_LOW_COUNT_THRESHOLD_MAX 5
+#define INITIAL_MINIMUM_ALLOWED_AIDS 2
 
 #define INITIAL_OUTLIER_COUNT_MIN 1
 #define INITIAL_OUTLIER_COUNT_MAX 2
@@ -42,9 +40,7 @@ typedef struct DiffixConfig
   double noise_sigma;
   double noise_cutoff;
 
-  int low_count_absolute_min;
-  int low_count_threshold_min;
-  int low_count_threshold_max;
+  int minimum_allowed_aids;
 
   int outlier_count_min;
   int outlier_count_max;

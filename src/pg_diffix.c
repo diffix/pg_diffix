@@ -18,12 +18,11 @@ void _PG_fini(void);
 void _PG_init(void)
 {
   static int activation_count = 1;
-  char *config_string;
 
   DEBUG_LOG("Activating Diffix extension (%i)...", activation_count++);
 
   load_diffix_config();
-  config_string = config_to_string(&Config);
+  char *config_string = config_to_string(&Config);
 
   DEBUG_LOG("Config %s", config_string);
   pfree(config_string);
@@ -72,46 +71,18 @@ void _PG_init(void)
       NULL);                           /* show_hook */
 
   DefineCustomIntVariable(
-      "pg_diffix.low_count_absolute_min",        /* name */
-      "Absolute minimum low count (inclusive).", /* short_desc */
-      NULL,                                      /* long_desc */
-      &Config.low_count_absolute_min,            /* valueAddr */
-      INITIAL_LOW_COUNT_ABSOLUTE_MIN,            /* bootValue */
-      0,                                         /* minValue */
-      MAX_NUMERIC_CONFIG,                        /* maxValue */
-      PGC_SUSET,                                 /* context */
-      0,                                         /* flags */
-      NULL,                                      /* check_hook */
-      NULL,                                      /* assign_hook */
-      NULL);                                     /* show_hook */
-
-  DefineCustomIntVariable(
-      "pg_diffix.low_count_threshold_min",        /* name */
-      "Minimum low count threshold (inclusive).", /* short_desc */
-      NULL,                                       /* long_desc */
-      &Config.low_count_threshold_min,            /* valueAddr */
-      INITIAL_LOW_COUNT_THRESHOLD_MIN,            /* bootValue */
-      0,                                          /* minValue */
-      MAX_NUMERIC_CONFIG,                         /* maxValue */
-      PGC_SUSET,                                  /* context */
-      0,                                          /* flags */
-      NULL,                                       /* check_hook */
-      NULL,                                       /* assign_hook */
-      NULL);                                      /* show_hook */
-
-  DefineCustomIntVariable(
-      "pg_diffix.low_count_threshold_max",        /* name */
-      "Maximum low count threshold (inclusive).", /* short_desc */
-      NULL,                                       /* long_desc*/
-      &Config.low_count_threshold_max,            /* valueAddr*/
-      INITIAL_LOW_COUNT_THRESHOLD_MAX,            /* bootValue */
-      0,                                          /* minValue */
-      MAX_NUMERIC_CONFIG,                         /* maxValue */
-      PGC_SUSET,                                  /* context */
-      0,                                          /* flags */
-      NULL,                                       /* check_hook */
-      NULL,                                       /* assign_hook */
-      NULL);                                      /* show_hook */
+      "pg_diffix.minimum_allowed_aids",                                        /* name */
+      "The minimum number of distinct AIDs that can be in a reported bucket.", /* short_desc */
+      NULL,                                                                    /* long_desc */
+      &Config.minimum_allowed_aids,                                            /* valueAddr */
+      INITIAL_MINIMUM_ALLOWED_AIDS,                                            /* bootValue */
+      2,                                                                       /* minValue */
+      MAX_NUMERIC_CONFIG,                                                      /* maxValue */
+      PGC_SUSET,                                                               /* context */
+      0,                                                                       /* flags */
+      NULL,                                                                    /* check_hook */
+      NULL,                                                                    /* assign_hook */
+      NULL);                                                                   /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.outlier_count_min",        /* name */

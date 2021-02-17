@@ -10,19 +10,20 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/random.h"
 
-typedef struct CountDistinctResult
+typedef struct LcfResult
 {
   uint64 random_seed;
-  int64 noisy_count;
-} CountDistinctResult;
+  int threshold;
+  bool passes_lcf;
+} LcfResult;
 
-static CountDistinctResult count_distinct_calculate_final(AidTrackerState *state);
+static LcfResult lcf_calculate_final(AidTrackerState *state);
 
-PG_FUNCTION_INFO_V1(diffix_count_distinct_transfn);
-PG_FUNCTION_INFO_V1(diffix_count_distinct_finalfn);
-PG_FUNCTION_INFO_V1(diffix_count_distinct_explain_finalfn);
+PG_FUNCTION_INFO_V1(diffix_lcf_transfn);
+PG_FUNCTION_INFO_V1(diffix_lcf_finalfn);
+PG_FUNCTION_INFO_V1(diffix_lcf_explain_finalfn);
 
-Datum diffix_count_distinct_transfn(PG_FUNCTION_ARGS)
+Datum diffix_lcf_transfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
 
@@ -34,17 +35,17 @@ Datum diffix_count_distinct_transfn(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(state);
 }
 
-Datum diffix_count_distinct_finalfn(PG_FUNCTION_ARGS)
+Datum diffix_lcf_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(state);
-  PG_RETURN_INT64(result.noisy_count);
+  LcfResult result = lcf_calculate_final(state);
+  PG_RETURN_BOOL(result.passes_lcf);
 }
 
-Datum diffix_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
+Datum diffix_lcf_explain_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(state);
+  LcfResult result = lcf_calculate_final(state);
 
   StringInfoData string;
   initStringInfo(&string);
@@ -57,16 +58,28 @@ Datum diffix_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
                    ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
                    random_seed[0], random_seed[1], random_seed[2]);
 
-  appendStringInfo(&string, "\nnoisy_count=%" PRIi64, result.noisy_count);
+  appendStringInfo(&string, "\nthresh=%i, pass=%s",
+                   result.threshold,
+                   result.passes_lcf ? "true" : "false");
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-static CountDistinctResult count_distinct_calculate_final(AidTrackerState *state)
+static LcfResult lcf_calculate_final(AidTrackerState *state)
 {
-  CountDistinctResult result;
+  LcfResult result;
   uint64 seed = make_seed(state->aid_seed);
+
   result.random_seed = seed;
-  result.noisy_count = apply_noise(state->aid_set->members, &seed);
+
+  /* Pick an integer in interval [min, min+2]. */
+  const int LCF_RANGE = 2;
+  result.threshold = next_uniform_int(
+      &seed,
+      Config.minimum_allowed_aids,
+      Config.minimum_allowed_aids + LCF_RANGE + 1); /* +1 because max is exclusive. */
+
+  result.passes_lcf = state->aid_set->members >= result.threshold;
+
   return result;
 }

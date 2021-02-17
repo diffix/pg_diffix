@@ -252,9 +252,10 @@ static inline CountResult AGG_CALCULATE_FINAL(AGG_CONTRIBUTION_STATE *state)
   }
 
   /* Make sure final count is at or above the min LCF threshold. */
-  if (result.noisy_count < Config.low_count_threshold_min)
+  if (result.noisy_count < Config.minimum_allowed_aids)
   {
-    result.noisy_count = Config.low_count_threshold_min;
+    /* TODO: Match spec once it's ready. */
+    result.noisy_count = Config.minimum_allowed_aids;
   }
 
   return result;
