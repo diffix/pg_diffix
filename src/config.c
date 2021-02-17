@@ -16,9 +16,7 @@ DiffixConfig Config = {
     .noise_sigma = INITIAL_NOISE_SIGMA,
     .noise_cutoff = INITIAL_NOISE_CUTOFF,
 
-    .low_count_absolute_min = INITIAL_LOW_COUNT_ABSOLUTE_MIN,
-    .low_count_threshold_min = INITIAL_LOW_COUNT_THRESHOLD_MIN,
-    .low_count_threshold_max = INITIAL_LOW_COUNT_THRESHOLD_MAX,
+    .minimum_allowed_aids = INITIAL_MINIMUM_ALLOWED_AIDS,
 
     .outlier_count_min = INITIAL_OUTLIER_COUNT_MIN,
     .outlier_count_max = INITIAL_OUTLIER_COUNT_MAX,
@@ -111,9 +109,7 @@ char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
   appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);
-  appendStringInfo(&string, " :low_count_absolute_min %i", config->low_count_absolute_min);
-  appendStringInfo(&string, " :low_count_threshold_min %i", config->low_count_threshold_min);
-  appendStringInfo(&string, " :low_count_threshold_max %i", config->low_count_threshold_max);
+  appendStringInfo(&string, " :minimum_allowed_aids %i", config->minimum_allowed_aids);
   appendStringInfo(&string, " :outlier_count_min %i", config->outlier_count_min);
   appendStringInfo(&string, " :outlier_count_max %i", config->outlier_count_max);
   appendStringInfo(&string, " :top_count_min %i", config->top_count_min);

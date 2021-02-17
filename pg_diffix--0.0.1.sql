@@ -2,6 +2,40 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 /* ----------------------------------------------------------------
+ * diffix_lcf(aid)
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION diffix_lcf_transfn(internal, anyelement)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix_lcf_finalfn(internal, anyelement)
+RETURNS boolean
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix_lcf_explain_finalfn(internal, anyelement)
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE AGGREGATE diffix_lcf(anyelement) (
+  sfunc = diffix_lcf_transfn,
+  stype = internal,
+  finalfunc = diffix_lcf_finalfn,
+  finalfunc_extra
+);
+
+CREATE AGGREGATE explain_diffix_lcf(anyelement) (
+  sfunc = diffix_lcf_transfn,
+  stype = internal,
+  finalfunc = diffix_lcf_explain_finalfn,
+  finalfunc_extra
+);
+
+/* ----------------------------------------------------------------
  * diffix_count_distinct(aid)
  * ----------------------------------------------------------------
  */
@@ -88,37 +122,6 @@ CREATE AGGREGATE explain_diffix_count(int4, anyelement) (
 
 -- /count:int4
 
--- lcf:int4
-
-CREATE FUNCTION diffix_int4_lcf_transfn(internal, int4)
-RETURNS internal
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE FUNCTION diffix_int4_lcf_finalfn(internal)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE FUNCTION diffix_int4_lcf_explain_finalfn(internal)
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE AGGREGATE diffix_lcf(int4) (
-  sfunc = diffix_int4_lcf_transfn,
-  stype = internal,
-  finalfunc = diffix_int4_lcf_finalfn
-);
-
-CREATE AGGREGATE explain_diffix_lcf(int4) (
-  sfunc = diffix_int4_lcf_transfn,
-  stype = internal,
-  finalfunc = diffix_int4_lcf_explain_finalfn
-);
-
--- /lcf:int4
-
 /* ----------------------------------------------------------------
  * AID: text
  * ----------------------------------------------------------------
@@ -171,34 +174,3 @@ CREATE AGGREGATE explain_diffix_count(text, anyelement) (
 );
 
 -- /count:text
-
--- lcf:text
-
-CREATE FUNCTION diffix_text_lcf_transfn(internal, text)
-RETURNS internal
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE FUNCTION diffix_text_lcf_finalfn(internal)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE FUNCTION diffix_text_lcf_explain_finalfn(internal)
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
-CREATE AGGREGATE diffix_lcf(text) (
-  sfunc = diffix_text_lcf_transfn,
-  stype = internal,
-  finalfunc = diffix_text_lcf_finalfn
-);
-
-CREATE AGGREGATE explain_diffix_lcf(text) (
-  sfunc = diffix_text_lcf_transfn,
-  stype = internal,
-  finalfunc = diffix_text_lcf_explain_finalfn
-);
-
--- /lcf:text
