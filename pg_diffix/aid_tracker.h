@@ -24,10 +24,9 @@ typedef struct AidTrackerHashEntry
 
 typedef struct AidTrackerState
 {
-  MakeAidFunc make_aid;     /* Function to get the AID from a Datum */
-  AidTracker_hash *aid_set; /* Hash set of all AIDs */
-  uint64 aid_seed;          /* Current AID seed */
-  bool hash_aids;           /* Should AIDs be hashed when combined in the seed? */
+  AidFunctions aid_functions; /* Behavior for AIDs */
+  AidTracker_hash *aid_set;   /* Hash set of all AIDs */
+  uint64 aid_seed;            /* Current AID seed */
 } AidTrackerState;
 
 /*
@@ -35,14 +34,13 @@ typedef struct AidTrackerState
  */
 extern AidTrackerState *aid_tracker_new(
     MemoryContext context,
-    MakeAidFunc make_aid,
-    bool hash_aids,
+    AidFunctions aid_functions,
     uint64 initial_seed);
 
 /*
- * Updates state with a new AID.
+ * Updates state with an AID.
  */
-extern void aid_tracker_update(AidTrackerState *state, Datum aid_datum);
+extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
 
 /*
  * Gets or creates the aggregation state from the function arguments.

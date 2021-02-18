@@ -19,29 +19,26 @@
 
 AidTrackerState *aid_tracker_new(
     MemoryContext context,
-    MakeAidFunc make_aid,
-    bool hash_aids,
+    AidFunctions aid_functions,
     uint64 initial_seed)
 {
   AidTrackerState *state = (AidTrackerState *)
       MemoryContextAlloc(context, sizeof(AidTrackerState));
-  state->make_aid = make_aid;
-  state->aid_seed = initial_seed;
-  state->hash_aids = hash_aids;
+
+  state->aid_functions = aid_functions;
   state->aid_set = AidTracker_create(context, 128, NULL);
+  state->aid_seed = initial_seed;
+
   return state;
 }
 
-void aid_tracker_update(AidTrackerState *state, Datum aid_datum)
+void aid_tracker_update(AidTrackerState *state, aid_t aid)
 {
-  aid_t aid = state->make_aid(aid_datum);
   bool found;
   AidTracker_insert(state->aid_set, aid, &found);
   if (!found)
   {
-    state->aid_seed ^= state->hash_aids
-                           ? HASH_AID_64(aid)
-                           : aid;
+    state->aid_seed ^= state->aid_functions.aid_is_hash ? aid : HASH_AID_64(aid);
   }
 }
 
@@ -62,6 +59,5 @@ AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
   }
 
   Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
-  AidSetup setup = setup_aid(aid_type);
-  return aid_tracker_new(agg_context, setup.make_aid, !setup.aid_is_hash, 0);
+  return aid_tracker_new(agg_context, get_aid_functions(aid_type), 0);
 }

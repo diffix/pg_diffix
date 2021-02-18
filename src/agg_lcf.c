@@ -29,7 +29,8 @@ Datum diffix_lcf_transfn(PG_FUNCTION_ARGS)
 
   if (!PG_ARGISNULL(1))
   {
-    aid_tracker_update(state, PG_GETARG_DATUM(1));
+    aid_t aid = state->aid_functions.make_aid(PG_GETARG_DATUM(1));
+    aid_tracker_update(state, aid);
   }
 
   PG_RETURN_POINTER(state);
