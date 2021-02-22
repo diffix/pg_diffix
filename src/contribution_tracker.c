@@ -270,7 +270,7 @@ void contribution_tracker_update_contribution(
 
 ContributionTrackerState *get_aggregate_contribution_tracker(
     PG_FUNCTION_ARGS,
-    ContributionDescriptor *descriptor)
+    const ContributionDescriptor *descriptor)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
   {

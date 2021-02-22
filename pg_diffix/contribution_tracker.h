@@ -98,6 +98,6 @@ extern void contribution_tracker_update_contribution(
  */
 extern ContributionTrackerState *get_aggregate_contribution_tracker(
     PG_FUNCTION_ARGS,
-    ContributionDescriptor *descriptor);
+    const ContributionDescriptor *descriptor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */
