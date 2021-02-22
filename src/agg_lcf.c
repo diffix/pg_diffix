@@ -3,7 +3,6 @@
 #include "lib/stringinfo.h"
 #include "utils/builtins.h"
 
-#include <math.h>
 #include <inttypes.h>
 
 #include "pg_diffix/aid_tracker.h"
@@ -29,7 +28,7 @@ Datum diffix_lcf_transfn(PG_FUNCTION_ARGS)
 
   if (!PG_ARGISNULL(1))
   {
-    aid_t aid = state->aid_functions.make_aid(PG_GETARG_DATUM(1));
+    aid_t aid = state->aid_descriptor.make_aid(PG_GETARG_DATUM(1));
     aid_tracker_update(state, aid);
   }
 

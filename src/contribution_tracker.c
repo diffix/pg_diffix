@@ -16,7 +16,7 @@ static inline uint32 find_aid_index(
     aid_t aid,
     contribution_t old_contribution)
 {
-  for (uint32 i = state->contribution_functions.contribution_greater(
+  for (uint32 i = state->contribution_descriptor.contribution_greater(
                       old_contribution,
                       state->top_contributors[top_length / 2].contribution)
                       ? 0
@@ -38,7 +38,7 @@ static inline uint32 find_insertion_index(
     uint32 top_length,
     contribution_t contribution)
 {
-  ContributionGreaterFunc greater = state->contribution_functions.contribution_greater;
+  ContributionGreaterFunc greater = state->contribution_descriptor.contribution_greater;
 
   /*
    * Do a single comparison in the middle to halve lookup steps.
@@ -153,8 +153,8 @@ static inline void bump_contributor(
 
 ContributionTrackerState *contribution_tracker_new(
     MemoryContext context,
-    AidFunctions aid_functions,
-    ContributionFunctions contribution_functions,
+    AidDescriptor aid_descriptor,
+    ContributionDescriptor contribution_descriptor,
     uint64 initial_seed,
     uint32 top_contributors_length)
 {
@@ -162,12 +162,12 @@ ContributionTrackerState *contribution_tracker_new(
       context,
       sizeof(ContributionTrackerState) + top_contributors_length * sizeof(TopContributor));
 
-  state->aid_functions = aid_functions;
-  state->contribution_functions = contribution_functions;
+  state->aid_descriptor = aid_descriptor;
+  state->contribution_descriptor = contribution_descriptor;
   state->contribution_table = ContributionTracker_create(context, 128, NULL);
-  state->total_contributions = 0;
+  state->contributions_count = 0;
   state->distinct_contributors = 0;
-  state->overall_contribution = contribution_functions.contribution_initial;
+  state->overall_contribution = contribution_descriptor.contribution_initial;
   state->aid_seed = initial_seed;
   state->top_contributors_length = top_contributors_length;
 
@@ -180,7 +180,7 @@ void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
   ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
   if (!found)
   {
-    state->aid_seed ^= state->aid_functions.aid_is_hash ? aid : HASH_AID_64(aid);
+    state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
     entry->has_contribution = false;
   }
 }
@@ -190,9 +190,9 @@ void contribution_tracker_update_contribution(
     aid_t aid,
     contribution_t contribution)
 {
-  state->total_contributions++;
+  state->contributions_count++;
 
-  ContributionFunctions *functions = &state->contribution_functions;
+  ContributionDescriptor *descriptor = &state->contribution_descriptor;
   uint32 top_length = Min(state->distinct_contributors, state->top_contributors_length);
 
   bool found;
@@ -203,14 +203,14 @@ void contribution_tracker_update_contribution(
     entry->has_contribution = true;
     entry->contribution = contribution;
     state->distinct_contributors++;
-    state->aid_seed ^= state->aid_functions.aid_is_hash ? aid : HASH_AID_64(aid);
+    state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
 
     /* We can insert to top contributors if either: */
     if (
         /* - top_contributors is not full */
         top_length != state->top_contributors_length ||
         /* - contribution is greater than the lowest top contribution */
-        functions->contribution_greater(
+        descriptor->contribution_greater(
             contribution,
             state->top_contributors[top_length - 1].contribution))
     {
@@ -226,7 +226,7 @@ void contribution_tracker_update_contribution(
     entry->contribution = contribution;
     state->distinct_contributors++;
     if (top_length != state->top_contributors_length ||
-        functions->contribution_greater(
+        descriptor->contribution_greater(
             contribution,
             state->top_contributors[top_length - 1].contribution))
     {
@@ -237,19 +237,19 @@ void contribution_tracker_update_contribution(
   }
 
   contribution_t contribution_old = entry->contribution;
-  entry->contribution = functions->contribution_combine(contribution_old, contribution);
+  entry->contribution = descriptor->contribution_combine(contribution_old, contribution);
   Assert(top_length > 0); /* At this point we should have top contributors. */
   contribution_t min_top_contribution = state->top_contributors[top_length - 1].contribution;
 
-  if (functions->contribution_equal(entry->contribution, contribution_old) ||
-      functions->contribution_greater(min_top_contribution, entry->contribution))
+  if (descriptor->contribution_equal(entry->contribution, contribution_old) ||
+      descriptor->contribution_greater(min_top_contribution, entry->contribution))
   {
     /* Nothing changed or lowest top contribution is greater than new contribution. Nothing to do here. */
     return;
   }
 
   if (top_length < state->top_contributors_length ||
-      functions->contribution_greater(contribution_old, min_top_contribution))
+      descriptor->contribution_greater(contribution_old, min_top_contribution))
   {
     /* We know AID is already a top contributor because top_contributors is not full
      * or old contribution is greater than the lowest top contribution.
@@ -270,7 +270,7 @@ void contribution_tracker_update_contribution(
 
 ContributionTrackerState *get_aggregate_contribution_tracker(
     PG_FUNCTION_ARGS,
-    ContributionFunctions *functions)
+    ContributionDescriptor *descriptor)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
   {
@@ -286,8 +286,8 @@ ContributionTrackerState *get_aggregate_contribution_tracker(
   Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
   return contribution_tracker_new(
       agg_context,
-      get_aid_functions(aid_type),
-      *functions,
+      get_aid_descriptor(aid_type),
+      *descriptor,
       0,
       Config.outlier_count_max + Config.top_count_max);
 }

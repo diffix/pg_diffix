@@ -3,17 +3,18 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include <inttypes.h>
 
 #include "pg_diffix/aid.h"
+
+#define CONTRIBUTION_INT_FMT PRIi64
+#define CONTRIBUTION_REAL_FMT "f"
 
 typedef union contribution_t
 {
   int64 integer;
-  double real;
+  float8 real;
 } contribution_t;
-
-/* Gets contribution from a datum. */
-typedef contribution_t (*ContributionMakeFunc)(Datum datum);
 
 /* Returns whether x is "more" contribution than y. */
 typedef bool (*ContributionGreaterFunc)(contribution_t x, contribution_t y);
@@ -24,14 +25,13 @@ typedef bool (*ContributionEqualFunc)(contribution_t x, contribution_t y);
 /* Combines x and y and to a single contribution. */
 typedef contribution_t (*ContributionCombineFunc)(contribution_t x, contribution_t y);
 
-typedef struct ContributionFunctions
+typedef struct ContributionDescriptor
 {
-  ContributionMakeFunc contribution_make;
   ContributionGreaterFunc contribution_greater;
   ContributionEqualFunc contribution_equal;
   ContributionCombineFunc contribution_combine;
   contribution_t contribution_initial; /* Initial or "zero" value for a contribution */
-} ContributionFunctions;
+} ContributionDescriptor;
 
 typedef struct ContributionTrackerHashEntry
 {
@@ -59,10 +59,10 @@ typedef struct TopContributor
 
 typedef struct ContributionTrackerState
 {
-  AidFunctions aid_functions;                             /* Behavior for AIDs */
-  ContributionFunctions contribution_functions;           /* Behavior for contributions */
+  AidDescriptor aid_descriptor;                           /* Behavior for AIDs */
+  ContributionDescriptor contribution_descriptor;         /* Behavior for contributions */
   ContributionTracker_hash *contribution_table;           /* Hash set of all AIDs */
-  uint64 total_contributions;                             /* Total count of non-NULL contributions */
+  uint64 contributions_count;                             /* Total count of non-NULL contributions */
   uint32 distinct_contributors;                           /* Count of distinct non-NULL contriburs*/
   contribution_t overall_contribution;                    /* Combined contribution from all contributors */
   uint64 aid_seed;                                        /* Current AID seed */
@@ -75,8 +75,8 @@ typedef struct ContributionTrackerState
  */
 extern ContributionTrackerState *contribution_tracker_new(
     MemoryContext context,
-    AidFunctions aid_functions,
-    ContributionFunctions contribution_functions,
+    AidDescriptor aid_descriptor,
+    ContributionDescriptor contribution_descriptor,
     uint64 initial_seed,
     uint32 top_contributors_length);
 
@@ -98,6 +98,6 @@ extern void contribution_tracker_update_contribution(
  */
 extern ContributionTrackerState *get_aggregate_contribution_tracker(
     PG_FUNCTION_ARGS,
-    ContributionFunctions *functions);
+    ContributionDescriptor *descriptor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

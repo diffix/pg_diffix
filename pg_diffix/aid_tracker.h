@@ -24,9 +24,9 @@ typedef struct AidTrackerHashEntry
 
 typedef struct AidTrackerState
 {
-  AidFunctions aid_functions; /* Behavior for AIDs */
-  AidTracker_hash *aid_set;   /* Hash set of all AIDs */
-  uint64 aid_seed;            /* Current AID seed */
+  AidDescriptor aid_descriptor; /* Behavior for AIDs */
+  AidTracker_hash *aid_set;     /* Hash set of all AIDs */
+  uint64 aid_seed;              /* Current AID seed */
 } AidTrackerState;
 
 /*
@@ -34,7 +34,7 @@ typedef struct AidTrackerState
  */
 extern AidTrackerState *aid_tracker_new(
     MemoryContext context,
-    AidFunctions aid_functions,
+    AidDescriptor aid_descriptor,
     uint64 initial_seed);
 
 /*
