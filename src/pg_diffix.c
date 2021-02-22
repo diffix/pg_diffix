@@ -118,7 +118,7 @@ void _PG_init(void)
       NULL,                                          /* long_desc */
       &Config.top_count_min,                         /* valueAddr */
       INITIAL_TOP_COUNT_MIN,                         /* bootValue */
-      0,                                             /* minValue */
+      1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
       0,                                             /* flags */
@@ -132,7 +132,7 @@ void _PG_init(void)
       NULL,                                          /* long_desc */
       &Config.top_count_max,                         /* valueAddr */
       INITIAL_TOP_COUNT_MAX,                         /* bootValue */
-      0,                                             /* minValue */
+      1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
       0,                                             /* flags */
