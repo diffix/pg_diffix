@@ -190,10 +190,11 @@ void contribution_tracker_update_contribution(
     aid_t aid,
     contribution_t contribution)
 {
-  state->contributions_count++;
-
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
   uint32 top_length = Min(state->distinct_contributors, state->top_contributors_length);
+
+  state->contributions_count++;
+  state->overall_contribution = descriptor->contribution_combine(state->overall_contribution, contribution);
 
   bool found;
   ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
@@ -251,7 +252,8 @@ void contribution_tracker_update_contribution(
   if (top_length < state->top_contributors_length ||
       descriptor->contribution_greater(contribution_old, min_top_contribution))
   {
-    /* We know AID is already a top contributor because top_contributors is not full
+    /*
+     * We know AID is already a top contributor because top_contributors is not full
      * or old contribution is greater than the lowest top contribution.
      */
     bump_contributor(state, top_length, aid, contribution_old, entry->contribution);
@@ -270,7 +272,7 @@ void contribution_tracker_update_contribution(
 
 ContributionTrackerState *get_aggregate_contribution_tracker(
     PG_FUNCTION_ARGS,
-    ContributionDescriptor *descriptor)
+    const ContributionDescriptor *descriptor)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
   {

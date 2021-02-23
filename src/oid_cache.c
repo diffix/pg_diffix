@@ -21,8 +21,8 @@ void load_oid_cache(void)
   OidCache.count_any = lookup_aggregate("count", 1, (Oid[]){ANYOID});
   OidCache.diffix_lcf = lookup_aggregate("diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
   OidCache.diffix_count_distinct = lookup_aggregate("diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
-  OidCache.diffix_count = 0;     /* lookup_aggregate("diffix_count", 1, (Oid[]){ANYELEMENTOID}); */
-  OidCache.diffix_count_any = 0; /* lookup_aggregate("diffix_count_any", 2, (Oid[]){ANYELEMENTOID, ANYELEMENTOID}); */
+  OidCache.diffix_count = lookup_aggregate("diffix_count", 1, (Oid[]){ANYELEMENTOID});
+  OidCache.diffix_count_any = lookup_aggregate("diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
 
   OidCache.loaded = true;
 }
