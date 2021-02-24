@@ -1,5 +1,5 @@
 #include "postgres.h"
-
+#include "nodes/nodeFuncs.h"
 #include "utils/elog.h"
 
 #include "pg_diffix/validation.h"
@@ -13,38 +13,54 @@
     FAILWITH("Feature '%s' is not currently supported.", (feature)); \
   }
 
+static bool configured_relation_walker(Node *node, void *context);
 static void verify_rtable(Query *query);
 static void verify_join_tree(Query *query);
 
 bool requires_anonymization(Query *query)
 {
-  ListCell *lc;
+  return configured_relation_walker((Node *)query, NULL);
+}
 
-  /*
-   * We don't care about non-SELECT queries.
-   * Write permissions should be handled by other means.
-   */
-  if (query->commandType != CMD_SELECT)
+/*
+ * Returns true if the query tree contains any configured relation.
+ */
+static bool configured_relation_walker(Node *node, void *context)
+{
+  if (node == NULL)
   {
     return false;
   }
 
-  foreach (lc, query->rtable)
+  if (IsA(node, Query))
   {
-    RangeTblEntry *rte = (RangeTblEntry *)lfirst(lc);
+    Query *query = (Query *)node;
 
-    /* Check if relation OID is present in config. */
-    if (rte->relid && get_relation_config(&Config, rte->relid) != NULL)
+    /*
+     * We don't care about non-SELECT queries.
+     * Write permissions should be handled by other means.
+     */
+    if (query->commandType != CMD_SELECT)
     {
-      return true;
+      return false;
     }
-    else if (rte->subquery && requires_anonymization(rte->subquery))
+
+    return range_table_walker(
+        query->rtable,
+        configured_relation_walker,
+        context,
+        QTW_EXAMINE_RTES_BEFORE);
+  }
+
+  if (IsA(node, RangeTblEntry))
+  {
+    RangeTblEntry *rte = (RangeTblEntry *)node;
+    if (rte->relid && get_relation_config(rte->relid) != NULL)
     {
       return true;
     }
   }
 
-  /* No sensitive relations found in config. We consider it a regular query. */
   return false;
 }
 

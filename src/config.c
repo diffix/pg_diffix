@@ -80,11 +80,11 @@ void free_diffix_config()
   }
 }
 
-RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid)
+RelationConfig *get_relation_config(Oid rel_oid)
 {
   ListCell *lc;
 
-  foreach (lc, config->relations)
+  foreach (lc, Config.relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
     if (relation->rel_oid == rel_oid)
