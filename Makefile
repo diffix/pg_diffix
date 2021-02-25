@@ -10,7 +10,7 @@ TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
 
-PG_CFLAGS = -std=c17 -Wno-declaration-after-statement
+PG_CFLAGS = -std=c17 -Wno-declaration-after-statement -Werror-implicit-function-declaration
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
