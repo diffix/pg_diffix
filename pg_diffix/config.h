@@ -18,7 +18,7 @@
 #define INITIAL_TOP_COUNT_MAX 6
 
 /*
- * Configuration for a single relation.
+ * Configuration for a sensitive relation.
  */
 typedef struct RelationConfig
 {
@@ -48,7 +48,7 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
-  List *relations; /* Registered tables (of RelationConfig) */
+  List *relations; /* Registered relations (of RelationConfig) */
 } DiffixConfig;
 
 /*
@@ -67,7 +67,7 @@ extern void load_diffix_config(void);
 extern void free_diffix_config(void);
 
 /*
- * Looks up relation config by OID.
+ * Looks up sensitive relation config by OID.
  * Returns NULL if the relation is not configured.
  */
 extern RelationConfig *get_relation_config(Oid rel_oid);

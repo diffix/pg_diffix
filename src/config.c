@@ -82,8 +82,13 @@ void free_diffix_config()
 
 RelationConfig *get_relation_config(Oid rel_oid)
 {
-  ListCell *lc;
+  if (rel_oid == InvalidOid)
+  {
+    /* A relation with zero OID cannot exist. */
+    return NULL;
+  }
 
+  ListCell *lc;
   foreach (lc, Config.relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
@@ -116,11 +121,11 @@ char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :top_count_max %i", config->top_count_max);
 
   /* begin config->tables */
-  appendStringInfo(&string, " :tables (");
+  appendStringInfo(&string, " :sensitive_relations (");
   foreach (lc, config->relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
-    appendStringInfo(&string, "{TABLE_CONFIG"
+    appendStringInfo(&string, "{SENSITIVE_RELATION_CONFIG"
                               " :rel_namespace_name \"%s\""
                               " :rel_namespace_oid %u"
                               " :rel_name \"%s\""

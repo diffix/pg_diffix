@@ -2,8 +2,8 @@
 #include "nodes/nodeFuncs.h"
 #include "utils/elog.h"
 
-#include "pg_diffix/validation.h"
 #include "pg_diffix/config.h"
+#include "pg_diffix/validation.h"
 
 #define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
@@ -13,56 +13,8 @@
     FAILWITH("Feature '%s' is not currently supported.", (feature)); \
   }
 
-static bool configured_relation_walker(Node *node, void *context);
 static void verify_rtable(Query *query);
 static void verify_join_tree(Query *query);
-
-bool requires_anonymization(Query *query)
-{
-  return configured_relation_walker((Node *)query, NULL);
-}
-
-/*
- * Returns true if the query tree contains any configured relation.
- */
-static bool configured_relation_walker(Node *node, void *context)
-{
-  if (node == NULL)
-  {
-    return false;
-  }
-
-  if (IsA(node, Query))
-  {
-    Query *query = (Query *)node;
-
-    /*
-     * We don't care about non-SELECT queries.
-     * Write permissions should be handled by other means.
-     */
-    if (query->commandType != CMD_SELECT)
-    {
-      return false;
-    }
-
-    return range_table_walker(
-        query->rtable,
-        configured_relation_walker,
-        context,
-        QTW_EXAMINE_RTES_BEFORE);
-  }
-
-  if (IsA(node, RangeTblEntry))
-  {
-    RangeTblEntry *rte = (RangeTblEntry *)node;
-    if (rte->relid && get_relation_config(rte->relid) != NULL)
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 void verify_anonymization_requirements(Query *query)
 {
@@ -102,6 +54,6 @@ static void verify_join_tree(Query *query)
 
   if (!IsA(linitial(from_list), RangeTblRef))
   {
-    FAILWITH("Query range must be a configured relation.");
+    FAILWITH("Query range must be a single sensitive relation.");
   }
 }
