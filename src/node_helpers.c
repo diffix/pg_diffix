@@ -4,24 +4,9 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/node_helpers.h"
 
-bool is_sensitive_query(Query *query)
-{
-  List *sensitive_relations = gather_sensitive_relations(query, true);
-  if (sensitive_relations != NIL)
-  {
-    list_free(sensitive_relations);
-    return true;
-  }
-  else
-  {
-    /* No sensitive relations. */
-    return false;
-  }
-}
-
 typedef struct GatherSensitiveRelationsContext
 {
-  List *sensitive_relations;
+  List *relations;
   int flags;
 } GatherSensitiveRelationsContext;
 
@@ -37,7 +22,7 @@ List *gather_sensitive_relations(Query *query, bool include_subqueries)
 
   gather_sensitive_relations_walker((Node *)query, &context);
 
-  return context.sensitive_relations;
+  return context.relations;
 }
 
 /*
@@ -62,10 +47,10 @@ static bool gather_sensitive_relations_walker(Node *node, GatherSensitiveRelatio
   else if (IsA(node, RangeTblEntry))
   {
     RangeTblEntry *rte = (RangeTblEntry *)node;
-    SensitiveRelationConfig *relation = get_relation_config(rte->relid);
+    RelationConfig *relation = get_relation_config(rte->relid);
     if (relation != NULL)
     {
-      context->sensitive_relations = list_append_unique_ptr(context->sensitive_relations, relation);
+      context->relations = list_append_unique_ptr(context->relations, relation);
     }
   }
 

@@ -20,7 +20,7 @@
 /*
  * Configuration for a sensitive relation.
  */
-typedef struct SensitiveRelationConfig
+typedef struct RelationConfig
 {
   char *rel_namespace_name; /* Namespace name */
   Oid rel_namespace_oid;    /* Namespace OID */
@@ -29,7 +29,7 @@ typedef struct SensitiveRelationConfig
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
   Oid aid_atttype;          /* AID column type OID */
-} SensitiveRelationConfig;
+} RelationConfig;
 
 /*
  * Root configuration object.
@@ -48,7 +48,7 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
-  List *sensitive_relations; /* Registered relations (of SensitiveRelationConfig) */
+  List *relations; /* Registered relations (of RelationConfig) */
 } DiffixConfig;
 
 /*
@@ -70,7 +70,7 @@ extern void free_diffix_config(void);
  * Looks up sensitive relation config by OID.
  * Returns NULL if the relation is not configured.
  */
-extern SensitiveRelationConfig *get_relation_config(Oid rel_oid);
+extern RelationConfig *get_relation_config(Oid rel_oid);
 
 /*
  * Formats config to a palloc'd string.
