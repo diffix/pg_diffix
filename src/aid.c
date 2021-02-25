@@ -26,7 +26,8 @@ AidDescriptor get_aid_descriptor(Oid aid_type)
 {
   AidDescriptor descriptor = {
       .make_aid = NULL,
-      .is_hash = false};
+      .is_hash = false,
+  };
 
   switch (aid_type)
   {

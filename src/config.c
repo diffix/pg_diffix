@@ -24,7 +24,8 @@ DiffixConfig Config = {
     .top_count_min = INITIAL_TOP_COUNT_MIN,
     .top_count_max = INITIAL_TOP_COUNT_MAX,
 
-    .relations = NIL};
+    .relations = NIL,
+};
 
 void load_diffix_config(void)
 {
