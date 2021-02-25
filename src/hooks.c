@@ -17,12 +17,20 @@ ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
-/* --- Useful functions ---
- * GetUserId()
- * GetSessionUserId()
- * get_role_oid(...)
- * is_member_of_role(...)
- */
+static inline bool requires_anonymization(Query *query)
+{
+  List *relations = gather_sensitive_relations(query, true);
+  if (relations != NIL)
+  {
+    list_free(relations);
+    return true;
+  }
+  else
+  {
+    /* No sensitive relations. */
+    return false;
+  }
+}
 
 void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
@@ -52,15 +60,15 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
     query_id = query->queryId;
   }
 
-  /* If it's a non-sensitive query we let it pass through. */
-  if (!is_sensitive_query(query))
+  /* If it's a non-anonymizing query we let it pass through. */
+  if (!requires_anonymization(query))
   {
-    DEBUG_LOG("Non-sensitive query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
+    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
     return;
   }
 
-  /* At this point we have a sensitive query. */
-  DEBUG_LOG("Sensitive query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
+  /* At this point we have an anonymizing query. */
+  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
 
   /*
    * We load OIDs later because experimentation shows that UDFs may return
