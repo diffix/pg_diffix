@@ -5,6 +5,7 @@
 #include "utils/acl.h"
 
 #include "pg_diffix/hooks.h"
+#include "pg_diffix/node_helpers.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/validation.h"
@@ -52,7 +53,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   }
 
   /* If it's a non-sensitive query we let it pass through. */
-  if (!requires_anonymization(query))
+  if (!is_sensitive_query(query))
   {
     DEBUG_LOG("Non-sensitive query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
     return;
