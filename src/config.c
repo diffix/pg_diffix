@@ -39,8 +39,10 @@ void load_diffix_config(void)
 
   /* Data will be fetched from config tables here... */
 
-  Config.relations = list_make1(
-      make_relation_config("public", "users", "id") /* Hard-coded for now. */
+  /* Hard-coded for now. */
+  Config.relations = list_make2(
+      make_relation_config("public", "users", "id"),
+      make_relation_config("public", "test_customers", "id") /**/
   );
 
   MemoryContextSwitchTo(oldcontext);
