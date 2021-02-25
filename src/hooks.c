@@ -34,41 +34,23 @@ static inline bool requires_anonymization(Query *query)
 
 void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
-  static uint64 next_query_id = 1;
-  uint64 query_id = next_query_id++;
-
-  /* Query ID may already be assigned to something. */
-  if (query->queryId)
-  {
-    DEBUG_LOG("Query ID is already assigned (%lu -> %lu).", query_id, query->queryId);
-    query_id = query->queryId;
-  }
-  else
-  {
-    query->queryId = query_id;
-  }
-
   if (prev_post_parse_analyze_hook)
   {
     prev_post_parse_analyze_hook(pstate, query);
   }
 
-  /* Another hook may have changed the ID. */
-  if (query->queryId != query_id)
-  {
-    DEBUG_LOG("Query ID was changed by another extension (%lu -> %lu).", query_id, query->queryId);
-    query_id = query->queryId;
-  }
+  static uint64 next_query_id = 1;
+  query->queryId = next_query_id++;
 
   /* If it's a non-anonymizing query we let it pass through. */
   if (!requires_anonymization(query))
   {
-    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
+    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
     return;
   }
 
   /* At this point we have an anonymizing query. */
-  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
+  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
 
   /*
    * We load OIDs later because experimentation shows that UDFs may return
