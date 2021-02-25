@@ -7,6 +7,7 @@
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/node_helpers.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/rewrite.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/validation.h"
 
@@ -78,6 +79,11 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
+
+  rewrite_query(query);
+
+  /* Print rewritten query. */
+  DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query_id, GetUserId(), nodeToString(query));
 }
 
 PlannedStmt *pg_diffix_planner(
