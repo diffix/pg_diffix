@@ -70,7 +70,7 @@ extern void free_diffix_config(void);
  * Looks up relation config by OID.
  * Returns NULL if the relation is not configured.
  */
-extern RelationConfig *get_relation_config(DiffixConfig *config, Oid rel_oid);
+extern RelationConfig *get_relation_config(Oid rel_oid);
 
 /*
  * Formats config to a palloc'd string.
