@@ -18,9 +18,9 @@
 #define INITIAL_TOP_COUNT_MAX 6
 
 /*
- * Configuration for a single relation.
+ * Configuration for a sensitive relation.
  */
-typedef struct RelationConfig
+typedef struct SensitiveRelationConfig
 {
   char *rel_namespace_name; /* Namespace name */
   Oid rel_namespace_oid;    /* Namespace OID */
@@ -29,7 +29,7 @@ typedef struct RelationConfig
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
   Oid aid_atttype;          /* AID column type OID */
-} RelationConfig;
+} SensitiveRelationConfig;
 
 /*
  * Root configuration object.
@@ -48,7 +48,7 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
-  List *relations; /* Registered tables (of RelationConfig) */
+  List *sensitive_relations; /* Registered relations (of SensitiveRelationConfig) */
 } DiffixConfig;
 
 /*
@@ -67,10 +67,10 @@ extern void load_diffix_config(void);
 extern void free_diffix_config(void);
 
 /*
- * Looks up relation config by OID.
+ * Looks up sensitive relation config by OID.
  * Returns NULL if the relation is not configured.
  */
-extern RelationConfig *get_relation_config(Oid rel_oid);
+extern SensitiveRelationConfig *get_relation_config(Oid rel_oid);
 
 /*
  * Formats config to a palloc'd string.

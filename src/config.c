@@ -6,7 +6,7 @@
 
 #include "pg_diffix/config.h"
 
-static RelationConfig *make_relation_config(
+static SensitiveRelationConfig *make_relation_config(
     char *rel_namespace_name,
     char *rel_name,
     char *aid_attname);
@@ -24,7 +24,7 @@ DiffixConfig Config = {
     .top_count_min = INITIAL_TOP_COUNT_MIN,
     .top_count_max = INITIAL_TOP_COUNT_MAX,
 
-    .relations = NIL};
+    .sensitive_relations = NIL};
 
 void load_diffix_config(void)
 {
@@ -38,19 +38,19 @@ void load_diffix_config(void)
 
   /* Data will be fetched from config tables here... */
 
-  Config.relations = list_make1(
+  Config.sensitive_relations = list_make1(
       make_relation_config("public", "users", "id") /* Hard-coded for now. */
   );
 
   MemoryContextSwitchTo(oldcontext);
 }
 
-static RelationConfig *make_relation_config(
+static SensitiveRelationConfig *make_relation_config(
     char *rel_namespace_name,
     char *rel_name,
     char *aid_attname)
 {
-  RelationConfig *relation;
+  SensitiveRelationConfig *relation;
   Oid rel_namespace_oid;
   Oid rel_oid;
   AttrNumber aid_attnum;
@@ -59,7 +59,7 @@ static RelationConfig *make_relation_config(
   rel_oid = get_relname_relid(rel_name, rel_namespace_oid);
   aid_attnum = get_attnum(rel_oid, aid_attname);
 
-  relation = palloc(sizeof(RelationConfig));
+  relation = palloc(sizeof(SensitiveRelationConfig));
   relation->rel_namespace_name = rel_namespace_name;
   relation->rel_namespace_oid = rel_namespace_oid;
   relation->rel_name = rel_name;
@@ -73,20 +73,25 @@ static RelationConfig *make_relation_config(
 
 void free_diffix_config()
 {
-  if (Config.relations)
+  if (Config.sensitive_relations)
   {
-    list_free_deep(Config.relations);
-    Config.relations = NIL;
+    list_free_deep(Config.sensitive_relations);
+    Config.sensitive_relations = NIL;
   }
 }
 
-RelationConfig *get_relation_config(Oid rel_oid)
+SensitiveRelationConfig *get_relation_config(Oid rel_oid)
 {
-  ListCell *lc;
-
-  foreach (lc, Config.relations)
+  if (rel_oid == InvalidOid)
   {
-    RelationConfig *relation = (RelationConfig *)lfirst(lc);
+    /* A relation with zero OID cannot exist. */
+    return NULL;
+  }
+
+  ListCell *lc;
+  foreach (lc, Config.sensitive_relations)
+  {
+    SensitiveRelationConfig *relation = (SensitiveRelationConfig *)lfirst(lc);
     if (relation->rel_oid == rel_oid)
     {
       return relation;
@@ -116,11 +121,11 @@ char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :top_count_max %i", config->top_count_max);
 
   /* begin config->tables */
-  appendStringInfo(&string, " :tables (");
-  foreach (lc, config->relations)
+  appendStringInfo(&string, " :sensitive_relations (");
+  foreach (lc, config->sensitive_relations)
   {
-    RelationConfig *relation = (RelationConfig *)lfirst(lc);
-    appendStringInfo(&string, "{TABLE_CONFIG"
+    SensitiveRelationConfig *relation = (SensitiveRelationConfig *)lfirst(lc);
+    appendStringInfo(&string, "{SENSITIVE_RELATION_CONFIG"
                               " :rel_namespace_name \"%s\""
                               " :rel_namespace_oid %u"
                               " :rel_name \"%s\""
