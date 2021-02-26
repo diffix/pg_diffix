@@ -24,7 +24,8 @@ DiffixConfig Config = {
     .top_count_min = INITIAL_TOP_COUNT_MIN,
     .top_count_max = INITIAL_TOP_COUNT_MAX,
 
-    .relations = NIL};
+    .relations = NIL,
+};
 
 void load_diffix_config(void)
 {
@@ -38,8 +39,10 @@ void load_diffix_config(void)
 
   /* Data will be fetched from config tables here... */
 
-  Config.relations = list_make1(
-      make_relation_config("public", "users", "id") /* Hard-coded for now. */
+  /* Hard-coded for now. */
+  Config.relations = list_make2(
+      make_relation_config("public", "users", "id"),
+      make_relation_config("public", "test_customers", "id") /**/
   );
 
   MemoryContextSwitchTo(oldcontext);

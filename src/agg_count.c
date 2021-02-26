@@ -41,7 +41,8 @@ static const ContributionDescriptor count_descriptor = {
     .contribution_greater = contribution_greater,
     .contribution_equal = contribution_equal,
     .contribution_combine = contribution_combine,
-    .contribution_initial = {.integer = 0}};
+    .contribution_initial = {.integer = 0},
+};
 
 static const contribution_t one_contribution = {.integer = 1};
 
