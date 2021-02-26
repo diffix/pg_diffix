@@ -1,6 +1,7 @@
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_oper.h"
+#include "catalog/pg_type.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/node_helpers.h"
