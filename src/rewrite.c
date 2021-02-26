@@ -31,7 +31,7 @@ void rewrite_query(Query *query)
 static void add_implicit_grouping(Query *query)
 {
   /* Only simple select queries require implicit grouping. */
-  if (query->hasAggs || query->groupClause == NIL)
+  if (query->hasAggs || query->groupClause != NIL)
     return;
 
   DEBUG_LOG("Rewriting query to group by the selected expressions (Query ID=%lu).", query->queryId);
