@@ -1,6 +1,4 @@
 #include "postgres.h"
-#include "nodes/nodeFuncs.h"
-#include "parser/parse_oper.h"
 
 /* Current user and role checking */
 #include "miscadmin.h"
@@ -9,6 +7,7 @@
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/node_helpers.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/rewrite.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/validation.h"
 
@@ -31,40 +30,6 @@ static inline bool requires_anonymization(Query *query)
   {
     /* No sensitive relations. */
     return false;
-  }
-}
-
-static void group_by_selected_expressions(Query *query)
-{
-  DEBUG_LOG("Rewriting query to group by the selected expressions (Query ID=%lu).", query->queryId);
-
-  ListCell *lc = NULL;
-  foreach (lc, query->targetList)
-  {
-    TargetEntry *tle = lfirst_node(TargetEntry, lc);
-
-    Oid type = exprType((const Node *)tle->expr);
-    Assert(type != UNKNOWNOID);
-
-    /* Set group index to ordinal position. */
-    tle->ressortgroupref = tle->resno;
-
-    /* Determine the eqop and optional sortop. */
-    Oid sortop = 0;
-    Oid eqop = 0;
-    bool hashable = false;
-    get_sort_group_operators(type, false, true, false, &sortop, &eqop, NULL, &hashable);
-
-    /* Create group clause for current item. */
-    SortGroupClause *groupClause = makeNode(SortGroupClause);
-    groupClause->tleSortGroupRef = tle->ressortgroupref;
-    groupClause->eqop = eqop;
-    groupClause->sortop = sortop;
-    groupClause->nulls_first = false; /* OK with or without sortop */
-    groupClause->hashable = hashable;
-
-    /* Add group clause to query. */
-    query->groupClause = lappend(query->groupClause, groupClause);
   }
 }
 
@@ -97,11 +62,10 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
 
-  if (!query->hasAggs && query->groupClause == NULL)
-  {
-    /* Simple select queries require implicit grouping. */
-    group_by_selected_expressions(query);
-  }
+  rewrite_query(query);
+
+  /* Print rewritten query. */
+  DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
 }
 
 PlannedStmt *pg_diffix_planner(
