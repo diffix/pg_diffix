@@ -18,7 +18,8 @@ List *gather_sensitive_relations(Query *query, bool include_subqueries)
       .relations = NIL,
       .flags = include_subqueries
                    ? QTW_EXAMINE_RTES_BEFORE
-                   : QTW_EXAMINE_RTES_BEFORE | QTW_IGNORE_RT_SUBQUERIES};
+                   : QTW_EXAMINE_RTES_BEFORE | QTW_IGNORE_RT_SUBQUERIES,
+  };
 
   gather_sensitive_relations_walker((Node *)query, &context);
 
