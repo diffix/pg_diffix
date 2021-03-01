@@ -12,7 +12,12 @@ SELECT DIFFIX_COUNT(city) FROM test_customers;
 (1 row)
 
 SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIFFIX_LCF(id);
-ERROR:  [PG_DIFFIX] Feature 'HAVING' is not currently supported.
+  city  | diffix_count 
+--------+--------------
+ Berlin |            4
+ Rome   |            5
+(2 rows)
+
 
 SELECT city FROM test_customers;
   city  

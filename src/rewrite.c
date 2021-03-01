@@ -1,6 +1,7 @@
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_oper.h"
+#include "catalog/pg_type.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/node_helpers.h"
@@ -16,7 +17,7 @@ typedef struct MutatorContext
 } MutatorContext;
 
 /* Mutators */
-static void group_by_selected_expressions(Query *query);
+static void add_implicit_grouping(Query *query);
 
 /* Utils */
 static MutatorContext get_mutator_context(Query *query);
@@ -24,15 +25,15 @@ static RelationConfig *single_relation_config(Query *query);
 
 void rewrite_query(Query *query)
 {
-  if (!query->hasAggs && query->groupClause == NULL)
-  {
-    /* Simple select queries require implicit grouping. */
-    group_by_selected_expressions(query);
-  }
+  add_implicit_grouping(query);
 }
 
-static void group_by_selected_expressions(Query *query)
+static void add_implicit_grouping(Query *query)
 {
+  /* Only simple select queries require implicit grouping. */
+  if (query->hasAggs || query->groupClause != NIL)
+    return;
+
   DEBUG_LOG("Rewriting query to group by the selected expressions (Query ID=%lu).", query->queryId);
 
   ListCell *lc = NULL;
