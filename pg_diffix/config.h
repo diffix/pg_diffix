@@ -29,6 +29,8 @@ typedef struct RelationConfig
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
   Oid aid_atttype;          /* AID column type OID */
+  int32 aid_typmod;         /* AID pg_attribute typmod value */
+  Oid aid_collid;           /* AID collation */
 } RelationConfig;
 
 /*

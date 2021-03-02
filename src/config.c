@@ -4,6 +4,8 @@
 #include "utils/lsyscache.h"
 #include "lib/stringinfo.h"
 
+#include <inttypes.h>
+
 #include "pg_diffix/config.h"
 
 static RelationConfig *make_relation_config(
@@ -53,23 +55,33 @@ static RelationConfig *make_relation_config(
     char *rel_name,
     char *aid_attname)
 {
-  RelationConfig *relation;
-  Oid rel_namespace_oid;
-  Oid rel_oid;
-  AttrNumber aid_attnum;
+  Oid rel_namespace_oid = get_namespace_oid(rel_namespace_name, false);
+  Oid rel_oid = get_relname_relid(rel_name, rel_namespace_oid);
+  AttrNumber aid_attnum = get_attnum(rel_oid, aid_attname);
 
-  rel_namespace_oid = get_namespace_oid(rel_namespace_name, false);
-  rel_oid = get_relname_relid(rel_name, rel_namespace_oid);
-  aid_attnum = get_attnum(rel_oid, aid_attname);
-
-  relation = palloc(sizeof(RelationConfig));
+  RelationConfig *relation = palloc(sizeof(RelationConfig));
   relation->rel_namespace_name = rel_namespace_name;
   relation->rel_namespace_oid = rel_namespace_oid;
   relation->rel_name = rel_name;
   relation->rel_oid = rel_oid;
   relation->aid_attname = aid_attname;
   relation->aid_attnum = aid_attnum;
-  relation->aid_atttype = get_atttype(rel_oid, aid_attnum);
+
+  /* We don't want to crash for missing tables */
+  if (rel_oid)
+  {
+    get_atttypetypmodcoll(rel_oid,
+                          aid_attnum,
+                          &relation->aid_atttype,
+                          &relation->aid_typmod,
+                          &relation->aid_collid);
+  }
+  else
+  {
+    relation->aid_atttype = InvalidOid;
+    relation->aid_typmod = -1;
+    relation->aid_collid = InvalidOid;
+  }
 
   return relation;
 }
@@ -128,21 +140,26 @@ char *config_to_string(DiffixConfig *config)
   foreach (lc, config->relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
-    appendStringInfo(&string, "{SENSITIVE_RELATION_CONFIG"
-                              " :rel_namespace_name \"%s\""
-                              " :rel_namespace_oid %u"
-                              " :rel_name \"%s\""
-                              " :rel_oid %u"
-                              " :aid_attname \"%s\""
-                              " :aid_attnum %hi"
-                              " :aid_atttype %u}",
+    appendStringInfo(&string,
+                     "{SENSITIVE_RELATION_CONFIG"
+                     " :rel_namespace_name \"%s\""
+                     " :rel_namespace_oid %u"
+                     " :rel_name \"%s\""
+                     " :rel_oid %u"
+                     " :aid_attname \"%s\""
+                     " :aid_attnum %hi"
+                     " :aid_atttype %u"
+                     " :aid_typmod %" PRIi32
+                     " :aid_collid %u}",
                      relation->rel_namespace_name,
                      relation->rel_namespace_oid,
                      relation->rel_name,
                      relation->rel_oid,
                      relation->aid_attname,
                      relation->aid_attnum,
-                     relation->aid_atttype);
+                     relation->aid_atttype,
+                     relation->aid_typmod,
+                     relation->aid_collid);
   }
   appendStringInfo(&string, ")");
   /* end config->tables */
