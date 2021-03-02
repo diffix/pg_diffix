@@ -4,6 +4,7 @@
 #include "miscadmin.h"
 #include "utils/acl.h"
 
+#include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/node_helpers.h"
 #include "pg_diffix/oid_cache.h"
@@ -42,6 +43,18 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
+
+  /*
+   * Lazily load config relations.
+   * We do this here instead of _PG_init because if the extension
+   * is configured to be preloaded, it runs outside of a transaction
+   * context and the system cache lookups crash the process.
+   */
+  if (!Config.relations_loaded)
+  {
+    load_diffix_config();
+    DEBUG_LOG("Config %s", config_to_string(&Config));
+  }
 
   /* If it's a non-anonymizing query we let it pass through. */
   if (!requires_anonymization(query))

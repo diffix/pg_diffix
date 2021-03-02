@@ -46,6 +46,7 @@ void load_diffix_config(void)
       make_relation_config("public", "users", "id"),
       make_relation_config("public", "test_customers", "id") /**/
   );
+  Config.relations_loaded = true;
 
   MemoryContextSwitchTo(oldcontext);
 }
@@ -88,11 +89,13 @@ static RelationConfig *make_relation_config(
 
 void free_diffix_config()
 {
-  if (Config.relations)
+  if (Config.relations != NIL)
   {
     list_free_deep(Config.relations);
     Config.relations = NIL;
   }
+
+  Config.relations_loaded = false;
 }
 
 RelationConfig *get_relation_config(Oid rel_oid)

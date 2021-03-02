@@ -18,14 +18,7 @@ void _PG_fini(void);
 void _PG_init(void)
 {
   static int activation_count = 1;
-
   DEBUG_LOG("Activating Diffix extension (%i)...", activation_count++);
-
-  load_diffix_config();
-  char *config_string = config_to_string(&Config);
-
-  DEBUG_LOG("Config %s", config_string);
-  pfree(config_string);
 
   /*
    * Variables
