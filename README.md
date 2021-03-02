@@ -21,13 +21,23 @@ You probably need to run it with superuser permission as `sudo make install`.
 
 In `psql`, you have to install the extension with `create extension pg_diffix;`.
 
-To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
-
 ## Using the extension
 
 Once installed, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
 Node dumps can be formatted to readable form by using `pg_node_formatter`.
+
+## Preloading the extension
+
+To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+
+In your `postgresql.conf` file, add `pg_diffix` to `session_preload_libraries`.
+
+```
+session_preload_libraries = 'pg_diffix'
+```
+
+If you have multiple libraries you want to preload, separate them with commas.
 
 ## Testing the extension
 
