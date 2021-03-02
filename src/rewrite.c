@@ -109,8 +109,10 @@ static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
 
     if (aggfnoid == OidCache.count)
       rewrite_count(aggref, context);
+    /*
     else
       FAILWITH("Unsupported aggregate in query.");
+    */
 
     return (Node *)aggref;
   }
