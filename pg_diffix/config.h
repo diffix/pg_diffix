@@ -50,7 +50,8 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
-  List *relations; /* Registered relations (of RelationConfig) */
+  List *relations;       /* Registered relations (of RelationConfig) */
+  bool relations_loaded; /* Whether relation configs have been loaded */
 } DiffixConfig;
 
 /*
