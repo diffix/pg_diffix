@@ -12,11 +12,6 @@ AggregateOids OidCache;
 
 void load_oid_cache(void)
 {
-  if (OidCache.loaded)
-  {
-    return;
-  }
-
   OidCache.count = lookup_aggregate("count", 0, (Oid[]){});
   OidCache.count_any = lookup_aggregate("count", 1, (Oid[]){ANYOID});
   OidCache.diffix_lcf = lookup_aggregate("diffix_lcf", 1, (Oid[]){ANYELEMENTOID});

@@ -5,6 +5,7 @@ INSERT INTO test_customers VALUES
 
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
+SELECT diffix_reload_config();
 
 SELECT COUNT(*) FROM test_customers;
 SELECT DIFFIX_COUNT(city) FROM test_customers;
