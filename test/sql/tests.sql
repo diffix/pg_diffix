@@ -11,3 +11,5 @@ SELECT DIFFIX_COUNT(city) FROM test_customers;
 SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIFFIX_LCF(id);
 
 SELECT city FROM test_customers;
+
+SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;

@@ -3,6 +3,7 @@
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_oper.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_aggregate.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/node_helpers.h"
@@ -20,6 +21,7 @@ typedef struct MutatorContext
 
 /* Mutators */
 static void add_implicit_grouping(Query *query);
+static void add_low_count_filter(Query *query);
 static Node *aggregate_expression_mutator(Node *node, MutatorContext *context);
 
 /* Utils */
@@ -32,12 +34,15 @@ static RelationConfig *single_relation_config(Query *query);
 void rewrite_query(Query *query)
 {
   add_implicit_grouping(query);
+
   MutatorContext context = get_mutator_context(query);
   query_tree_mutator(
       query,
       aggregate_expression_mutator,
       &context,
       QTW_DONT_COPY_QUERY | QTW_EXAMINE_RTES_BEFORE);
+
+  add_low_count_filter(query);
 }
 
 static void add_implicit_grouping(Query *query)
@@ -76,6 +81,34 @@ static void add_implicit_grouping(Query *query)
     /* Add group clause to query. */
     query->groupClause = lappend(query->groupClause, groupClause);
   }
+}
+
+static void add_filter_to_clause(Node **clause, Node *filter)
+{
+  if (*clause == NULL)
+    *clause = filter;
+  else
+    *clause = (Node *)makeBoolExpr(AND_EXPR, list_make2(*clause, filter), -1);
+}
+
+static void add_low_count_filter(Query *query)
+{
+  Aggref *lcf_agg = makeNode(Aggref);
+
+  lcf_agg->aggfnoid = OidCache.diffix_lcf;
+  lcf_agg->aggtype = BOOLOID;
+  lcf_agg->aggtranstype = InvalidOid; /* will be set by planner */
+  lcf_agg->aggstar = false;
+  lcf_agg->aggvariadic = false;
+  lcf_agg->aggkind = AGGKIND_NORMAL;
+  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* planner might change this */
+  lcf_agg->location = -1;              /* unknown location */
+
+  MutatorContext context = get_mutator_context(query);
+  inject_aid_arg(lcf_agg, &context);
+
+  add_filter_to_clause(&query->havingQual, (Node *)lcf_agg);
+  query->hasAggs = true;
 }
 
 /*
