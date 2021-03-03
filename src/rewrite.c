@@ -93,6 +93,10 @@ static void add_filter_to_clause(Node **clause, Node *filter)
 
 static void add_low_count_filter(Query *query)
 {
+  /* Global aggregates have to be excluded from low-count filtering. */
+  if (query->hasAggs && query->groupClause == NIL)
+    return;
+
   Aggref *lcf_agg = makeNode(Aggref);
 
   lcf_agg->aggfnoid = OidCache.diffix_lcf;

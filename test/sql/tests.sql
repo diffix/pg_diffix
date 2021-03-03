@@ -13,3 +13,5 @@ SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIF
 SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
+
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';

@@ -36,3 +36,9 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  Berlin
 (1 row)
 
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+ count 
+-------
+     0
+(1 row)
+
