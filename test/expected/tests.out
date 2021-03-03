@@ -29,6 +29,9 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     4
 (2 rows)
 
+-- Gets rejected because `city` is not the AID.
+SELECT COUNT(DISTINCT city) FROM test_customers;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
 SELECT city FROM test_customers;
   city  
 --------
