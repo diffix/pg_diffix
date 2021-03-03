@@ -83,14 +83,6 @@ static void add_implicit_grouping(Query *query)
   }
 }
 
-static void add_filter_to_clause(Node **clause, Node *filter)
-{
-  if (*clause == NULL)
-    *clause = filter;
-  else
-    *clause = (Node *)makeBoolExpr(AND_EXPR, list_make2(*clause, filter), -1);
-}
-
 static void add_low_count_filter(Query *query)
 {
   /* Global aggregates have to be excluded from low-count filtering. */
@@ -111,7 +103,7 @@ static void add_low_count_filter(Query *query)
   MutatorContext context = get_mutator_context(query);
   inject_aid_arg(lcf_agg, &context);
 
-  add_filter_to_clause(&query->havingQual, (Node *)lcf_agg);
+  query->havingQual = make_and_qual(query->havingQual, (Node *)lcf_agg);
   query->hasAggs = true;
 }
 
