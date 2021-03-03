@@ -16,17 +16,17 @@ SELECT COUNT(*) FROM test_customers;
     12
 (1 row)
 
-SELECT DIFFIX_COUNT(city) FROM test_customers;
- diffix_count 
---------------
-            9
+SELECT COUNT(city) FROM test_customers;
+ count 
+-------
+    11
 (1 row)
 
-SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIFFIX_LCF(id);
-  city  | diffix_count 
---------+--------------
- Berlin |            4
- Rome   |            6
+SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+  city  | count 
+--------+-------
+ Rome   |     5
+ Berlin |     4
 (2 rows)
 
 SELECT city FROM test_customers;
