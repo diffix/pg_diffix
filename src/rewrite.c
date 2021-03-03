@@ -127,12 +127,44 @@ static void add_low_count_filter(Query *query)
  *-------------------------------------------------------------------------
  */
 
+/* Returns true if the target entry is a direct reference to the AID. */
+static bool is_aid_arg(TargetEntry *arg, MutatorContext *context)
+{
+  if (!IsA(arg->expr, Var))
+    return false;
+
+  Var *var = (Var *)arg->expr;
+  /* Check if we have a variable to the same relation and same attnum as AID */
+  return var->varno == context->relation_index && var->varattno == context->relation_config->aid_attnum;
+}
+
+static void rewrite_count(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count;
+  aggref->aggstar = false;
+  inject_aid_arg(aggref, context);
+}
+
+static void rewrite_count_distinct(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count_distinct;
+  /* The UDF handles distinct counting internally */
+  aggref->aggdistinct = false;
+  TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
+  if (!is_aid_arg(arg, context))
+    FAILWITH("COUNT(DISTINCT col) requires an AID column as its argument.");
+}
+
+static void rewrite_count_any(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count_any;
+  inject_aid_arg(aggref, context);
+}
+
 static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
 {
   if (node == NULL)
-  {
     return NULL;
-  }
 
   if (IsA(node, Query))
   {
@@ -155,6 +187,10 @@ static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
 
     if (aggfnoid == OidCache.count)
       rewrite_count(aggref, context);
+    else if (aggfnoid == OidCache.count_any && aggref->aggdistinct)
+      rewrite_count_distinct(aggref, context);
+    else if (aggfnoid == OidCache.count_any)
+      rewrite_count_any(aggref, context);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");
