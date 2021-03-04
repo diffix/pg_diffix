@@ -32,13 +32,11 @@ SELECT city FROM test_customers;
  Rome
  Rome
  Rome
- Rome
  Berlin
  Berlin
  Berlin
  Berlin
- Berlin
-(12 rows)
+(10 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  

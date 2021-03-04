@@ -86,22 +86,22 @@ static void expand_implicit_buckets(Query *query)
 {
   Const *const_one = makeConst(INT8OID, -1, InvalidOid, SIZEOF_LONG, Int64GetDatum(1), false, FLOAT8PASSBYVAL);
 
-  Aggref *count_any_agg = makeNode(Aggref);
-  count_any_agg->aggfnoid = OidCache.count_any; /* Will be replaced later with anonymizing version. */
-  count_any_agg->aggtype = INT8OID;
-  count_any_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
-  count_any_agg->aggstar = true;
-  count_any_agg->aggvariadic = false;
-  count_any_agg->aggkind = AGGKIND_NORMAL;
-  count_any_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
-  count_any_agg->location = -1;              /* Unknown location. */
+  Aggref *count_agg = makeNode(Aggref);
+  count_agg->aggfnoid = OidCache.count; /* Will be replaced later with anonymizing version. */
+  count_agg->aggtype = INT8OID;
+  count_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
+  count_agg->aggstar = true;
+  count_agg->aggvariadic = false;
+  count_agg->aggkind = AGGKIND_NORMAL;
+  count_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
+  count_agg->location = -1;              /* Unknown location. */
 
   FuncExpr *generate_series = makeNode(FuncExpr);
   generate_series->funcid = OidCache.generate_series;
   generate_series->funcresulttype = INT8OID;
   generate_series->funcretset = true;
   generate_series->funcvariadic = false;
-  generate_series->args = list_make2(const_one, count_any_agg);
+  generate_series->args = list_make2(const_one, count_agg);
   generate_series->location = -1;
 
   int target_count = list_length(query->targetList);
