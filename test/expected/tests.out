@@ -4,12 +4,6 @@ INSERT INTO test_customers VALUES
  (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome');
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
-SELECT diffix_reload_config();
- diffix_reload_config 
-----------------------
- t
-(1 row)
-
 SELECT COUNT(*) FROM test_customers;
  count 
 -------

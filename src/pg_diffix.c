@@ -15,16 +15,6 @@ PG_MODULE_MAGIC;
 void _PG_init(void);
 void _PG_fini(void);
 
-PG_FUNCTION_INFO_V1(diffix_reload_config);
-
-Datum diffix_reload_config(PG_FUNCTION_ARGS)
-{
-  DEBUG_LOG("Reloading configuration...");
-  load_diffix_config();
-  load_oid_cache();
-  PG_RETURN_BOOL(true);
-}
-
 void _PG_init(void)
 {
   static int activation_count = 1;
