@@ -21,15 +21,12 @@ typedef struct MutatorContext
 
 /* Mutators */
 static void group_and_expand_implicit_buckets(Query *query);
-static void add_low_count_filter(Query *query);
 static Node *aggregate_expression_mutator(Node *node, MutatorContext *context);
+static void add_low_count_filter(Query *query);
 
 /* Utils */
-static void rewrite_count(Aggref *aggref, MutatorContext *context);
 static void inject_aid_arg(Aggref *aggref, MutatorContext *context);
-
 static MutatorContext get_mutator_context(Query *query);
-static RelationConfig *single_relation_config(Query *query);
 
 void rewrite_query(Query *query)
 {
@@ -46,6 +43,11 @@ void rewrite_query(Query *query)
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
+
+/*-------------------------------------------------------------------------
+ * Implicit grouping
+ *-------------------------------------------------------------------------
+ */
 
 static void group_implicit_buckets(Query *query)
 {
@@ -79,7 +81,7 @@ static void group_implicit_buckets(Query *query)
   }
 }
 
-/* 
+/*
  * Expand implicit buckets by adding a hidden call to `generate_series(1, diffix_count(*))` to the selection list.
  */
 static void expand_implicit_buckets(Query *query)
@@ -124,6 +126,11 @@ static void group_and_expand_implicit_buckets(Query *query)
   expand_implicit_buckets(query);
 }
 
+/*-------------------------------------------------------------------------
+ * Low count filtering
+ *-------------------------------------------------------------------------
+ */
+
 static void add_low_count_filter(Query *query)
 {
   /* Global aggregates have to be excluded from low-count filtering. */
@@ -148,15 +155,49 @@ static void add_low_count_filter(Query *query)
   query->hasAggs = true;
 }
 
-/*
- * Rewrites standard aggregates to their anonymizing version.
+/*-------------------------------------------------------------------------
+ * Anonymizing aggregates
+ *-------------------------------------------------------------------------
  */
+
+/* Returns true if the target entry is a direct reference to the AID. */
+static bool is_aid_arg(TargetEntry *arg, MutatorContext *context)
+{
+  if (!IsA(arg->expr, Var))
+    return false;
+
+  Var *var = (Var *)arg->expr;
+  /* Check if we have a variable to the same relation and same attnum as AID */
+  return var->varno == context->relation_index && var->varattno == context->relation_config->aid_attnum;
+}
+
+static void rewrite_count(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count;
+  aggref->aggstar = false;
+  inject_aid_arg(aggref, context);
+}
+
+static void rewrite_count_distinct(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count_distinct;
+  /* The UDF handles distinct counting internally */
+  aggref->aggdistinct = false;
+  TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
+  if (!is_aid_arg(arg, context))
+    FAILWITH("COUNT(DISTINCT col) requires an AID column as its argument.");
+}
+
+static void rewrite_count_any(Aggref *aggref, MutatorContext *context)
+{
+  aggref->aggfnoid = OidCache.diffix_count_any;
+  inject_aid_arg(aggref, context);
+}
+
 static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
 {
   if (node == NULL)
-  {
     return NULL;
-  }
 
   if (IsA(node, Query))
   {
@@ -179,6 +220,10 @@ static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
 
     if (aggfnoid == OidCache.count)
       rewrite_count(aggref, context);
+    else if (aggfnoid == OidCache.count_any && aggref->aggdistinct)
+      rewrite_count_distinct(aggref, context);
+    else if (aggfnoid == OidCache.count_any)
+      rewrite_count_any(aggref, context);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");
@@ -190,12 +235,10 @@ static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
   return expression_tree_mutator(node, aggregate_expression_mutator, (void *)context);
 }
 
-static void rewrite_count(Aggref *aggref, MutatorContext *context)
-{
-  aggref->aggfnoid = OidCache.diffix_count;
-  aggref->aggstar = false;
-  inject_aid_arg(aggref, context);
-}
+/*-------------------------------------------------------------------------
+ * Utils
+ *-------------------------------------------------------------------------
+ */
 
 static void inject_aid_arg(Aggref *aggref, MutatorContext *context)
 {
@@ -227,18 +270,6 @@ static void inject_aid_arg(Aggref *aggref, MutatorContext *context)
 }
 
 /*
- * Builds a context to be used during query traversal.
- */
-static MutatorContext get_mutator_context(Query *query)
-{
-  MutatorContext context = {
-      .relation_config = single_relation_config(query),
-      .relation_index = 1 /* We only have a single relation at this point. */
-  };
-  return context;
-}
-
-/*
  * Expects and returns a single sensitive relation in the query.
  * Reports an error if there are 0 or multiple relations present in the query.
  */
@@ -253,4 +284,16 @@ static RelationConfig *single_relation_config(Query *query)
   RelationConfig *relation = linitial(relations);
   list_free(relations);
   return relation;
+}
+
+/*
+ * Builds a context to be used during query traversal.
+ */
+static MutatorContext get_mutator_context(Query *query)
+{
+  MutatorContext context = {
+      .relation_config = single_relation_config(query),
+      .relation_index = 1 /* We only have a single relation at this point. */
+  };
+  return context;
 }

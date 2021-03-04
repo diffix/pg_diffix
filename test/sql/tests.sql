@@ -5,10 +5,16 @@ INSERT INTO test_customers VALUES
 
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
+SELECT diffix_reload_config();
 
 SELECT COUNT(*) FROM test_customers;
-SELECT DIFFIX_COUNT(city) FROM test_customers;
-SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIFFIX_LCF(id);
+
+SELECT COUNT(city) FROM test_customers;
+
+SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+
+-- Gets rejected because `city` is not the AID.
+SELECT COUNT(DISTINCT city) FROM test_customers;
 
 SELECT city FROM test_customers;
 

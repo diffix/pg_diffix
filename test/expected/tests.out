@@ -4,25 +4,34 @@ INSERT INTO test_customers VALUES
  (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome');
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
+SELECT diffix_reload_config();
+ diffix_reload_config 
+----------------------
+ t
+(1 row)
+
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
     12
 (1 row)
 
-SELECT DIFFIX_COUNT(city) FROM test_customers;
- diffix_count 
---------------
-            9
+SELECT COUNT(city) FROM test_customers;
+ count 
+-------
+    11
 (1 row)
 
-SELECT city, DIFFIX_COUNT(DISTINCT id) FROM test_customers GROUP BY 1 HAVING DIFFIX_LCF(id);
-  city  | diffix_count 
---------+--------------
- Berlin |            4
- Rome   |            6
+SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+  city  | count 
+--------+-------
+ Rome   |     5
+ Berlin |     4
 (2 rows)
 
+-- Gets rejected because `city` is not the AID.
+SELECT COUNT(DISTINCT city) FROM test_customers;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
 SELECT city FROM test_customers;
   city  
 --------
