@@ -20,7 +20,7 @@ typedef struct MutatorContext
 } MutatorContext;
 
 /* Mutators */
-static void add_implicit_grouping(Query *query);
+static void group_and_expand_implicit_buckets(Query *query);
 static Node *aggregate_expression_mutator(Node *node, MutatorContext *context);
 static void add_low_count_filter(Query *query);
 
@@ -30,7 +30,7 @@ static MutatorContext get_mutator_context(Query *query);
 
 void rewrite_query(Query *query)
 {
-  add_implicit_grouping(query);
+  group_and_expand_implicit_buckets(query);
 
   MutatorContext context = get_mutator_context(query);
   query_tree_mutator(
@@ -40,6 +40,8 @@ void rewrite_query(Query *query)
       QTW_DONT_COPY_QUERY | QTW_EXAMINE_RTES_BEFORE);
 
   add_low_count_filter(query);
+
+  query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
 
 /*-------------------------------------------------------------------------
@@ -47,14 +49,8 @@ void rewrite_query(Query *query)
  *-------------------------------------------------------------------------
  */
 
-static void add_implicit_grouping(Query *query)
+static void group_implicit_buckets(Query *query)
 {
-  /* Only simple select queries require implicit grouping. */
-  if (query->hasAggs || query->groupClause != NIL)
-    return;
-
-  DEBUG_LOG("Rewriting query to group by the selected expressions (Query ID=%lu).", query->queryId);
-
   ListCell *lc = NULL;
   foreach (lc, query->targetList)
   {
@@ -85,18 +81,55 @@ static void add_implicit_grouping(Query *query)
   }
 }
 
+/*
+ * Expand implicit buckets by adding a hidden call to `generate_series(1, diffix_count(*))` to the selection list.
+ */
+static void expand_implicit_buckets(Query *query)
+{
+  Const *const_one = makeConst(INT8OID, -1, InvalidOid, SIZEOF_LONG, Int64GetDatum(1), false, FLOAT8PASSBYVAL);
+
+  Aggref *count_agg = makeNode(Aggref);
+  count_agg->aggfnoid = OidCache.count; /* Will be replaced later with anonymizing version. */
+  count_agg->aggtype = INT8OID;
+  count_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
+  count_agg->aggstar = true;
+  count_agg->aggvariadic = false;
+  count_agg->aggkind = AGGKIND_NORMAL;
+  count_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
+  count_agg->location = -1;              /* Unknown location. */
+
+  FuncExpr *generate_series = makeNode(FuncExpr);
+  generate_series->funcid = OidCache.generate_series;
+  generate_series->funcresulttype = INT8OID;
+  generate_series->funcretset = true;
+  generate_series->funcvariadic = false;
+  generate_series->args = list_make2(const_one, count_agg);
+  generate_series->location = -1;
+
+  int target_count = list_length(query->targetList);
+  TargetEntry *expand_entry = makeTargetEntry((Expr *)generate_series, target_count + 1, NULL, false);
+  expand_entry->resjunk = true; /* Hide output values. */
+
+  lappend(query->targetList, expand_entry);
+  query->hasTargetSRFs = true;
+}
+
+static void group_and_expand_implicit_buckets(Query *query)
+{
+  /* Only simple select queries require implicit grouping. */
+  if (query->hasAggs || query->groupClause != NIL)
+    return;
+
+  DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+
+  group_implicit_buckets(query);
+  expand_implicit_buckets(query);
+}
+
 /*-------------------------------------------------------------------------
  * Low count filtering
  *-------------------------------------------------------------------------
  */
-
-static void add_filter_to_clause(Node **clause, Node *filter)
-{
-  if (*clause == NULL)
-    *clause = filter;
-  else
-    *clause = (Node *)makeBoolExpr(AND_EXPR, list_make2(*clause, filter), -1);
-}
 
 static void add_low_count_filter(Query *query)
 {
@@ -108,17 +141,17 @@ static void add_low_count_filter(Query *query)
 
   lcf_agg->aggfnoid = OidCache.diffix_lcf;
   lcf_agg->aggtype = BOOLOID;
-  lcf_agg->aggtranstype = InvalidOid; /* will be set by planner */
+  lcf_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   lcf_agg->aggstar = false;
   lcf_agg->aggvariadic = false;
   lcf_agg->aggkind = AGGKIND_NORMAL;
-  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* planner might change this */
-  lcf_agg->location = -1;              /* unknown location */
+  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
+  lcf_agg->location = -1;              /* Unknown location. */
 
   MutatorContext context = get_mutator_context(query);
   inject_aid_arg(lcf_agg, &context);
 
-  add_filter_to_clause(&query->havingQual, (Node *)lcf_agg);
+  query->havingQual = make_and_qual(query->havingQual, (Node *)lcf_agg);
   query->hasAggs = true;
 }
 

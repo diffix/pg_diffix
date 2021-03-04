@@ -36,8 +36,16 @@ SELECT city FROM test_customers;
   city  
 --------
  Rome
+ Rome
+ Rome
+ Rome
+ Rome
+ Rome
  Berlin
-(2 rows)
+ Berlin
+ Berlin
+ Berlin
+(10 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  
