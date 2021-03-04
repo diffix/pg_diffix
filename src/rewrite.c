@@ -93,12 +93,12 @@ static void add_low_count_filter(Query *query)
 
   lcf_agg->aggfnoid = OidCache.diffix_lcf;
   lcf_agg->aggtype = BOOLOID;
-  lcf_agg->aggtranstype = InvalidOid; /* will be set by planner */
+  lcf_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   lcf_agg->aggstar = false;
   lcf_agg->aggvariadic = false;
   lcf_agg->aggkind = AGGKIND_NORMAL;
-  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* planner might change this */
-  lcf_agg->location = -1;              /* unknown location */
+  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
+  lcf_agg->location = -1;              /* Unknown location. */
 
   MutatorContext context = get_mutator_context(query);
   inject_aid_arg(lcf_agg, &context);
