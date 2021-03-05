@@ -2,16 +2,6 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 /* ----------------------------------------------------------------
- * Config
- * ----------------------------------------------------------------
- */
-
-CREATE FUNCTION diffix_reload_config()
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C VOLATILE;
-
-/* ----------------------------------------------------------------
  * diffix_lcf(aid)
  * ----------------------------------------------------------------
  */

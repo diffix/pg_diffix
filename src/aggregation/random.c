@@ -3,8 +3,8 @@
 
 #include <math.h>
 
-#include "pg_diffix/random.h"
 #include "pg_diffix/config.h"
+#include "pg_diffix/aggregation/random.h"
 
 extern double pg_erand48(unsigned short xseed[3]);
 

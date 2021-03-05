@@ -3,15 +3,13 @@
 #include "utils/elog.h"
 
 #include "pg_diffix/config.h"
-#include "pg_diffix/validation.h"
+#include "pg_diffix/query/validation.h"
 
 #define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
-#define NOT_SUPPORTED(cond, feature)                                 \
-  if (cond)                                                          \
-  {                                                                  \
-    FAILWITH("Feature '%s' is not currently supported.", (feature)); \
-  }
+#define NOT_SUPPORTED(cond, feature) \
+  if (cond)                          \
+    FAILWITH("Feature '%s' is not currently supported.", (feature));
 
 static void verify_rtable(Query *query);
 static void verify_join_tree(Query *query);

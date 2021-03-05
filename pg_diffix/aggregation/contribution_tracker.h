@@ -1,11 +1,12 @@
 #ifndef PG_DIFFIX_CONTRIBUTION_TRACKER_H
 #define PG_DIFFIX_CONTRIBUTION_TRACKER_H
 
-#include "postgres.h"
+#include "c.h"
 #include "fmgr.h"
+
 #include <inttypes.h>
 
-#include "pg_diffix/aid.h"
+#include "pg_diffix/aggregation/aid.h"
 
 #define CONTRIBUTION_INT_FMT PRIi64
 #define CONTRIBUTION_REAL_FMT "f"

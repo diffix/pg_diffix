@@ -1,8 +1,9 @@
 #ifndef PG_DIFFIX_AID_H
 #define PG_DIFFIX_AID_H
 
-#include "postgres.h"
+#include "c.h"
 #include "common/hashfn.h"
+
 #include <inttypes.h>
 
 #define AID_FMT PRIu64

@@ -5,9 +5,9 @@
 
 #include <inttypes.h>
 
-#include "pg_diffix/aid_tracker.h"
 #include "pg_diffix/config.h"
-#include "pg_diffix/random.h"
+#include "pg_diffix/aggregation/aid_tracker.h"
+#include "pg_diffix/aggregation/random.h"
 
 typedef struct LcfResult
 {

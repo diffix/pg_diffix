@@ -6,11 +6,11 @@
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
-#include "pg_diffix/node_helpers.h"
-#include "pg_diffix/oid_cache.h"
-#include "pg_diffix/rewrite.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/validation.h"
+#include "pg_diffix/query/node_helpers.h"
+#include "pg_diffix/query/oid_cache.h"
+#include "pg_diffix/query/rewrite.h"
+#include "pg_diffix/query/validation.h"
 
 post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;

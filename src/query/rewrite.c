@@ -6,10 +6,10 @@
 #include "catalog/pg_aggregate.h"
 
 #include "pg_diffix/config.h"
-#include "pg_diffix/node_helpers.h"
-#include "pg_diffix/oid_cache.h"
-#include "pg_diffix/rewrite.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/node_helpers.h"
+#include "pg_diffix/query/oid_cache.h"
+#include "pg_diffix/query/rewrite.h"
 
 #define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 

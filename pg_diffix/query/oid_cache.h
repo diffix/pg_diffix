@@ -1,7 +1,7 @@
 #ifndef PG_DIFFIX_OID_CACHE_H
 #define PG_DIFFIX_OID_CACHE_H
 
-#include "postgres.h"
+#include "c.h"
 
 /*
  * OIDs needed for rewriting aggregates.

@@ -2,7 +2,7 @@
 #include "common/hashfn.h"
 #include "utils/elog.h"
 
-#include "pg_diffix/aid_tracker.h"
+#include "pg_diffix/aggregation/aid_tracker.h"
 
 /*
  * Definitions for HashTable<aid_t, AidTrackerHashEntry>
