@@ -4,7 +4,7 @@
 #include "c.h"
 #include "fmgr.h"
 
-#include "pg_diffix/anon/aid.h"
+#include "pg_diffix/aggregation/aid.h"
 
 typedef struct AidTrackerHashEntry
 {

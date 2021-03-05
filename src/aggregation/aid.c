@@ -4,7 +4,7 @@
 #include "utils/builtins.h"
 #include "utils/elog.h"
 
-#include "pg_diffix/anon/aid.h"
+#include "pg_diffix/aggregation/aid.h"
 
 static aid_t make_int4_aid(Datum datum)
 {

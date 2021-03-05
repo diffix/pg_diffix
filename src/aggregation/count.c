@@ -7,8 +7,8 @@
 #include <inttypes.h>
 
 #include "pg_diffix/config.h"
-#include "pg_diffix/anon/contribution_tracker.h"
-#include "pg_diffix/anon/random.h"
+#include "pg_diffix/aggregation/contribution_tracker.h"
+#include "pg_diffix/aggregation/random.h"
 
 typedef struct CountResult
 {

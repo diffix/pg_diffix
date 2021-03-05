@@ -6,7 +6,7 @@
 
 #include <inttypes.h>
 
-#include "pg_diffix/anon/aid.h"
+#include "pg_diffix/aggregation/aid.h"
 
 #define CONTRIBUTION_INT_FMT PRIi64
 #define CONTRIBUTION_REAL_FMT "f"
