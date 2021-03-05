@@ -1,10 +1,10 @@
 #ifndef PG_DIFFIX_AID_TRACKER_H
 #define PG_DIFFIX_AID_TRACKER_H
 
-#include "postgres.h"
+#include "c.h"
 #include "fmgr.h"
 
-#include "pg_diffix/aid.h"
+#include "pg_diffix/anon/aid.h"
 
 typedef struct AidTrackerHashEntry
 {

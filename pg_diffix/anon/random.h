@@ -1,7 +1,7 @@
 #ifndef PG_DIFFIX_RANDOM_H
 #define PG_DIFFIX_RANDOM_H
 
-#include "postgres.h"
+#include "c.h"
 
 /*
  * Combines the given 64-bit noise layer seed with

@@ -2,7 +2,7 @@
 #include "nodes/nodeFuncs.h"
 
 #include "pg_diffix/config.h"
-#include "pg_diffix/node_helpers.h"
+#include "pg_diffix/query/node_helpers.h"
 
 typedef struct GatherSensitiveRelationsContext
 {

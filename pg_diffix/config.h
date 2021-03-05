@@ -1,7 +1,7 @@
 #ifndef PG_DIFFIX_CONFIG_H
 #define PG_DIFFIX_CONFIG_H
 
-#include "postgres.h"
+#include "c.h"
 #include "nodes/pg_list.h"
 #include "access/attnum.h"
 

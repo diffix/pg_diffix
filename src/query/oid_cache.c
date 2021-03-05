@@ -3,8 +3,8 @@
 #include "lib/stringinfo.h"
 #include "parser/parse_func.h"
 
-#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/oid_cache.h"
 
 static Oid lookup_function(char *name, int num_args, Oid *arg_types);
 

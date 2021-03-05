@@ -5,8 +5,8 @@
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
-#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/oid_cache.h"
 
 #define MAX_NUMERIC_CONFIG 1000
 

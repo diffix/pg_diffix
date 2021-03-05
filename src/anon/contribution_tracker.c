@@ -3,7 +3,7 @@
 #include "utils/elog.h"
 
 #include "pg_diffix/config.h"
-#include "pg_diffix/contribution_tracker.h"
+#include "pg_diffix/anon/contribution_tracker.h"
 
 /* ----------------------------------------------------------------
  * Top contributors management

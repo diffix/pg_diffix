@@ -1,7 +1,8 @@
 MODULE_big = pg_diffix
 OBJS = \
 	$(WIN32RES) \
-	$(patsubst %.c,%.o,$(wildcard src/*.c))
+	$(patsubst %.c,%.o,$(wildcard src/*.c)) \
+	$(patsubst %.c,%.o,$(wildcard src/*/*.c))
 
 EXTENSION = pg_diffix
 DATA = pg_diffix--0.0.1.sql
