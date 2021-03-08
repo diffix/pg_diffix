@@ -13,7 +13,7 @@ static RelationConfig *make_relation_config(
     char *rel_name,
     char *aid_attname);
 
-DiffixConfig Config = {
+DiffixConfig g_config = {
     .noise_seed = INITIAL_NOISE_SEED,
     .noise_sigma = INITIAL_NOISE_SIGMA,
     .noise_cutoff = INITIAL_NOISE_CUTOFF,
@@ -42,11 +42,11 @@ void load_diffix_config(void)
   /* Data will be fetched from config tables here... */
 
   /* Hard-coded for now. */
-  Config.relations = list_make2(
+  g_config.relations = list_make2(
       make_relation_config("public", "users", "id"),
       make_relation_config("public", "test_customers", "id") /**/
   );
-  Config.relations_loaded = true;
+  g_config.relations_loaded = true;
 
   MemoryContextSwitchTo(oldcontext);
 }
@@ -89,13 +89,13 @@ static RelationConfig *make_relation_config(
 
 void free_diffix_config()
 {
-  if (Config.relations != NIL)
+  if (g_config.relations != NIL)
   {
-    list_free_deep(Config.relations);
-    Config.relations = NIL;
+    list_free_deep(g_config.relations);
+    g_config.relations = NIL;
   }
 
-  Config.relations_loaded = false;
+  g_config.relations_loaded = false;
 }
 
 RelationConfig *get_relation_config(Oid rel_oid)
@@ -107,7 +107,7 @@ RelationConfig *get_relation_config(Oid rel_oid)
   }
 
   ListCell *lc;
-  foreach (lc, Config.relations)
+  foreach (lc, g_config.relations)
   {
     RelationConfig *relation = (RelationConfig *)lfirst(lc);
     if (relation->rel_oid == rel_oid)

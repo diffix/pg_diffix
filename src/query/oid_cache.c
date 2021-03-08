@@ -8,19 +8,19 @@
 
 static Oid lookup_function(char *name, int num_args, Oid *arg_types);
 
-Oids OidCache;
+Oids g_oid_cache;
 
 void load_oid_cache(void)
 {
-  OidCache.count = lookup_function("count", 0, (Oid[]){});
-  OidCache.count_any = lookup_function("count", 1, (Oid[]){ANYOID});
-  OidCache.diffix_lcf = lookup_function("diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
-  OidCache.diffix_count_distinct = lookup_function("diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
-  OidCache.diffix_count = lookup_function("diffix_count", 1, (Oid[]){ANYELEMENTOID});
-  OidCache.diffix_count_any = lookup_function("diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
-  OidCache.generate_series = lookup_function("generate_series", 2, (Oid[]){INT8OID, INT8OID});
+  g_oid_cache.count = lookup_function("count", 0, (Oid[]){});
+  g_oid_cache.count_any = lookup_function("count", 1, (Oid[]){ANYOID});
+  g_oid_cache.diffix_lcf = lookup_function("diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count_distinct = lookup_function("diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count = lookup_function("diffix_count", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count_any = lookup_function("diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
+  g_oid_cache.generate_series = lookup_function("generate_series", 2, (Oid[]){INT8OID, INT8OID});
 
-  OidCache.loaded = true;
+  g_oid_cache.loaded = true;
 }
 
 static Oid lookup_function(char *name, int num_args, Oid *arg_types)
@@ -39,7 +39,7 @@ static Oid lookup_function(char *name, int num_args, Oid *arg_types)
 
 void free_oid_cache()
 {
-  OidCache.loaded = false;
+  g_oid_cache.loaded = false;
   /* If we'd have any dynamic allocation here would be the place to free it. */
 }
 

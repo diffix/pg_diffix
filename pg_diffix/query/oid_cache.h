@@ -21,7 +21,7 @@ typedef struct Oids
 /*
  * Global instance of OID cache.
  */
-extern Oids OidCache;
+extern Oids g_oid_cache;
 
 /*
  * Populates OID cache. Does nothing if cache is already loaded.

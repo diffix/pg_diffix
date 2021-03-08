@@ -89,7 +89,7 @@ static void expand_implicit_buckets(Query *query)
   Const *const_one = makeConst(INT8OID, -1, InvalidOid, SIZEOF_LONG, Int64GetDatum(1), false, FLOAT8PASSBYVAL);
 
   Aggref *count_agg = makeNode(Aggref);
-  count_agg->aggfnoid = OidCache.count; /* Will be replaced later with anonymizing version. */
+  count_agg->aggfnoid = g_oid_cache.count; /* Will be replaced later with anonymizing version. */
   count_agg->aggtype = INT8OID;
   count_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   count_agg->aggstar = true;
@@ -99,7 +99,7 @@ static void expand_implicit_buckets(Query *query)
   count_agg->location = -1;              /* Unknown location. */
 
   FuncExpr *generate_series = makeNode(FuncExpr);
-  generate_series->funcid = OidCache.generate_series;
+  generate_series->funcid = g_oid_cache.generate_series;
   generate_series->funcresulttype = INT8OID;
   generate_series->funcretset = true;
   generate_series->funcvariadic = false;
@@ -139,7 +139,7 @@ static void add_low_count_filter(Query *query)
 
   Aggref *lcf_agg = makeNode(Aggref);
 
-  lcf_agg->aggfnoid = OidCache.diffix_lcf;
+  lcf_agg->aggfnoid = g_oid_cache.diffix_lcf;
   lcf_agg->aggtype = BOOLOID;
   lcf_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   lcf_agg->aggstar = false;
@@ -173,14 +173,14 @@ static bool is_aid_arg(TargetEntry *arg, MutatorContext *context)
 
 static void rewrite_count(Aggref *aggref, MutatorContext *context)
 {
-  aggref->aggfnoid = OidCache.diffix_count;
+  aggref->aggfnoid = g_oid_cache.diffix_count;
   aggref->aggstar = false;
   inject_aid_arg(aggref, context);
 }
 
 static void rewrite_count_distinct(Aggref *aggref, MutatorContext *context)
 {
-  aggref->aggfnoid = OidCache.diffix_count_distinct;
+  aggref->aggfnoid = g_oid_cache.diffix_count_distinct;
   /* The UDF handles distinct counting internally */
   aggref->aggdistinct = false;
   TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
@@ -190,7 +190,7 @@ static void rewrite_count_distinct(Aggref *aggref, MutatorContext *context)
 
 static void rewrite_count_any(Aggref *aggref, MutatorContext *context)
 {
-  aggref->aggfnoid = OidCache.diffix_count_any;
+  aggref->aggfnoid = g_oid_cache.diffix_count_any;
   inject_aid_arg(aggref, context);
 }
 
@@ -218,11 +218,11 @@ static Node *aggregate_expression_mutator(Node *node, MutatorContext *context)
     Aggref *aggref = (Aggref *)expression_tree_mutator(node, aggregate_expression_mutator, (void *)context);
     Oid aggfnoid = aggref->aggfnoid;
 
-    if (aggfnoid == OidCache.count)
+    if (aggfnoid == g_oid_cache.count)
       rewrite_count(aggref, context);
-    else if (aggfnoid == OidCache.count_any && aggref->aggdistinct)
+    else if (aggfnoid == g_oid_cache.count_any && aggref->aggdistinct)
       rewrite_count_distinct(aggref, context);
-    else if (aggfnoid == OidCache.count_any)
+    else if (aggfnoid == g_oid_cache.count_any)
       rewrite_count_any(aggref, context);
     /*
     else

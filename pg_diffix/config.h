@@ -57,7 +57,7 @@ typedef struct DiffixConfig
 /*
  * Global instance of root configuration.
  */
-extern DiffixConfig Config;
+extern DiffixConfig g_config;
 
 /*
  * Loads and caches configuration.

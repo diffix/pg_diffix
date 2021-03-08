@@ -50,10 +50,10 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
    * is configured to be preloaded, it runs outside of a transaction
    * context and the system cache lookups crash the process.
    */
-  if (!Config.relations_loaded)
+  if (!g_config.relations_loaded)
   {
     load_diffix_config();
-    DEBUG_LOG("Config %s", config_to_string(&Config));
+    DEBUG_LOG("Config %s", config_to_string(&g_config));
   }
 
   /* If it's a non-anonymizing query we let it pass through. */
@@ -69,10 +69,10 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /*
    * We load OIDs later because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init.
    */
-  if (!OidCache.loaded)
+  if (!g_oid_cache.loaded)
   {
     load_oid_cache();
-    DEBUG_LOG("OidCache %s", oids_to_string(&OidCache));
+    DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
   }
 
   /* Halts execution if requirements are not met. */
