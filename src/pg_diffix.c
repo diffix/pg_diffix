@@ -133,6 +133,10 @@ void _PG_init(void)
       NULL,                                          /* assign_hook */
       NULL);                                         /* show_hook */
 
+  char *config_str = config_to_string(&g_config);
+  DEBUG_LOG("Config %s", config_str);
+  pfree(config_str);
+
   /*
    * Hooks
    */
@@ -159,7 +163,6 @@ void _PG_fini(void)
 {
   DEBUG_LOG("Deactivating Diffix extension...");
 
-  free_diffix_config();
   free_oid_cache();
 
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
