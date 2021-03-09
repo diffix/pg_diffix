@@ -7,7 +7,6 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/query/node_helpers.h"
 #include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/rewrite.h"
 #include "pg_diffix/query/validation.h"
@@ -19,21 +18,6 @@ ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
-static inline bool requires_anonymization(Query *query)
-{
-  List *relations = gather_sensitive_relations(query, true);
-  if (relations != NIL)
-  {
-    list_free(relations);
-    return true;
-  }
-  else
-  {
-    /* No sensitive relations. */
-    return false;
-  }
-}
-
 void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
   if (prev_post_parse_analyze_hook)
@@ -44,20 +28,10 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
 
-  /*
-   * Lazily load config relations.
-   * We do this here instead of _PG_init because if the extension
-   * is configured to be preloaded, it runs outside of a transaction
-   * context and the system cache lookups crash the process.
-   */
-  if (!g_config.relations_loaded)
-  {
-    load_diffix_config();
-    DEBUG_LOG("Config %s", config_to_string(&g_config));
-  }
+  QueryContext context = build_query_context(query);
 
-  /* If it's a non-anonymizing query we let it pass through. */
-  if (!requires_anonymization(query))
+  /* A query requires anonymization if it targets sensitive relations. */
+  if (context.relations == NIL)
   {
     DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
     return;
@@ -66,9 +40,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   /* At this point we have an anonymizing query. */
   DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
 
-  /*
-   * We load OIDs later because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init.
-   */
+  /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   if (!g_oid_cache.loaded)
   {
     load_oid_cache();
@@ -76,9 +48,9 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   }
 
   /* Halts execution if requirements are not met. */
-  verify_anonymization_requirements(query);
+  verify_anonymization_requirements(&context);
 
-  rewrite_query(query);
+  rewrite_query(&context);
 
   /* Print rewritten query. */
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
@@ -93,13 +65,9 @@ PlannedStmt *pg_diffix_planner(
   PlannedStmt *plan;
 
   if (prev_planner_hook)
-  {
     plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
-  }
   else
-  {
     plan = standard_planner(parse, query_string, cursorOptions, boundParams);
-  }
 
   return plan;
 }
@@ -107,13 +75,9 @@ PlannedStmt *pg_diffix_planner(
 void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
   if (prev_ExecutorStart_hook)
-  {
     prev_ExecutorStart_hook(queryDesc, eflags);
-  }
   else
-  {
     standard_ExecutorStart(queryDesc, eflags);
-  }
 }
 
 void pg_diffix_ExecutorRun(
@@ -123,35 +87,23 @@ void pg_diffix_ExecutorRun(
     bool execute_once)
 {
   if (prev_ExecutorRun_hook)
-  {
     prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
-  }
   else
-  {
     standard_ExecutorRun(queryDesc, direction, count, execute_once);
-  }
 }
 
 void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 {
   if (prev_ExecutorFinish_hook)
-  {
     prev_ExecutorFinish_hook(queryDesc);
-  }
   else
-  {
     standard_ExecutorFinish(queryDesc);
-  }
 }
 
 void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 {
   if (prev_ExecutorEnd_hook)
-  {
     prev_ExecutorEnd_hook(queryDesc);
-  }
   else
-  {
     standard_ExecutorEnd(queryDesc);
-  }
 }

@@ -14,8 +14,10 @@
 static void verify_rtable(Query *query);
 static void verify_join_tree(Query *query);
 
-void verify_anonymization_requirements(Query *query)
+void verify_anonymization_requirements(QueryContext *context)
 {
+  Query *query = context->query;
+
   NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
   NOT_SUPPORTED(query->cteList, "WITH");
   NOT_SUPPORTED(query->hasForUpdate, "FOR [KEY] UPDATE/SHARE");
@@ -26,15 +28,15 @@ void verify_anonymization_requirements(Query *query)
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
-  verify_join_tree(query);
   verify_rtable(query);
+  verify_join_tree(query);
 }
 
 static void verify_rtable(Query *query)
 {
   RangeTblEntry *range_table;
 
-  NOT_SUPPORTED(!query->rtable || query->rtable->length != 1, "multiple relations");
+  NOT_SUPPORTED(list_length(query->rtable) != 1, "multiple relations");
 
   range_table = linitial(query->rtable);
   NOT_SUPPORTED(range_table->rtekind != RTE_RELATION, "subqueries");
@@ -44,7 +46,7 @@ static void verify_join_tree(Query *query)
 {
   List *from_list = query->jointree->fromlist;
 
-  NOT_SUPPORTED(!from_list || from_list->length != 1, "joins");
+  NOT_SUPPORTED(list_length(from_list) != 1, "joins");
 
   if (!IsA(linitial(from_list), RangeTblRef))
   {
