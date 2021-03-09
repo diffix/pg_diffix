@@ -1,7 +1,5 @@
 #include "postgres.h"
-#include "catalog/namespace.h"
 #include "nodes/nodeFuncs.h"
-#include "utils/memutils.h"
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/query/context.h"
