@@ -9,7 +9,7 @@
 /*
  * Data for a sensitive relation.
  */
-typedef struct RelationData
+typedef struct DiffixRelation
 {
   char *rel_namespace_name; /* Namespace name */
   Oid rel_namespace_oid;    /* Namespace OID */
@@ -20,7 +20,7 @@ typedef struct RelationData
   Oid aid_atttype;          /* AID column type OID */
   int32 aid_typmod;         /* AID pg_attribute typmod value */
   Oid aid_collid;           /* AID collation */
-} RelationData;
+} DiffixRelation;
 
 /*
  * Data needed for validating and rewriting queries.
@@ -28,7 +28,7 @@ typedef struct RelationData
 typedef struct QueryContext
 {
   Query *query;    /* Currently executing query */
-  List *relations; /* Sensitive relations in query (of RelationData) */
+  List *relations; /* Sensitive relations in query (of DiffixRelation) */
 } QueryContext;
 
 extern QueryContext build_query_context(Query *query);

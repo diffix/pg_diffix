@@ -11,7 +11,7 @@
 
 #define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
-#define AID_RELATION(context) ((RelationData *)linitial(context->relations))
+#define AID_RELATION(context) ((DiffixRelation *)linitial(context->relations))
 #define AID_RELATION_INDEX 1
 
 /* Mutators */
@@ -236,7 +236,7 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
 
 static void inject_aid_arg(Aggref *aggref, QueryContext *context)
 {
-  RelationData *relation = AID_RELATION(context);
+  DiffixRelation *relation = AID_RELATION(context);
 
   /* Insert AID type in front of aggargtypes */
   aggref->aggargtypes = list_insert_nth_oid(aggref->aggargtypes, 0, relation->aid_atttype);

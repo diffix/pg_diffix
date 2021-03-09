@@ -2,6 +2,19 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 /* ----------------------------------------------------------------
+ * Config
+ * ----------------------------------------------------------------
+ */
+
+DROP TABLE IF EXISTS diffix_config;
+
+CREATE TABLE public.diffix_config (
+  rel_namespace_name TEXT NOT NULL,
+  rel_name TEXT NOT NULL,
+  aid_attname TEXT NOT NULL
+);
+
+/* ----------------------------------------------------------------
  * diffix_lcf(aid)
  * ----------------------------------------------------------------
  */

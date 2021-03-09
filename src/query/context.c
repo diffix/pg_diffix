@@ -1,6 +1,13 @@
 #include "postgres.h"
+#include "access/htup.h"
+#include "access/table.h"
+#include "access/tableam.h"
+#include "catalog/namespace.h"
+#include "executor/tuptable.h"
 #include "nodes/nodeFuncs.h"
+#include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/snapmgr.h"
 
 #include "pg_diffix/query/context.h"
 
@@ -11,18 +18,51 @@ typedef struct RelationConfig
   char *aid_attname;
 } RelationConfig;
 
+static Oid find_relation(char *rel_ns_name, char *rel_name)
+{
+  Oid rel_ns = get_namespace_oid(rel_ns_name, false);
+  Oid rel_oid = get_relname_relid(rel_name, rel_ns);
+  return rel_oid;
+}
+
 /* Returns a list of RelationConfig for all configured relations. */
 static List *get_all_configured_relations(void)
 {
-  static RelationConfig static_relations[] = {
-      {"public", "users", "id"},
-      {"public", "test_customers", "id"},
-  };
+  List *relations = NIL;
 
-  List *relations = list_make2(
-      &static_relations[0],
-      &static_relations[1] /**/
-  );
+  Oid config_rel_oid = find_relation("public", "diffix_config");
+  AttrNumber rel_namespace_name_attnum = get_attnum(config_rel_oid, "rel_namespace_name");
+  AttrNumber rel_name_attnum = get_attnum(config_rel_oid, "rel_name");
+  AttrNumber aid_attname_attnum = get_attnum(config_rel_oid, "aid_attname");
+
+  Relation config_rel = table_open(config_rel_oid, AccessShareLock);
+  Snapshot snapshot = GetActiveSnapshot();
+  TableScanDesc scan = table_beginscan(config_rel, snapshot, 0, NULL);
+  TupleTableSlot *slot = table_slot_create(config_rel, NULL);
+
+  while (table_scan_getnextslot(scan, ForwardScanDirection, slot))
+  {
+    bool is_null;
+    Datum rel_namespace_name = slot_getattr(slot, rel_namespace_name_attnum, &is_null);
+    Assert(!is_null);
+    Datum rel_name = slot_getattr(slot, rel_name_attnum, &is_null);
+    Assert(!is_null);
+    Datum aid_attname = slot_getattr(slot, aid_attname_attnum, &is_null);
+    Assert(!is_null);
+
+    RelationConfig *config = palloc(sizeof(RelationConfig));
+    config->rel_namespace_name = text_to_cstring(DatumGetTextPP(rel_namespace_name));
+    config->rel_name = text_to_cstring(DatumGetTextPP(rel_name));
+    config->aid_attname = text_to_cstring(DatumGetTextPP(aid_attname));
+
+    relations = lappend(relations, config);
+  }
+
+  if (slot->tts_tupleDescriptor)
+    ReleaseTupleDesc(slot->tts_tupleDescriptor);
+
+  table_endscan(scan);
+  table_close(config_rel, AccessShareLock);
 
   return relations;
 }
@@ -69,23 +109,23 @@ static List *gather_relation_oids(Query *query)
   return context.rel_oids;
 }
 
-static RelationConfig *find_config(List *relation_configs, char *rel_name, char *ns_name)
+static RelationConfig *find_config(List *relation_configs, char *rel_name, char *rel_ns_name)
 {
   ListCell *lc;
   foreach (lc, relation_configs)
   {
     RelationConfig *config = (RelationConfig *)lfirst(lc);
-    if (strcmp(config->rel_name, rel_name) == 0 && strcmp(config->rel_namespace_name, ns_name) == 0)
+    if (strcmp(config->rel_name, rel_name) == 0 && strcmp(config->rel_namespace_name, rel_ns_name) == 0)
       return config;
   }
 
   return NULL;
 }
 
-static RelationData *make_relation_data(RelationConfig *config, Oid rel_oid, Oid rel_namespace_oid)
+static DiffixRelation *make_relation_data(RelationConfig *config, Oid rel_oid, Oid rel_namespace_oid)
 {
   AttrNumber aid_attnum = get_attnum(rel_oid, config->aid_attname);
-  RelationData *relation = palloc(sizeof(RelationData));
+  DiffixRelation *relation = palloc(sizeof(DiffixRelation));
   relation->rel_namespace_name = config->rel_namespace_name;
   relation->rel_namespace_oid = rel_namespace_oid;
   relation->rel_name = config->rel_name;
@@ -100,7 +140,7 @@ static RelationData *make_relation_data(RelationConfig *config, Oid rel_oid, Oid
   return relation;
 }
 
-/* Returns a list (of RelationData) of all relations in the query. */
+/* Returns a list (of DiffixRelation) of all relations in the query. */
 static List *gather_sensitive_relations(Query *query)
 {
   List *rel_oids = gather_relation_oids(query);
@@ -108,7 +148,7 @@ static List *gather_sensitive_relations(Query *query)
     return NIL;
 
   List *all_relations = get_all_configured_relations();
-  List *result = NIL; /* List with resulting RelationData */
+  List *result = NIL; /* List with resulting DiffixRelation */
 
   ListCell *lc;
   foreach (lc, rel_oids)
@@ -122,7 +162,7 @@ static List *gather_sensitive_relations(Query *query)
     RelationConfig *config = find_config(all_relations, rel_name, rel_ns_name);
     if (config != NULL)
     {
-      RelationData *rel_data = make_relation_data(config, rel_oid, rel_ns_oid);
+      DiffixRelation *rel_data = make_relation_data(config, rel_oid, rel_ns_oid);
       result = lappend(result, rel_data);
     }
   }
