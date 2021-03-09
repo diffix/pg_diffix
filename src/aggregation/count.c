@@ -161,13 +161,13 @@ static CountResult count_calculate_final(ContributionTrackerState *state)
   /* Determine outlier/top counts. */
   result.noisy_outlier_count = next_uniform_int(
       &seed,
-      Config.outlier_count_min,
-      Config.outlier_count_max + 1);
+      g_config.outlier_count_min,
+      g_config.outlier_count_max + 1);
 
   result.noisy_top_count = next_uniform_int(
       &seed,
-      Config.top_count_min,
-      Config.top_count_max + 1);
+      g_config.top_count_min,
+      g_config.top_count_max + 1);
 
   /* Remove outliers from overall count. */
   result.flattened_count = result.true_count;

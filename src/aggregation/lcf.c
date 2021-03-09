@@ -76,8 +76,8 @@ static LcfResult lcf_calculate_final(AidTrackerState *state)
   const int LCF_RANGE = 2;
   result.threshold = next_uniform_int(
       &seed,
-      Config.minimum_allowed_aids,
-      Config.minimum_allowed_aids + LCF_RANGE + 1); /* +1 because max is exclusive. */
+      g_config.minimum_allowed_aids,
+      g_config.minimum_allowed_aids + LCF_RANGE + 1); /* +1 because max is exclusive. */
 
   result.passes_lcf = state->aid_set->members >= result.threshold;
 

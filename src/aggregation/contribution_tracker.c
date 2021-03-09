@@ -291,5 +291,5 @@ ContributionTrackerState *get_aggregate_contribution_tracker(
       get_aid_descriptor(aid_type),
       *descriptor,
       0,
-      Config.outlier_count_max + Config.top_count_max);
+      g_config.outlier_count_max + g_config.top_count_max);
 }
