@@ -1,10 +1,10 @@
+CREATE EXTENSION IF NOT EXISTS pg_diffix;
+LOAD 'pg_diffix';
+
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT);
 INSERT INTO test_customers VALUES
   (0, NULL), (1, 'Berlin'), (2, 'Berlin'), (3, 'Rome'), (4, 'London'), (5, 'Berlin'), (6, 'Rome'),
   (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome');
-
-CREATE EXTENSION IF NOT EXISTS pg_diffix;
-LOAD 'pg_diffix';
 
 INSERT INTO diffix_config (rel_namespace_name, rel_name, aid_attname) VALUES
   ('public', 'test_customers', 'id');
