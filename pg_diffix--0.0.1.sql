@@ -6,12 +6,13 @@
  * ----------------------------------------------------------------
  */
 
-DROP TABLE IF EXISTS diffix_config;
+DROP TABLE IF EXISTS public.diffix_config;
 
 CREATE TABLE public.diffix_config (
   rel_namespace_name TEXT NOT NULL,
   rel_name TEXT NOT NULL,
-  aid_attname TEXT NOT NULL
+  aid_attname TEXT NOT NULL,
+  PRIMARY KEY(rel_namespace_name, rel_name, aid_attname)
 );
 
 /* ----------------------------------------------------------------
