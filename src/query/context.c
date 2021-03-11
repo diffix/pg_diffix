@@ -28,9 +28,11 @@ static Oid find_relation(char *rel_ns_name, char *rel_name)
 /* Returns a list of RelationConfig for all configured relations. */
 static List *get_all_configured_relations(void)
 {
-  List *relations = NIL;
-
   Oid config_rel_oid = find_relation("public", "diffix_config");
+
+  if (config_rel_oid == InvalidOid)
+    return NIL;
+
   AttrNumber rel_namespace_name_attnum = get_attnum(config_rel_oid, "rel_namespace_name");
   AttrNumber rel_name_attnum = get_attnum(config_rel_oid, "rel_name");
   AttrNumber aid_attname_attnum = get_attnum(config_rel_oid, "aid_attname");
@@ -40,6 +42,7 @@ static List *get_all_configured_relations(void)
   TableScanDesc scan = table_beginscan(config_rel, snapshot, 0, NULL);
   TupleTableSlot *slot = table_slot_create(config_rel, NULL);
 
+  List *relations = NIL;
   while (table_scan_getnextslot(scan, ForwardScanDirection, slot))
   {
     bool is_null;
