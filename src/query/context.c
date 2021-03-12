@@ -30,7 +30,7 @@ static List *get_all_configured_relations(void)
 {
   Oid config_rel_oid = find_relation("public", "diffix_config");
 
-  if (config_rel_oid == InvalidOid)
+  if (!OidIsValid(config_rel_oid))
     return NIL;
 
   AttrNumber rel_namespace_name_attnum = get_attnum(config_rel_oid, "rel_namespace_name");

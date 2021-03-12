@@ -3,6 +3,8 @@
 
 #include "c.h"
 
+#define INITIAL_DEFAULT_ACCESS_LEVEL DIRECT_ACCESS
+
 #define INITIAL_NOISE_SEED "diffix"
 #define INITIAL_NOISE_SIGMA 1.0
 #define INITIAL_NOISE_CUTOFF 5.0
@@ -15,11 +17,19 @@
 #define INITIAL_TOP_COUNT_MIN 4
 #define INITIAL_TOP_COUNT_MAX 6
 
+typedef enum AccessLevel
+{
+  DIRECT_ACCESS, /* No protection - access to raw data */
+  PUBLISH_ACCESS /* Publish access level */
+} AccessLevel;
+
 /*
  * Root configuration object.
  */
 typedef struct DiffixConfig
 {
+  int default_access_level;
+
   char *noise_seed;
   double noise_sigma;
   double noise_cutoff;
