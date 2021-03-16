@@ -28,7 +28,7 @@ typedef enum AccessLevel
  */
 typedef struct DiffixConfig
 {
-  AccessLevel default_access_level;
+  int default_access_level;
 
   char *noise_seed;
   double noise_sigma;

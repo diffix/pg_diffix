@@ -4,7 +4,7 @@
 #include "pg_diffix/config.h"
 
 DiffixConfig g_config = {
-    .default_access_level = ACCESS_DIRECT,
+    .default_access_level = INITIAL_DEFAULT_ACCESS_LEVEL,
 
     .noise_seed = INITIAL_NOISE_SEED,
     .noise_sigma = INITIAL_NOISE_SIGMA,

@@ -33,7 +33,7 @@ void _PG_init(void)
       "pg_diffix.default_access_level",                /* name */
       "Access level for users without special roles.", /* short_desc */
       NULL,                                            /* long_desc */
-      (int *)&g_config.default_access_level,           /* valueAddr */
+      &g_config.default_access_level,                  /* valueAddr */
       INITIAL_DEFAULT_ACCESS_LEVEL,                    /* bootValue */
       default_access_level_options,                    /* options */
       PGC_SUSET,                                       /* context */
