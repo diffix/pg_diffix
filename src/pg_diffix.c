@@ -3,7 +3,7 @@
 
 #include "utils/guc.h"
 
-#include "pg_diffix/config.h"
+#include "pg_diffix/auth.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
@@ -15,6 +15,12 @@ PG_MODULE_MAGIC;
 void _PG_init(void);
 void _PG_fini(void);
 
+static const struct config_enum_entry default_access_level_options[] = {
+    {"direct", ACCESS_DIRECT, false},
+    {"publish", ACCESS_PUBLISH, false},
+    {NULL, 0, false},
+};
+
 void _PG_init(void)
 {
   static int activation_count = 1;
@@ -23,6 +29,19 @@ void _PG_init(void)
   /*
    * Variables
    */
+  DefineCustomEnumVariable(
+      "pg_diffix.default_access_level",                /* name */
+      "Access level for users without special roles.", /* short_desc */
+      NULL,                                            /* long_desc */
+      &g_config.default_access_level,                  /* valueAddr */
+      INITIAL_DEFAULT_ACCESS_LEVEL,                    /* bootValue */
+      default_access_level_options,                    /* options */
+      PGC_SUSET,                                       /* context */
+      0,                                               /* flags */
+      NULL,                                            /* check_hook */
+      NULL,                                            /* assign_hook */
+      NULL);                                           /* show_hook */
+
   DefineCustomStringVariable(
       "pg_diffix.noise_seed",                     /* name */
       "Seed used for initializing noise layers.", /* short_desc */

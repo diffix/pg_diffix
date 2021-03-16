@@ -4,6 +4,8 @@
 #include "pg_diffix/config.h"
 
 DiffixConfig g_config = {
+    .default_access_level = INITIAL_DEFAULT_ACCESS_LEVEL,
+
     .noise_seed = INITIAL_NOISE_SEED,
     .noise_sigma = INITIAL_NOISE_SIGMA,
     .noise_cutoff = INITIAL_NOISE_CUTOFF,
@@ -25,6 +27,7 @@ char *config_to_string(DiffixConfig *config)
   /* begin config */
   appendStringInfo(&string, "{DIFFIX_CONFIG");
 
+  appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
   appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
   appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);

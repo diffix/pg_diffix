@@ -1,9 +1,7 @@
 #include "postgres.h"
-
-/* Current user and role checking */
 #include "miscadmin.h"
-#include "utils/acl.h"
 
+#include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/utils.h"
@@ -28,17 +26,24 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
 
+  /* Do nothing for users with direct access. */
+  if (get_access_level() == ACCESS_DIRECT)
+  {
+    DEBUG_LOG("Direct query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+    return;
+  }
+
   QueryContext context = build_query_context(query);
 
   /* A query requires anonymization if it targets sensitive relations. */
   if (context.relations == NIL)
   {
-    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
+    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
     return;
   }
 
   /* At this point we have an anonymizing query. */
-  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
+  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   if (!g_oid_cache.loaded)
@@ -53,7 +58,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   rewrite_query(&context);
 
   /* Print rewritten query. */
-  DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetUserId(), nodeToString(query));
+  DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 }
 
 PlannedStmt *pg_diffix_planner(

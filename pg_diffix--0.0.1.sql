@@ -7,13 +7,15 @@
  */
 
 DROP TABLE IF EXISTS diffix_config;
-
 CREATE TABLE diffix_config (
   rel_namespace_name TEXT NOT NULL,
   rel_name TEXT NOT NULL,
   aid_attname TEXT NOT NULL,
   PRIMARY KEY(rel_namespace_name, rel_name, aid_attname)
 );
+
+DROP ROLE IF EXISTS diffix_publish;
+CREATE ROLE diffix_publish;
 
 /* ----------------------------------------------------------------
  * diffix_lcf(aid)
