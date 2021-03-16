@@ -4,7 +4,7 @@
 
 #include "pg_diffix/auth.h"
 
-#define PUBLISH_ROLE "diffix_publish"
+static const char *PUBLISH_ROLE = "diffix_publish";
 
 static bool has_publish_access(Oid member)
 {
@@ -19,7 +19,7 @@ AccessLevel get_access_level(void)
   Oid user_id = GetSessionUserId();
 
   if (has_publish_access(user_id))
-    return PUBLISH_ACCESS;
+    return ACCESS_PUBLISH;
 
   return (AccessLevel)g_config.default_access_level;
 }

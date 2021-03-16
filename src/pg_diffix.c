@@ -16,8 +16,8 @@ void _PG_init(void);
 void _PG_fini(void);
 
 static const struct config_enum_entry default_access_level_options[] = {
-    {"direct", DIRECT_ACCESS, false},
-    {"publish", PUBLISH_ACCESS, false},
+    {"direct", ACCESS_DIRECT, false},
+    {"publish", ACCESS_PUBLISH, false},
     {NULL, 0, false},
 };
 
@@ -33,7 +33,7 @@ void _PG_init(void)
       "pg_diffix.default_access_level",                /* name */
       "Access level for users without special roles.", /* short_desc */
       NULL,                                            /* long_desc */
-      &g_config.default_access_level,                  /* valueAddr */
+      (int *)&g_config.default_access_level,           /* valueAddr */
       INITIAL_DEFAULT_ACCESS_LEVEL,                    /* bootValue */
       default_access_level_options,                    /* options */
       PGC_SUSET,                                       /* context */

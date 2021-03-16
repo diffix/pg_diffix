@@ -27,7 +27,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   query->queryId = next_query_id++;
 
   /* Do nothing for users with direct access. */
-  if (get_access_level() == DIRECT_ACCESS)
+  if (get_access_level() == ACCESS_DIRECT)
   {
     DEBUG_LOG("Direct query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
     return;
