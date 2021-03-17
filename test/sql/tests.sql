@@ -25,3 +25,8 @@ SELECT city FROM test_customers;
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+
+-- Get rejected because aggregators are unsupported.
+SELECT SUM(id) FROM test_customers;
+SELECT MIN(id) + MAX(id) FROM test_customers;
+SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));

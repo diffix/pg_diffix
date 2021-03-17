@@ -56,3 +56,10 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
      0
 (1 row)
 
+-- Get rejected because aggregators are unsupported.
+SELECT SUM(id) FROM test_customers;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+SELECT MIN(id) + MAX(id) FROM test_customers;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
