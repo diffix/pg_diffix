@@ -64,7 +64,7 @@ static bool verify_aggregator(Node *node, void *context)
     return false;
 
   if (IsA(node, Query))
-    return query_tree_walker((Query *)node, verify_aggregator, context, QTW_DONT_COPY_QUERY);
+    return query_tree_walker((Query *)node, verify_aggregator, context, 0);
 
   if (IsA(node, Aggref))
   {
@@ -80,5 +80,5 @@ static bool verify_aggregator(Node *node, void *context)
 
 static void verify_aggregators(Query *query)
 {
-  query_tree_walker(query, verify_aggregator, NULL, QTW_DONT_COPY_QUERY);
+  query_tree_walker(query, verify_aggregator, NULL, 0);
 }
