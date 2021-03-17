@@ -32,7 +32,7 @@ void rewrite_query(QueryContext *context)
       query,
       aggregate_expression_mutator,
       context,
-      QTW_DONT_COPY_QUERY | QTW_EXAMINE_RTES_BEFORE);
+      QTW_DONT_COPY_QUERY);
 
   add_low_count_filter(context);
 
