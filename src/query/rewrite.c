@@ -201,7 +201,7 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
         query,
         aggregate_expression_mutator,
         context,
-        0);
+        QTW_DONT_COPY_QUERY);
   }
   else if (IsA(node, Aggref))
   {
