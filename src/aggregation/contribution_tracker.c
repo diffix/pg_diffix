@@ -118,21 +118,6 @@ static void bump_or_insert_contributor(
   state->top_contributors[insertion_index].contribution = new_contribution;
 }
 
-/*
- * bump_or_insert_contributor and bump_contributor are the same,
- * but bump_contributor can be optimized in the future by utilizing the
- * knowledge that the AID already exists in the top contributors list.
- */
-static inline void bump_contributor(
-    ContributionTrackerState *state,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t old_contribution,
-    contribution_t new_contribution)
-{
-  bump_or_insert_contributor(state, top_length, aid, old_contribution, new_contribution);
-}
-
 /* ----------------------------------------------------------------
  * Public functions
  * ----------------------------------------------------------------
@@ -247,17 +232,6 @@ void contribution_tracker_update_contribution(
       descriptor->contribution_equal(min_top_contribution, entry->contribution))
   {
     /* Nothing changed or lowest top contribution is greater or equal than new contribution. Nothing to do here. */
-    return;
-  }
-
-  if (top_length < state->top_contributors_length ||
-      descriptor->contribution_greater(contribution_old, min_top_contribution))
-  {
-    /*
-     * We know AID is already a top contributor because top_contributors is not full
-     * or old contribution is greater than the lowest top contribution.
-     */
-    bump_contributor(state, top_length, aid, contribution_old, entry->contribution);
     return;
   }
 
