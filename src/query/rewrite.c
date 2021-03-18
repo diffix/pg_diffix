@@ -18,6 +18,7 @@
 static void group_and_expand_implicit_buckets(Query *query);
 static Node *aggregate_expression_mutator(Node *node, QueryContext *context);
 static void add_low_count_filter(QueryContext *context);
+static void mark_aid_selected(QueryContext *context);
 
 /* Utils */
 static void inject_aid_arg(Aggref *aggref, QueryContext *context);
@@ -35,6 +36,8 @@ void rewrite_query(QueryContext *context)
       QTW_DONT_COPY_QUERY);
 
   add_low_count_filter(context);
+
+  mark_aid_selected(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
@@ -227,6 +230,45 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
   }
 
   return expression_tree_mutator(node, aggregate_expression_mutator, context);
+}
+
+/*-------------------------------------------------------------------------
+ * RTEs
+ *-------------------------------------------------------------------------
+ */
+
+static bool mark_aid_selected_walker(Node *node, QueryContext *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Query))
+  {
+    Query *query = (Query *)node;
+    return range_table_walker(
+        query->rtable,
+        mark_aid_selected_walker,
+        context,
+        QTW_EXAMINE_RTES_BEFORE);
+  }
+  else if (IsA(node, RangeTblEntry))
+  {
+    RangeTblEntry *rte = (RangeTblEntry *)node;
+    DiffixRelation *relation = AID_RELATION(context);
+    if (rte->relid == relation->rel_oid)
+    {
+      /* Emulate what the parser does */
+      rte->selectedCols = bms_add_member(
+          rte->selectedCols, relation->aid_attnum - FirstLowInvalidHeapAttributeNumber);
+    }
+  }
+
+  return false;
+}
+
+static void mark_aid_selected(QueryContext *context)
+{
+  mark_aid_selected_walker((Node *)context->query, context);
 }
 
 /*-------------------------------------------------------------------------
