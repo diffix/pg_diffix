@@ -16,7 +16,3 @@ PG_CFLAGS = -std=c17 -Wno-declaration-after-statement -Werror-implicit-function-
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
-
-.PHONY: format
-format:
-	sh pgindent.sh
