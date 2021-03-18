@@ -71,13 +71,10 @@ static void insert_contributor(
 
   /* Slide items to the right before inserting new item. */
   size_t elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
-  if (elements)
-  {
-    memmove(
-        &state->top_contributors[insertion_index + 1],
-        &state->top_contributors[insertion_index],
-        elements * sizeof(TopContributor));
-  }
+  memmove(
+      &state->top_contributors[insertion_index + 1],
+      &state->top_contributors[insertion_index],
+      elements * sizeof(TopContributor));
 
   state->top_contributors[insertion_index].aid = aid;
   state->top_contributors[insertion_index].contribution = contribution;
@@ -101,13 +98,10 @@ static void bump_or_insert_contributor(
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
-  if (elements)
-  {
-    memmove(
-        &state->top_contributors[insertion_index + 1],
-        &state->top_contributors[insertion_index],
-        elements * sizeof(TopContributor));
-  }
+  memmove(
+      &state->top_contributors[insertion_index + 1],
+      &state->top_contributors[insertion_index],
+      elements * sizeof(TopContributor));
 
   state->top_contributors[insertion_index].aid = aid;
   state->top_contributors[insertion_index].contribution = new_contribution;
