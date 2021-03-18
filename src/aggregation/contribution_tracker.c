@@ -243,9 +243,10 @@ void contribution_tracker_update_contribution(
   contribution_t min_top_contribution = state->top_contributors[top_length - 1].contribution;
 
   if (descriptor->contribution_equal(entry->contribution, contribution_old) ||
-      descriptor->contribution_greater(min_top_contribution, entry->contribution))
+      descriptor->contribution_greater(min_top_contribution, entry->contribution) ||
+      descriptor->contribution_equal(min_top_contribution, entry->contribution))
   {
-    /* Nothing changed or lowest top contribution is greater than new contribution. Nothing to do here. */
+    /* Nothing changed or lowest top contribution is greater or equal than new contribution. Nothing to do here. */
     return;
   }
 
