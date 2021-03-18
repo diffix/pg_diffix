@@ -67,12 +67,10 @@ static void insert_contributor(
 {
   uint32 insertion_index = find_insertion_index(state, top_length, contribution);
   uint32 capacity = state->top_contributors_length;
-  size_t elements;
-
   Assert(insertion_index < capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
-  elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
+  size_t elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
   if (elements)
   {
     memmove(
@@ -93,19 +91,16 @@ static void bump_or_insert_contributor(
     contribution_t new_contribution)
 {
   uint32 aid_index = find_aid_index(state, top_length, aid, old_contribution);
-  uint32 insertion_index;
-  size_t elements;
-
   if (aid_index == top_length)
   {
     insert_contributor(state, top_length, aid, new_contribution);
     return;
   }
 
-  insertion_index = find_insertion_index(state, top_length, new_contribution);
-
+  uint32 insertion_index = find_insertion_index(state, top_length, new_contribution);
   Assert(insertion_index <= aid_index); /* sanity check */
-  elements = aid_index - insertion_index;
+
+  size_t elements = aid_index - insertion_index;
   if (elements)
   {
     memmove(
