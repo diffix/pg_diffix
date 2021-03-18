@@ -9,8 +9,6 @@
 #include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/rewrite.h"
 
-#define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
-
 #define AID_RELATION(context) ((DiffixRelation *)linitial(context->relations))
 #define AID_RELATION_INDEX 1
 
@@ -183,7 +181,11 @@ static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
   aggref->aggdistinct = false;
   TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
   if (!is_aid_arg(arg, context))
-    FAILWITH("COUNT(DISTINCT col) requires an AID column as its argument.");
+  {
+    FAILWITH_LOCATION(
+        exprLocation((Node *)arg->expr),
+        "COUNT(DISTINCT col) requires an AID column as its argument.");
+  }
 }
 
 static void rewrite_count_any(Aggref *aggref, QueryContext *context)

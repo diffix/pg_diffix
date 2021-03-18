@@ -29,6 +29,8 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 -- Gets rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
 ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
+LINE 1: SELECT COUNT(DISTINCT city) FROM test_customers;
+                              ^
 SELECT city FROM test_customers;
   city  
 --------
@@ -59,7 +61,13 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT SUM(id) FROM test_customers;
+               ^
 SELECT MIN(id) + MAX(id) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT MIN(id) + MAX(id) FROM test_customers;
+               ^
 SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: ...LECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH...
+                                                             ^

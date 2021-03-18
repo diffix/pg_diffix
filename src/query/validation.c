@@ -1,12 +1,10 @@
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
-#include "utils/elog.h"
 
 #include "pg_diffix/config.h"
+#include "pg_diffix/utils.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/query/oid_cache.h"
-
-#define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
 #define NOT_SUPPORTED(cond, feature) \
   if (cond)                          \
@@ -72,7 +70,7 @@ static bool verify_aggregator(Node *node, void *context)
     Oid aggoid = aggref->aggfnoid;
 
     if (aggoid != g_oid_cache.count && aggoid != g_oid_cache.count_any)
-      FAILWITH("Unsupported aggregate in query.");
+      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
   }
 
   return expression_tree_walker(node, verify_aggregator, context);
