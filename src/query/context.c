@@ -40,48 +40,6 @@ static List *get_all_configured_relations(void)
   return scan_table_by_name("public", "diffix_config", (MapTupleFunc)map_config_tuple);
 }
 
-typedef struct GatherRelationsContext
-{
-  List *rel_oids;
-} GatherRelationsContext;
-
-/* Walks query tree and gathers valid OIDs from all ranges. */
-static bool gather_relations_walker(Node *node, GatherRelationsContext *context)
-{
-  if (node == NULL)
-    return false;
-
-  if (IsA(node, Query))
-  {
-    Query *query = (Query *)node;
-    range_table_walker(
-        query->rtable,
-        gather_relations_walker,
-        context,
-        QTW_EXAMINE_RTES_BEFORE);
-  }
-  else if (IsA(node, RangeTblEntry))
-  {
-    RangeTblEntry *rte = (RangeTblEntry *)node;
-    if (rte->relid)
-      context->rel_oids = list_append_unique_oid(context->rel_oids, rte->relid);
-  }
-
-  return false;
-}
-
-/* Returns a list of OID for all relations in the query. */
-static List *gather_relation_oids(Query *query)
-{
-  GatherRelationsContext context = {.rel_oids = NIL};
-  range_table_walker(
-      query->rtable,
-      gather_relations_walker,
-      &context,
-      QTW_EXAMINE_RTES_BEFORE);
-  return context.rel_oids;
-}
-
 static RelationConfig *find_config(List *relation_configs, char *rel_name, char *rel_ns_name)
 {
   ListCell *lc;
@@ -116,26 +74,25 @@ static DiffixRelation *make_relation_data(RelationConfig *config, Oid rel_oid, O
 /* Returns a list (of DiffixRelation) of all relations in the query. */
 static List *gather_sensitive_relations(Query *query)
 {
-  List *rel_oids = gather_relation_oids(query);
-  if (rel_oids == NIL)
-    return NIL;
-
   List *all_relations = get_all_configured_relations();
   List *result = NIL; /* List with resulting DiffixRelation */
 
   ListCell *lc;
-  foreach (lc, rel_oids)
+  foreach (lc, query->rtable)
   {
-    Oid rel_oid = lfirst_oid(lc);
-    char *rel_name = get_rel_name(rel_oid);
+    RangeTblEntry *rte = lfirst_node(RangeTblEntry, lc);
+    if (!OidIsValid(rte->relid))
+      continue;
 
-    Oid rel_ns_oid = get_rel_namespace(rel_oid);
+    char *rel_name = get_rel_name(rte->relid);
+
+    Oid rel_ns_oid = get_rel_namespace(rte->relid);
     char *rel_ns_name = get_namespace_name(rel_ns_oid);
 
     RelationConfig *config = find_config(all_relations, rel_name, rel_ns_name);
     if (config != NULL)
     {
-      DiffixRelation *rel_data = make_relation_data(config, rel_oid, rel_ns_oid);
+      DiffixRelation *rel_data = make_relation_data(config, rte->relid, rel_ns_oid);
       result = lappend(result, rel_data);
     }
   }
