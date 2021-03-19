@@ -53,7 +53,7 @@ static RelationConfig *find_config(List *relation_configs, char *rel_name, char 
   return NULL;
 }
 
-static DiffixRelation *make_relation_data(RelationConfig *config, Oid rel_oid, Oid rel_namespace_oid)
+static DiffixRelation *make_relation_data(RelationConfig *config, Oid rel_oid, Oid rel_namespace_oid, Index rel_index)
 {
   AttrNumber aid_attnum = get_attnum(rel_oid, config->aid_attname);
   DiffixRelation *relation = palloc(sizeof(DiffixRelation));
@@ -61,6 +61,7 @@ static DiffixRelation *make_relation_data(RelationConfig *config, Oid rel_oid, O
   relation->rel_namespace_oid = rel_namespace_oid;
   relation->rel_name = config->rel_name;
   relation->rel_oid = rel_oid;
+  relation->rel_index = rel_index;
   relation->aid_attname = config->aid_attname;
   relation->aid_attnum = aid_attnum;
   get_atttypetypmodcoll(rel_oid,
@@ -92,7 +93,8 @@ static List *gather_sensitive_relations(Query *query)
     RelationConfig *config = find_config(all_relations, rel_name, rel_ns_name);
     if (config != NULL)
     {
-      DiffixRelation *rel_data = make_relation_data(config, rte->relid, rel_ns_oid);
+      Index rel_index = foreach_current_index(lc) + 1;
+      DiffixRelation *rel_data = make_relation_data(config, rte->relid, rel_ns_oid, rel_index);
       result = lappend(result, rel_data);
     }
   }

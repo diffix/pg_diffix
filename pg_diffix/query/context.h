@@ -15,6 +15,7 @@ typedef struct DiffixRelation
   Oid rel_namespace_oid;    /* Namespace OID */
   char *rel_name;           /* Relation name */
   Oid rel_oid;              /* Relation OID */
+  Index rel_index;          /* Relation index in query rtable */
   char *aid_attname;        /* AID column name */
   AttrNumber aid_attnum;    /* AID column AttNumber */
   Oid aid_atttype;          /* AID column type OID */
