@@ -25,9 +25,7 @@ static inline uint32 find_aid_index(
        i++)
   {
     if (aid == state->top_contributors[i].aid)
-    {
       return i;
-    }
   }
 
   return top_length;
@@ -51,9 +49,7 @@ static inline uint32 find_insertion_index(
        i++)
   {
     if (greater(contribution, state->top_contributors[i].contribution))
-    {
       return i;
-    }
   }
 
   return top_length;
@@ -66,9 +62,9 @@ static void add_top_contributor(
     contribution_t contribution)
 {
   /*
-  * Entry is not a top contributor if capacity is exhausted and
-  * contribution is not greater than the lowest top contribution.
-  */
+   * Entry is not a top contributor if capacity is exhausted and
+   * contribution is not greater than the lowest top contribution.
+   */
   uint32 capacity = state->top_contributors_length;
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
   if (top_length == capacity &&
@@ -220,15 +216,11 @@ ContributionTrackerState *get_aggregate_contribution_tracker(
     const ContributionDescriptor *descriptor)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
-  {
     return (ContributionTrackerState *)PG_GETARG_POINTER(STATE_INDEX);
-  }
 
   MemoryContext agg_context;
   if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
-  {
     ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
-  }
 
   Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
   return contribution_tracker_new(

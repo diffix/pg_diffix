@@ -19,9 +19,7 @@ ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
   if (prev_post_parse_analyze_hook)
-  {
     prev_post_parse_analyze_hook(pstate, query);
-  }
 
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
