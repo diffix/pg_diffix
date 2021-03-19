@@ -29,6 +29,16 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid;
+
+SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id;
+
+SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
+SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
+
 -- Gets rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
 

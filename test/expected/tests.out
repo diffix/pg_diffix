@@ -45,6 +45,35 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     4
 (2 rows)
 
+SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid;
+ count | count | count 
+-------+-------+-------
+    25 |    14 |    14
+(1 row)
+
+SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id;
+ count | count 
+-------+-------
+    22 |    21
+(1 row)
+
+SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
+  city  | count 
+--------+-------
+ Rome   |    13
+ Berlin |     9
+(2 rows)
+
+SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
+  city  | count 
+--------+-------
+ Rome   |    13
+ Berlin |     9
+(2 rows)
+
 -- Gets rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
 ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
