@@ -59,33 +59,37 @@ static inline uint32 find_insertion_index(
   return top_length;
 }
 
-static void insert_contributor(
+static void add_top_contributor(
     ContributionTrackerState *state,
     uint32 top_length,
     aid_t aid,
     contribution_t contribution)
 {
-  uint32 insertion_index = find_insertion_index(state, top_length, contribution);
+  /*
+  * Entry is not a top contributor if capacity is exhausted and
+  * contribution is not greater than the lowest top contribution.
+  */
   uint32 capacity = state->top_contributors_length;
-  size_t elements;
+  ContributionDescriptor *descriptor = &state->contribution_descriptor;
+  if (top_length == capacity &&
+      !descriptor->contribution_greater(contribution, state->top_contributors[top_length - 1].contribution))
+    return;
 
+  uint32 insertion_index = find_insertion_index(state, top_length, contribution);
   Assert(insertion_index < capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
-  elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
-  if (elements)
-  {
-    memmove(
-        &state->top_contributors[insertion_index + 1],
-        &state->top_contributors[insertion_index],
-        elements * sizeof(TopContributor));
-  }
+  size_t elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
+  memmove(
+      &state->top_contributors[insertion_index + 1],
+      &state->top_contributors[insertion_index],
+      elements * sizeof(TopContributor));
 
   state->top_contributors[insertion_index].aid = aid;
   state->top_contributors[insertion_index].contribution = contribution;
 }
 
-static void bump_or_insert_contributor(
+static void bump_or_add_top_contributor(
     ContributionTrackerState *state,
     uint32 top_length,
     aid_t aid,
@@ -93,44 +97,24 @@ static void bump_or_insert_contributor(
     contribution_t new_contribution)
 {
   uint32 aid_index = find_aid_index(state, top_length, aid, old_contribution);
-  uint32 insertion_index;
-  size_t elements;
-
   if (aid_index == top_length)
   {
-    insert_contributor(state, top_length, aid, new_contribution);
+    /* Not an existing top contributor, try to add it as a new entry and return. */
+    add_top_contributor(state, top_length, aid, new_contribution);
     return;
   }
 
-  insertion_index = find_insertion_index(state, top_length, new_contribution);
-
+  uint32 insertion_index = find_insertion_index(state, top_length, new_contribution);
   Assert(insertion_index <= aid_index); /* sanity check */
-  elements = aid_index - insertion_index;
-  if (elements)
-  {
-    memmove(
-        &state->top_contributors[insertion_index + 1],
-        &state->top_contributors[insertion_index],
-        elements * sizeof(TopContributor));
-  }
+
+  size_t elements = aid_index - insertion_index;
+  memmove(
+      &state->top_contributors[insertion_index + 1],
+      &state->top_contributors[insertion_index],
+      elements * sizeof(TopContributor));
 
   state->top_contributors[insertion_index].aid = aid;
   state->top_contributors[insertion_index].contribution = new_contribution;
-}
-
-/*
- * bump_or_insert_contributor and bump_contributor are the same,
- * but bump_contributor can be optimized in the future by utilizing the
- * knowledge that the AID already exists in the top contributors list.
- */
-static inline void bump_contributor(
-    ContributionTrackerState *state,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t old_contribution,
-    contribution_t new_contribution)
-{
-  bump_or_insert_contributor(state, top_length, aid, old_contribution, new_contribution);
 }
 
 /* ----------------------------------------------------------------
@@ -206,18 +190,7 @@ void contribution_tracker_update_contribution(
     state->distinct_contributors++;
     state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
 
-    /* We can insert to top contributors if either: */
-    if (
-        /* - top_contributors is not full */
-        top_length != state->top_contributors_length ||
-        /* - contribution is greater than the lowest top contribution */
-        descriptor->contribution_greater(
-            contribution,
-            state->top_contributors[top_length - 1].contribution))
-    {
-      insert_contributor(state, top_length, aid, contribution);
-    }
-
+    add_top_contributor(state, top_length, aid, contribution);
     return;
   }
   else if (!entry->has_contribution)
@@ -226,45 +199,17 @@ void contribution_tracker_update_contribution(
     entry->has_contribution = true;
     entry->contribution = contribution;
     state->distinct_contributors++;
-    if (top_length != state->top_contributors_length ||
-        descriptor->contribution_greater(
-            contribution,
-            state->top_contributors[top_length - 1].contribution))
-    {
-      insert_contributor(state, top_length, aid, contribution);
-    }
 
+    add_top_contributor(state, top_length, aid, contribution);
     return;
   }
 
+  /* Save old contribution and set new value. */
   contribution_t contribution_old = entry->contribution;
   entry->contribution = descriptor->contribution_combine(contribution_old, contribution);
-  Assert(top_length > 0); /* At this point we should have top contributors. */
-  contribution_t min_top_contribution = state->top_contributors[top_length - 1].contribution;
 
-  if (descriptor->contribution_equal(entry->contribution, contribution_old) ||
-      descriptor->contribution_greater(min_top_contribution, entry->contribution))
-  {
-    /* Nothing changed or lowest top contribution is greater than new contribution. Nothing to do here. */
-    return;
-  }
-
-  if (top_length < state->top_contributors_length ||
-      descriptor->contribution_greater(contribution_old, min_top_contribution))
-  {
-    /*
-     * We know AID is already a top contributor because top_contributors is not full
-     * or old contribution is greater than the lowest top contribution.
-     */
-    bump_contributor(state, top_length, aid, contribution_old, entry->contribution);
-    return;
-  }
-
-  /*
-   * We don't know whether AID is a top contributor or not because of possible equality.
-   * We have to check for existence first. If it exists we bump, otherwise we insert.
-   */
-  bump_or_insert_contributor(state, top_length, entry->aid, contribution_old, entry->contribution);
+  /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
+  bump_or_add_top_contributor(state, top_length, entry->aid, contribution_old, entry->contribution);
 }
 
 #define STATE_INDEX 0
