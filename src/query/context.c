@@ -88,7 +88,7 @@ static RelationConfig *find_config(List *relation_configs, char *rel_name, char 
   foreach (lc, relation_configs)
   {
     RelationConfig *config = (RelationConfig *)lfirst(lc);
-    if (strcmp(config->rel_name, rel_name) == 0 && strcmp(config->rel_namespace_name, rel_ns_name) == 0)
+    if (strcasecmp(config->rel_name, rel_name) == 0 && strcasecmp(config->rel_namespace_name, rel_ns_name) == 0)
       return config;
   }
 
