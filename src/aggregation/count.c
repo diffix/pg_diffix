@@ -75,13 +75,9 @@ Datum diffix_count_any_transfn(PG_FUNCTION_ARGS)
   {
     aid_t aid = state->aid_descriptor.make_aid(PG_GETARG_DATUM(1));
     if (PG_ARGISNULL(2))
-    {
       contribution_tracker_update_aid(state, aid);
-    }
     else
-    {
       contribution_tracker_update_contribution(state, aid, one_contribution);
-    }
   }
 
   PG_RETURN_POINTER(state);
@@ -126,13 +122,9 @@ Datum diffix_count_explain_finalfn(PG_FUNCTION_ARGS)
                      state->top_contributors[i].contribution.integer);
 
     if (i == result.noisy_outlier_count - 1)
-    {
       appendStringInfo(&string, " | ");
-    }
     else if (i < top_length - 1)
-    {
       appendStringInfo(&string, ", ");
-    }
   }
 
   appendStringInfo(&string, "]");

@@ -48,15 +48,11 @@ void aid_tracker_update(AidTrackerState *state, aid_t aid)
 AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
-  {
     return (AidTrackerState *)PG_GETARG_POINTER(STATE_INDEX);
-  }
 
   MemoryContext agg_context;
   if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
-  {
     ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
-  }
 
   Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
   return aid_tracker_new(agg_context, get_aid_descriptor(aid_type), 0);
