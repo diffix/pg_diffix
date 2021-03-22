@@ -1,14 +1,10 @@
 #include "postgres.h"
-#include "access/htup.h"
-#include "access/table.h"
-#include "access/tableam.h"
 #include "catalog/namespace.h"
-#include "executor/tuptable.h"
 #include "nodes/nodeFuncs.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
-#include "utils/snapmgr.h"
 
+#include "pg_diffix/utils.h"
 #include "pg_diffix/query/context.h"
 
 typedef struct RelationConfig
@@ -18,56 +14,30 @@ typedef struct RelationConfig
   char *aid_attname;
 } RelationConfig;
 
-static Oid find_relation(char *rel_ns_name, char *rel_name)
+/* Attribute order matches columns in DDL. */
+#define ATTNUM_REL_NAMESPACE 1
+#define ATTNUM_REL_NAME 2
+#define ATTNUM_ATTNAME 3
+
+static RelationConfig *map_config_tuple(HeapTuple heap_tuple, TupleDesc tuple_desc)
 {
-  Oid rel_ns = get_namespace_oid(rel_ns_name, false);
-  Oid rel_oid = get_relname_relid(rel_name, rel_ns);
-  return rel_oid;
+  bool is_null = false;
+  Datum rel_namespace_name = heap_getattr(heap_tuple, ATTNUM_REL_NAMESPACE, tuple_desc, &is_null);
+  Datum rel_name = heap_getattr(heap_tuple, ATTNUM_REL_NAME, tuple_desc, &is_null);
+  Datum aid_attname = heap_getattr(heap_tuple, ATTNUM_ATTNAME, tuple_desc, &is_null);
+
+  RelationConfig *config = palloc(sizeof(RelationConfig));
+  config->rel_namespace_name = text_to_cstring(DatumGetTextPP(rel_namespace_name));
+  config->rel_name = text_to_cstring(DatumGetTextPP(rel_name));
+  config->aid_attname = text_to_cstring(DatumGetTextPP(aid_attname));
+
+  return config;
 }
 
 /* Returns a list of RelationConfig for all configured relations. */
 static List *get_all_configured_relations(void)
 {
-  Oid config_rel_oid = find_relation("public", "diffix_config");
-
-  if (!OidIsValid(config_rel_oid))
-    return NIL;
-
-  AttrNumber rel_namespace_name_attnum = get_attnum(config_rel_oid, "rel_namespace_name");
-  AttrNumber rel_name_attnum = get_attnum(config_rel_oid, "rel_name");
-  AttrNumber aid_attname_attnum = get_attnum(config_rel_oid, "aid_attname");
-
-  Relation config_rel = table_open(config_rel_oid, AccessShareLock);
-  Snapshot snapshot = GetActiveSnapshot();
-  TableScanDesc scan = table_beginscan(config_rel, snapshot, 0, NULL);
-  TupleTableSlot *slot = table_slot_create(config_rel, NULL);
-
-  List *relations = NIL;
-  while (table_scan_getnextslot(scan, ForwardScanDirection, slot))
-  {
-    bool is_null;
-    Datum rel_namespace_name = slot_getattr(slot, rel_namespace_name_attnum, &is_null);
-    Assert(!is_null);
-    Datum rel_name = slot_getattr(slot, rel_name_attnum, &is_null);
-    Assert(!is_null);
-    Datum aid_attname = slot_getattr(slot, aid_attname_attnum, &is_null);
-    Assert(!is_null);
-
-    RelationConfig *config = palloc(sizeof(RelationConfig));
-    config->rel_namespace_name = text_to_cstring(DatumGetTextPP(rel_namespace_name));
-    config->rel_name = text_to_cstring(DatumGetTextPP(rel_name));
-    config->aid_attname = text_to_cstring(DatumGetTextPP(aid_attname));
-
-    relations = lappend(relations, config);
-  }
-
-  if (slot->tts_tupleDescriptor)
-    ReleaseTupleDesc(slot->tts_tupleDescriptor);
-
-  table_endscan(scan);
-  table_close(config_rel, AccessShareLock);
-
-  return relations;
+  return scan_table_by_name("public", "diffix_config", (MapTupleFunc)map_config_tuple);
 }
 
 typedef struct GatherRelationsContext
