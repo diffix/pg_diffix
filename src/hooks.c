@@ -61,20 +61,16 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 
 PlannedStmt *pg_diffix_planner(
     Query *parse,
-#if PG_VERSION_NUM >= PG_VERSION_13
     const char *query_string,
-#endif
     int cursorOptions,
     ParamListInfo boundParams)
 {
-  planner_hook_type planner = prev_planner_hook ? prev_planner_hook : standard_planner;
-
   PlannedStmt *plan;
-#if PG_VERSION_NUM >= PG_VERSION_13
-  plan = planner(parse, query_string, cursorOptions, boundParams);
-#else
-  plan = planner(parse, cursorOptions, boundParams);
-#endif
+
+  if (prev_planner_hook)
+    plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
+  else
+    plan = standard_planner(parse, query_string, cursorOptions, boundParams);
 
   return plan;
 }
