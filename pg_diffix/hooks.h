@@ -21,7 +21,9 @@ extern void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query);
 
 extern PlannedStmt *pg_diffix_planner(
     Query *parse,
+#if PG_VERSION_NUM >= PG_VERSION_13
     const char *query_string,
+#endif
     int cursorOptions,
     ParamListInfo boundParams);
 
