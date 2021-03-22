@@ -11,7 +11,6 @@
     FAILWITH("Feature '%s' is not currently supported.", (feature));
 
 static void verify_rtable(Query *query);
-static void verify_join_tree(Query *query);
 static void verify_aggregators(Query *query);
 
 void verify_anonymization_requirements(QueryContext *context)
@@ -29,30 +28,18 @@ void verify_anonymization_requirements(QueryContext *context)
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
   verify_rtable(query);
-  verify_join_tree(query);
 
   verify_aggregators(query);
 }
 
 static void verify_rtable(Query *query)
 {
-  RangeTblEntry *range_table;
-
-  NOT_SUPPORTED(list_length(query->rtable) != 1, "multiple relations");
-
-  range_table = linitial(query->rtable);
-  NOT_SUPPORTED(range_table->rtekind != RTE_RELATION, "subqueries");
-}
-
-static void verify_join_tree(Query *query)
-{
-  List *from_list = query->jointree->fromlist;
-
-  NOT_SUPPORTED(list_length(from_list) != 1, "joins");
-
-  if (!IsA(linitial(from_list), RangeTblRef))
+  ListCell *lc = NULL;
+  foreach (lc, query->rtable)
   {
-    FAILWITH("Query range must be a single sensitive relation.");
+    RangeTblEntry *range_table = lfirst_node(RangeTblEntry, lc);
+    if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
+      FAILWITH("Unsupported FROM clause.");
   }
 }
 
