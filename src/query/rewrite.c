@@ -9,7 +9,7 @@
 #include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/rewrite.h"
 
-#define FIRST_AID_RELATION(context) ((DiffixRelation *)linitial(context->relations))
+#define FIRST_AID_RELATION(context) ((SensitiveRelation *)linitial(context->relations))
 
 /* Mutators */
 static void group_and_expand_implicit_buckets(Query *query);
@@ -166,7 +166,7 @@ static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
   ListCell *lc;
   foreach (lc, context->relations)
   {
-    DiffixRelation *relation = (DiffixRelation *)lfirst(lc);
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lc);
     /* Check if we have a variable to the same relation and same attnum as AID */
     if (var->varno == relation->rel_index && var->varattno == relation->aid_attnum)
       return true;
@@ -263,7 +263,7 @@ static bool mark_aid_selected_walker(Node *node, QueryContext *context)
   else if (IsA(node, RangeTblEntry))
   {
     RangeTblEntry *rte = (RangeTblEntry *)node;
-    DiffixRelation *relation = FIRST_AID_RELATION(context);
+    SensitiveRelation *relation = FIRST_AID_RELATION(context);
     if (rte->relid == relation->rel_oid)
     {
       /* Emulate what the parser does */
@@ -287,7 +287,7 @@ static void mark_aid_selected(QueryContext *context)
 
 static void inject_aid_arg(Aggref *aggref, QueryContext *context)
 {
-  DiffixRelation *relation = FIRST_AID_RELATION(context);
+  SensitiveRelation *relation = FIRST_AID_RELATION(context);
 
   /* Insert AID type in front of aggargtypes */
   aggref->aggargtypes = list_insert_nth_oid(aggref->aggargtypes, 0, relation->aid_atttype);
