@@ -9,7 +9,7 @@
 /*
  * Data for an anonymization ID.
  */
-typedef struct
+typedef struct AnonymizationID
 {
   char *attname;     /* AID column name */
   AttrNumber attnum; /* AID column AttNumber */
@@ -21,7 +21,7 @@ typedef struct
 /*
  * Data for a sensitive relation.
  */
-typedef struct
+typedef struct SensitiveRelation
 {
   char *namespace_name; /* Namespace name */
   Oid namespace_oid;    /* Namespace OID */
