@@ -313,7 +313,7 @@ static void inject_aid_arg(Aggref *aggref, QueryContext *context)
   AnonymizationID *aid = (AnonymizationID *)linitial(relation->aids);
 
   /* Insert AID type in front of aggargtypes */
-  aggref->aggargtypes = list_insert_nth_oid(aggref->aggargtypes, 0, aid->atttype);
+  aggref->aggargtypes = lcons_oid(aid->atttype, aggref->aggargtypes);
 
   Expr *aid_expr = (Expr *)makeVar(
       relation->index, /* varno */
@@ -326,7 +326,7 @@ static void inject_aid_arg(Aggref *aggref, QueryContext *context)
   TargetEntry *aid_entry = makeTargetEntry(aid_expr, 1, NULL, false);
 
   /* Insert AID target entry in front of args */
-  aggref->args = list_insert_nth(aggref->args, 0, aid_entry);
+  aggref->args = lcons(aid_entry, aggref->args);
 
   /* Bump resno for all args */
   ListCell *lc;
