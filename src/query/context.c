@@ -55,20 +55,19 @@ static RelationConfig *find_config(List *relation_configs, char *rel_name, char 
 
 static SensitiveRelation *make_relation_data(RelationConfig *config, Oid rel_oid, Oid rel_namespace_oid, Index rel_index)
 {
-  AttrNumber aid_attnum = get_attnum(rel_oid, config->aid_attname);
+  AnonymizationID *aid = palloc(sizeof(AnonymizationID));
+  aid->attname = config->aid_attname;
+  aid->attnum = get_attnum(rel_oid, config->aid_attname);
+  get_atttypetypmodcoll(rel_oid, aid->attnum, &aid->atttype, &aid->typmod, &aid->collid);
+
   SensitiveRelation *relation = palloc(sizeof(SensitiveRelation));
-  relation->rel_namespace_name = config->rel_namespace_name;
-  relation->rel_namespace_oid = rel_namespace_oid;
-  relation->rel_name = config->rel_name;
-  relation->rel_oid = rel_oid;
-  relation->rel_index = rel_index;
-  relation->aid_attname = config->aid_attname;
-  relation->aid_attnum = aid_attnum;
-  get_atttypetypmodcoll(rel_oid,
-                        aid_attnum,
-                        &relation->aid_atttype,
-                        &relation->aid_typmod,
-                        &relation->aid_collid);
+  relation->namespace_name = config->rel_namespace_name;
+  relation->namespace_oid = rel_namespace_oid;
+  relation->name = config->rel_name;
+  relation->oid = rel_oid;
+  relation->index = rel_index;
+  relation->aids = lappend(NIL, aid);
+
   return relation;
 }
 
