@@ -66,7 +66,7 @@ static SensitiveRelation *make_relation_data(RelationConfig *config, Oid rel_oid
   relation->name = config->rel_name;
   relation->oid = rel_oid;
   relation->index = rel_index;
-  relation->aids = lappend(NIL, aid);
+  relation->aids = list_make1(aid);
 
   return relation;
 }
