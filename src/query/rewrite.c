@@ -9,7 +9,19 @@
 #include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/rewrite.h"
 
-#define FIRST_AID_RELATION(context) ((DiffixRelation *)linitial(context->relations))
+/* Returns the first relation that has an AID. Fails the query if none exists. */
+static SensitiveRelation *first_aid_relation(QueryContext *context)
+{
+  ListCell *lc;
+  foreach (lc, context->relations)
+  {
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lc);
+    if (relation->aids != NIL)
+      return relation;
+  }
+
+  FAILWITH("No AID found in target relations.");
+}
 
 /* Mutators */
 static void group_and_expand_implicit_buckets(Query *query);
@@ -163,13 +175,22 @@ static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
 
   Var *var = (Var *)arg->expr;
 
-  ListCell *lc;
-  foreach (lc, context->relations)
+  ListCell *rlc;
+  foreach (rlc, context->relations)
   {
-    DiffixRelation *relation = (DiffixRelation *)lfirst(lc);
-    /* Check if we have a variable to the same relation and same attnum as AID */
-    if (var->varno == relation->rel_index && var->varattno == relation->aid_attnum)
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(rlc);
+    if (var->varno != relation->index)
+      continue;
+
+    ListCell *alc;
+    foreach (alc, relation->aids)
+    {
+      AnonymizationID *aid = (AnonymizationID *)lfirst(alc);
+      if (var->varattno != aid->attnum)
+        continue;
+      /* We have a variable to the same relation and same attnum as an AID. */
       return true;
+    }
   }
   return false;
 }
@@ -263,12 +284,13 @@ static bool mark_aid_selected_walker(Node *node, QueryContext *context)
   else if (IsA(node, RangeTblEntry))
   {
     RangeTblEntry *rte = (RangeTblEntry *)node;
-    DiffixRelation *relation = FIRST_AID_RELATION(context);
-    if (rte->relid == relation->rel_oid)
+    SensitiveRelation *relation = first_aid_relation(context);
+    if (rte->relid == relation->oid)
     {
+      AnonymizationID *aid = (AnonymizationID *)linitial(relation->aids);
       /* Emulate what the parser does */
       rte->selectedCols = bms_add_member(
-          rte->selectedCols, relation->aid_attnum - FirstLowInvalidHeapAttributeNumber);
+          rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
     }
   }
 
@@ -287,23 +309,24 @@ static void mark_aid_selected(QueryContext *context)
 
 static void inject_aid_arg(Aggref *aggref, QueryContext *context)
 {
-  DiffixRelation *relation = FIRST_AID_RELATION(context);
+  SensitiveRelation *relation = first_aid_relation(context);
+  AnonymizationID *aid = (AnonymizationID *)linitial(relation->aids);
 
   /* Insert AID type in front of aggargtypes */
-  aggref->aggargtypes = list_insert_nth_oid(aggref->aggargtypes, 0, relation->aid_atttype);
+  aggref->aggargtypes = lcons_oid(aid->atttype, aggref->aggargtypes);
 
   Expr *aid_expr = (Expr *)makeVar(
-      relation->rel_index,   /* varno */
-      relation->aid_attnum,  /* varattno */
-      relation->aid_atttype, /* vartype */
-      relation->aid_typmod,  /* vartypmod */
-      relation->aid_collid,  /* varcollid */
-      0                      /* varlevelsup */
+      relation->index, /* varno */
+      aid->attnum,     /* varattno */
+      aid->atttype,    /* vartype */
+      aid->typmod,     /* vartypmod */
+      aid->collid,     /* varcollid */
+      0                /* varlevelsup */
   );
   TargetEntry *aid_entry = makeTargetEntry(aid_expr, 1, NULL, false);
 
   /* Insert AID target entry in front of args */
-  aggref->args = list_insert_nth(aggref->args, 0, aid_entry);
+  aggref->args = lcons(aid_entry, aggref->args);
 
   /* Bump resno for all args */
   ListCell *lc;

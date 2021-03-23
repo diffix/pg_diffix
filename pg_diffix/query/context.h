@@ -7,21 +7,29 @@
 #include "access/attnum.h"
 
 /*
+ * Data for an anonymization ID.
+ */
+typedef struct AnonymizationID
+{
+  char *attname;     /* AID column name */
+  AttrNumber attnum; /* AID column AttNumber */
+  Oid atttype;       /* AID column type OID */
+  int32 typmod;      /* AID pg_attribute typmod value */
+  Oid collid;        /* AID collation */
+} AnonymizationID;
+
+/*
  * Data for a sensitive relation.
  */
-typedef struct DiffixRelation
+typedef struct SensitiveRelation
 {
-  char *rel_namespace_name; /* Namespace name */
-  Oid rel_namespace_oid;    /* Namespace OID */
-  char *rel_name;           /* Relation name */
-  Oid rel_oid;              /* Relation OID */
-  Index rel_index;          /* Relation index in query rtable */
-  char *aid_attname;        /* AID column name */
-  AttrNumber aid_attnum;    /* AID column AttNumber */
-  Oid aid_atttype;          /* AID column type OID */
-  int32 aid_typmod;         /* AID pg_attribute typmod value */
-  Oid aid_collid;           /* AID collation */
-} DiffixRelation;
+  char *namespace_name; /* Namespace name */
+  Oid namespace_oid;    /* Namespace OID */
+  char *name;           /* Relation name */
+  Oid oid;              /* Relation OID */
+  Index index;          /* Relation index in query rtable */
+  List *aids;           /* AIDs in relation (of type AnonymizationID) */
+} SensitiveRelation;
 
 /*
  * Data needed for validating and rewriting queries.
@@ -29,7 +37,7 @@ typedef struct DiffixRelation
 typedef struct QueryContext
 {
   Query *query;    /* Currently executing query */
-  List *relations; /* Sensitive relations in query (of DiffixRelation) */
+  List *relations; /* Sensitive relations in query (of type SensitiveRelation) */
 } QueryContext;
 
 extern QueryContext build_query_context(Query *query);
