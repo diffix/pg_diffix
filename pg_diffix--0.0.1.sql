@@ -1,53 +1,51 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
+CREATE SCHEMA diffix;
+
 /* ----------------------------------------------------------------
  * Config
  * ----------------------------------------------------------------
  */
 
-DROP TABLE IF EXISTS diffix_config;
-CREATE TABLE diffix_config (
+CREATE TABLE diffix.config (
   rel_namespace_name TEXT NOT NULL,
   rel_name TEXT NOT NULL,
   aid_attname TEXT NOT NULL,
   PRIMARY KEY(rel_namespace_name, rel_name, aid_attname)
 );
 
-DROP ROLE IF EXISTS diffix_publish;
-CREATE ROLE diffix_publish;
-
 /* ----------------------------------------------------------------
  * diffix_lcf(aid)
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix_lcf_transfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_lcf_transfn(internal, anyelement)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_lcf_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_lcf_finalfn(internal, anyelement)
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_lcf_explain_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_lcf_explain_finalfn(internal, anyelement)
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix_lcf(anyelement) (
-  sfunc = diffix_lcf_transfn,
+CREATE AGGREGATE diffix.diffix_lcf(anyelement) (
+  sfunc = diffix.diffix_lcf_transfn,
   stype = internal,
-  finalfunc = diffix_lcf_finalfn,
+  finalfunc = diffix.diffix_lcf_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE explain_diffix_lcf(anyelement) (
-  sfunc = diffix_lcf_transfn,
+CREATE AGGREGATE diffix.explain_diffix_lcf(anyelement) (
+  sfunc = diffix.diffix_lcf_transfn,
   stype = internal,
-  finalfunc = diffix_lcf_explain_finalfn,
+  finalfunc = diffix.diffix_lcf_explain_finalfn,
   finalfunc_extra
 );
 
@@ -56,32 +54,32 @@ CREATE AGGREGATE explain_diffix_lcf(anyelement) (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix_count_distinct_transfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_distinct_transfn(internal, anyelement)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_distinct_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_distinct_finalfn(internal, anyelement)
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_distinct_explain_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_distinct_explain_finalfn(internal, anyelement)
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix_count_distinct(anyelement) (
-  sfunc = diffix_count_distinct_transfn,
+CREATE AGGREGATE diffix.diffix_count_distinct(anyelement) (
+  sfunc = diffix.diffix_count_distinct_transfn,
   stype = internal,
-  finalfunc = diffix_count_distinct_finalfn,
+  finalfunc = diffix.diffix_count_distinct_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE explain_diffix_count_distinct(anyelement) (
-  sfunc = diffix_count_distinct_transfn,
+CREATE AGGREGATE diffix.explain_diffix_count_distinct(anyelement) (
+  sfunc = diffix.diffix_count_distinct_transfn,
   stype = internal,
-  finalfunc = diffix_count_distinct_explain_finalfn,
+  finalfunc = diffix.diffix_count_distinct_explain_finalfn,
   finalfunc_extra
 );
 
@@ -90,32 +88,32 @@ CREATE AGGREGATE explain_diffix_count_distinct(anyelement) (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix_count_transfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_transfn(internal, anyelement)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_finalfn(internal, anyelement)
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_explain_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.diffix_count_explain_finalfn(internal, anyelement)
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix_count(anyelement) (
-  sfunc = diffix_count_transfn,
+CREATE AGGREGATE diffix.diffix_count(anyelement) (
+  sfunc = diffix.diffix_count_transfn,
   stype = internal,
-  finalfunc = diffix_count_finalfn,
+  finalfunc = diffix.diffix_count_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE explain_diffix_count(anyelement) (
-  sfunc = diffix_count_transfn,
+CREATE AGGREGATE diffix.explain_diffix_count(anyelement) (
+  sfunc = diffix.diffix_count_transfn,
   stype = internal,
-  finalfunc = diffix_count_explain_finalfn,
+  finalfunc = diffix.diffix_count_explain_finalfn,
   finalfunc_extra
 );
 
@@ -124,31 +122,31 @@ CREATE AGGREGATE explain_diffix_count(anyelement) (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix_count_any_transfn(internal, anyelement, "any")
+CREATE FUNCTION diffix.diffix_count_any_transfn(internal, anyelement, "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_any_finalfn(internal, anyelement, "any")
+CREATE FUNCTION diffix.diffix_count_any_finalfn(internal, anyelement, "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix_count_any_explain_finalfn(internal, anyelement, "any")
+CREATE FUNCTION diffix.diffix_count_any_explain_finalfn(internal, anyelement, "any")
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix_count(anyelement, "any") (
-  sfunc = diffix_count_any_transfn,
+CREATE AGGREGATE diffix.diffix_count(anyelement, "any") (
+  sfunc = diffix.diffix_count_any_transfn,
   stype = internal,
-  finalfunc = diffix_count_any_finalfn,
+  finalfunc = diffix.diffix_count_any_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE explain_diffix_count(anyelement, "any") (
-  sfunc = diffix_count_any_transfn,
+CREATE AGGREGATE diffix.explain_diffix_count(anyelement, "any") (
+  sfunc = diffix.diffix_count_any_transfn,
   stype = internal,
-  finalfunc = diffix_count_any_explain_finalfn,
+  finalfunc = diffix.diffix_count_any_explain_finalfn,
   finalfunc_extra
 );

@@ -6,33 +6,35 @@
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
 
-static Oid lookup_function(char *name, int num_args, Oid *arg_types);
+static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_types);
 
 Oids g_oid_cache;
 
 void load_oid_cache(void)
 {
-  g_oid_cache.count = lookup_function("count", 0, (Oid[]){});
-  g_oid_cache.count_any = lookup_function("count", 1, (Oid[]){ANYOID});
-  g_oid_cache.diffix_lcf = lookup_function("diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count_distinct = lookup_function("diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count = lookup_function("diffix_count", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count_any = lookup_function("diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
-  g_oid_cache.generate_series = lookup_function("generate_series", 2, (Oid[]){INT8OID, INT8OID});
+  g_oid_cache.count = lookup_function(NULL, "count", 0, (Oid[]){});
+  g_oid_cache.count_any = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
+
+  g_oid_cache.diffix_lcf = lookup_function("diffix", "diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count_distinct = lookup_function("diffix", "diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count = lookup_function("diffix", "diffix_count", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.diffix_count_any = lookup_function("diffix", "diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
+
+  g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
 
   g_oid_cache.loaded = true;
 }
 
-static Oid lookup_function(char *name, int num_args, Oid *arg_types)
+static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_types)
 {
   Oid oid;
-  Value *name_value = makeString(name);
-  List *func_name = list_make1(name_value);
+
+  List *func_name = (namespace != NULL) ? list_make1(makeString(namespace)) : NIL;
+  func_name = lappend(func_name, makeString(name));
 
   oid = LookupFuncName(func_name, num_args, arg_types, false);
 
-  list_free(func_name);
-  pfree(name_value);
+  list_free_deep(func_name);
 
   return oid;
 }
