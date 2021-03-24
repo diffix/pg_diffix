@@ -3,20 +3,6 @@
 
 #include "c.h"
 
-#define INITIAL_DEFAULT_ACCESS_LEVEL ACCESS_DIRECT
-
-#define INITIAL_NOISE_SEED "diffix"
-#define INITIAL_NOISE_SIGMA 1.0
-#define INITIAL_NOISE_CUTOFF 5.0
-
-#define INITIAL_MINIMUM_ALLOWED_AIDS 2
-
-#define INITIAL_OUTLIER_COUNT_MIN 1
-#define INITIAL_OUTLIER_COUNT_MAX 2
-
-#define INITIAL_TOP_COUNT_MIN 4
-#define INITIAL_TOP_COUNT_MAX 6
-
 typedef enum AccessLevel
 {
   ACCESS_DIRECT, /* No protection - access to raw data */
@@ -48,9 +34,6 @@ typedef struct DiffixConfig
  */
 extern DiffixConfig g_config;
 
-/*
- * Formats config to a palloc'd string.
- */
-extern char *config_to_string(DiffixConfig *config);
+extern void config_init(void);
 
 #endif /* PG_DIFFIX_CONFIG_H */
