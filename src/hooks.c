@@ -49,11 +49,7 @@ static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
-  if (!g_oid_cache.loaded)
-  {
-    load_oid_cache();
-    DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
-  }
+  oid_cache_init();
 
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(&context);

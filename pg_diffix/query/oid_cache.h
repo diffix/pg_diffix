@@ -15,7 +15,6 @@ typedef struct Oids
   Oid anon_count;          /* anon_count(aid) */
   Oid anon_count_any;      /* anon_count(aid, any) */
   Oid generate_series;     /* generate_series(aid, any) */
-  bool loaded;             /* Whether the OIDs have been loaded */
 } Oids;
 
 /*
@@ -27,13 +26,13 @@ extern Oids g_oid_cache;
  * Populates OID cache. Does nothing if cache is already loaded.
  * We don't call this at activation time because the UDFs may not be registered yet.
  */
-extern void load_oid_cache(void);
+extern void oid_cache_init(void);
 
 /*
  * Frees OID cache for a clean plugin reload.
  * At the moment this simply sets loaded to false.
  */
-extern void free_oid_cache(void);
+extern void oid_cache_cleanup(void);
 
 /*
  * Formats OIDs to a palloc'd string.

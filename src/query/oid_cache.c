@@ -10,8 +10,13 @@ static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_t
 
 Oids g_oid_cache;
 
-void load_oid_cache(void)
+static bool g_loaded = false;
+
+void oid_cache_init(void)
 {
+  if (g_loaded)
+    return;
+
   g_oid_cache.count = lookup_function(NULL, "count", 0, (Oid[]){});
   g_oid_cache.count_any = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
 
@@ -22,7 +27,9 @@ void load_oid_cache(void)
 
   g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
 
-  g_oid_cache.loaded = true;
+  DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
+
+  g_loaded = true;
 }
 
 static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_types)
@@ -39,9 +46,9 @@ static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_t
   return oid;
 }
 
-void free_oid_cache()
+void oid_cache_cleanup()
 {
-  g_oid_cache.loaded = false;
+  g_loaded = false;
   /* If we'd have any dynamic allocation here would be the place to free it. */
 }
 
