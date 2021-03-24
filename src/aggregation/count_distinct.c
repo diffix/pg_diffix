@@ -18,11 +18,11 @@ typedef struct CountDistinctResult
 
 static CountDistinctResult count_distinct_calculate_final(AidTrackerState *state);
 
-PG_FUNCTION_INFO_V1(diffix_count_distinct_transfn);
-PG_FUNCTION_INFO_V1(diffix_count_distinct_finalfn);
-PG_FUNCTION_INFO_V1(diffix_count_distinct_explain_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
+PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
 
-Datum diffix_count_distinct_transfn(PG_FUNCTION_ARGS)
+Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
 
@@ -35,14 +35,14 @@ Datum diffix_count_distinct_transfn(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(state);
 }
 
-Datum diffix_count_distinct_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(state);
   PG_RETURN_INT64(result.noisy_count);
 }
 
-Datum diffix_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(state);

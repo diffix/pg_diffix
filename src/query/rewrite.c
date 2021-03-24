@@ -89,7 +89,7 @@ static void group_implicit_buckets(Query *query)
 }
 
 /*
- * Expand implicit buckets by adding a hidden call to `generate_series(1, diffix_count(*))` to the selection list.
+ * Expand implicit buckets by adding a hidden call to `generate_series(1, anon_count(*))` to the selection list.
  */
 static void expand_implicit_buckets(Query *query)
 {
@@ -147,7 +147,7 @@ static void add_low_count_filter(QueryContext *context)
 
   Aggref *lcf_agg = makeNode(Aggref);
 
-  lcf_agg->aggfnoid = g_oid_cache.diffix_lcf;
+  lcf_agg->aggfnoid = g_oid_cache.lcf;
   lcf_agg->aggtype = BOOLOID;
   lcf_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   lcf_agg->aggstar = false;
@@ -197,14 +197,14 @@ static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
 
 static void rewrite_count(Aggref *aggref, QueryContext *context)
 {
-  aggref->aggfnoid = g_oid_cache.diffix_count;
+  aggref->aggfnoid = g_oid_cache.anon_count;
   aggref->aggstar = false;
   inject_aid_arg(aggref, context);
 }
 
 static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
 {
-  aggref->aggfnoid = g_oid_cache.diffix_count_distinct;
+  aggref->aggfnoid = g_oid_cache.anon_count_distinct;
   /* The UDF handles distinct counting internally */
   aggref->aggdistinct = false;
   TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
@@ -218,7 +218,7 @@ static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
 
 static void rewrite_count_any(Aggref *aggref, QueryContext *context)
 {
-  aggref->aggfnoid = g_oid_cache.diffix_count_any;
+  aggref->aggfnoid = g_oid_cache.anon_count_any;
   inject_aid_arg(aggref, context);
 }
 

@@ -18,11 +18,11 @@ typedef struct LcfResult
 
 static LcfResult lcf_calculate_final(AidTrackerState *state);
 
-PG_FUNCTION_INFO_V1(diffix_lcf_transfn);
-PG_FUNCTION_INFO_V1(diffix_lcf_finalfn);
-PG_FUNCTION_INFO_V1(diffix_lcf_explain_finalfn);
+PG_FUNCTION_INFO_V1(lcf_transfn);
+PG_FUNCTION_INFO_V1(lcf_finalfn);
+PG_FUNCTION_INFO_V1(lcf_explain_finalfn);
 
-Datum diffix_lcf_transfn(PG_FUNCTION_ARGS)
+Datum lcf_transfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
 
@@ -35,14 +35,14 @@ Datum diffix_lcf_transfn(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(state);
 }
 
-Datum diffix_lcf_finalfn(PG_FUNCTION_ARGS)
+Datum lcf_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
   LcfResult result = lcf_calculate_final(state);
   PG_RETURN_BOOL(result.passes_lcf);
 }
 
-Datum diffix_lcf_explain_finalfn(PG_FUNCTION_ARGS)
+Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
 {
   AidTrackerState *state = get_aggregate_aid_tracker(fcinfo);
   LcfResult result = lcf_calculate_final(state);

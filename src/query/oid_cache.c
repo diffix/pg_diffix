@@ -15,10 +15,10 @@ void load_oid_cache(void)
   g_oid_cache.count = lookup_function(NULL, "count", 0, (Oid[]){});
   g_oid_cache.count_any = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
 
-  g_oid_cache.diffix_lcf = lookup_function("diffix", "diffix_lcf", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count_distinct = lookup_function("diffix", "diffix_count_distinct", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count = lookup_function("diffix", "diffix_count", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.diffix_count_any = lookup_function("diffix", "diffix_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
+  g_oid_cache.lcf = lookup_function("diffix", "lcf", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.anon_count = lookup_function("diffix", "anon_count", 1, (Oid[]){ANYELEMENTOID});
+  g_oid_cache.anon_count_any = lookup_function("diffix", "anon_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
 
   g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
 
@@ -55,10 +55,10 @@ char *oids_to_string(Oids *oids)
 
   appendStringInfo(&string, " :count %u", oids->count);
   appendStringInfo(&string, " :count_any %u", oids->count_any);
-  appendStringInfo(&string, " :diffix_lcf %u", oids->diffix_lcf);
-  appendStringInfo(&string, " :diffix_count_distinct %u", oids->diffix_count_distinct);
-  appendStringInfo(&string, " :diffix_count %u", oids->diffix_count);
-  appendStringInfo(&string, " :diffix_count_any %u", oids->diffix_count_any);
+  appendStringInfo(&string, " :lcf %u", oids->lcf);
+  appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
+  appendStringInfo(&string, " :anon_count %u", oids->anon_count);
+  appendStringInfo(&string, " :anon_count_any %u", oids->anon_count_any);
 
   appendStringInfo(&string, "}");
 
