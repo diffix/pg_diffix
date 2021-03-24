@@ -9,6 +9,11 @@
 #include "pg_diffix/query/rewrite.h"
 #include "pg_diffix/query/validation.h"
 
+/* Hooks type definitions */
+#include "parser/analyze.h"
+#include "optimizer/planner.h"
+#include "executor/executor.h"
+
 post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
@@ -16,7 +21,7 @@ ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
-void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
+static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
   if (prev_post_parse_analyze_hook)
     prev_post_parse_analyze_hook(pstate, query);
@@ -59,7 +64,7 @@ void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 }
 
-PlannedStmt *pg_diffix_planner(
+static PlannedStmt *pg_diffix_planner(
     Query *parse,
     const char *query_string,
     int cursorOptions,
@@ -75,7 +80,7 @@ PlannedStmt *pg_diffix_planner(
   return plan;
 }
 
-void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
+static void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
   if (prev_ExecutorStart_hook)
     prev_ExecutorStart_hook(queryDesc, eflags);
@@ -83,7 +88,7 @@ void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
     standard_ExecutorStart(queryDesc, eflags);
 }
 
-void pg_diffix_ExecutorRun(
+static void pg_diffix_ExecutorRun(
     QueryDesc *queryDesc,
     ScanDirection direction,
     uint64 count,
@@ -95,7 +100,7 @@ void pg_diffix_ExecutorRun(
     standard_ExecutorRun(queryDesc, direction, count, execute_once);
 }
 
-void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
+static void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
 {
   if (prev_ExecutorFinish_hook)
     prev_ExecutorFinish_hook(queryDesc);
@@ -103,10 +108,41 @@ void pg_diffix_ExecutorFinish(QueryDesc *queryDesc)
     standard_ExecutorFinish(queryDesc);
 }
 
-void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
+static void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 {
   if (prev_ExecutorEnd_hook)
     prev_ExecutorEnd_hook(queryDesc);
   else
     standard_ExecutorEnd(queryDesc);
+}
+
+void hooks_init(void)
+{
+  prev_post_parse_analyze_hook = post_parse_analyze_hook;
+  post_parse_analyze_hook = pg_diffix_post_parse_analyze;
+
+  prev_planner_hook = planner_hook;
+  planner_hook = pg_diffix_planner;
+
+  prev_ExecutorStart_hook = ExecutorStart_hook;
+  ExecutorStart_hook = pg_diffix_ExecutorStart;
+
+  prev_ExecutorRun_hook = ExecutorRun_hook;
+  ExecutorRun_hook = pg_diffix_ExecutorRun;
+
+  prev_ExecutorFinish_hook = ExecutorFinish_hook;
+  ExecutorFinish_hook = pg_diffix_ExecutorFinish;
+
+  prev_ExecutorEnd_hook = ExecutorEnd_hook;
+  ExecutorEnd_hook = pg_diffix_ExecutorEnd;
+}
+
+void hooks_cleanup(void)
+{
+  post_parse_analyze_hook = prev_post_parse_analyze_hook;
+  planner_hook = prev_planner_hook;
+  ExecutorStart_hook = prev_ExecutorStart_hook;
+  ExecutorRun_hook = prev_ExecutorRun_hook;
+  ExecutorFinish_hook = prev_ExecutorFinish_hook;
+  ExecutorEnd_hook = prev_ExecutorEnd_hook;
 }
