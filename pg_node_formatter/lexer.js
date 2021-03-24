@@ -10,7 +10,7 @@ function buildLexer(input) {
     arrayStart: /\([a-z]?/,
     arrayEnd: ')',
     // Square brackets pattern is a hack for constants.
-    atom: /(?:[A-Za-z0-9_<>.?\-]+|\s*\[(?:\s*-?\d(?:.\d*)?)*\s*\])+/
+    atom: /(?:\s*[A-Za-z0-9_<>.?\-]+|\s*\[(?:\s*-?\d(?:.\d*)?)*\s*\])+/
   })
 
   lexer.reset(input)
