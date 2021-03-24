@@ -16,7 +16,7 @@ INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1)
   (7, 1), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
   (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL);
 
-INSERT INTO diffix_config (rel_namespace_name, rel_name, aid_attname) VALUES
+INSERT INTO diffix.config (rel_namespace_name, rel_name, aid_attname) VALUES
   ('public', 'test_customers', 'id'), ('public', 'test_purchases', 'cid');
 
 -- Supported queries.

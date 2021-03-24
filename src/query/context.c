@@ -37,7 +37,7 @@ static RelationConfig *map_config_tuple(HeapTuple heap_tuple, TupleDesc tuple_de
 /* Returns a list of RelationConfig for all configured relations. */
 static List *get_all_configured_relations(void)
 {
-  return scan_table_by_name("public", "diffix_config", (MapTupleFunc)map_config_tuple);
+  return scan_table_by_name("diffix", "config", (MapTupleFunc)map_config_tuple);
 }
 
 static RelationConfig *find_config(List *relation_configs, char *rel_name, char *rel_ns_name)

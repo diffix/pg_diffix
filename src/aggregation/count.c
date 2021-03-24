@@ -46,15 +46,15 @@ static const ContributionDescriptor count_descriptor = {
 
 static const contribution_t one_contribution = {.integer = 1};
 
-PG_FUNCTION_INFO_V1(diffix_count_transfn);
-PG_FUNCTION_INFO_V1(diffix_count_finalfn);
-PG_FUNCTION_INFO_V1(diffix_count_explain_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_transfn);
+PG_FUNCTION_INFO_V1(anon_count_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_explain_finalfn);
 
-PG_FUNCTION_INFO_V1(diffix_count_any_transfn);
-PG_FUNCTION_INFO_V1(diffix_count_any_finalfn);
-PG_FUNCTION_INFO_V1(diffix_count_any_explain_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_any_transfn);
+PG_FUNCTION_INFO_V1(anon_count_any_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_any_explain_finalfn);
 
-Datum diffix_count_transfn(PG_FUNCTION_ARGS)
+Datum anon_count_transfn(PG_FUNCTION_ARGS)
 {
   ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
 
@@ -67,7 +67,7 @@ Datum diffix_count_transfn(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(state);
 }
 
-Datum diffix_count_any_transfn(PG_FUNCTION_ARGS)
+Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 {
   ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
 
@@ -83,19 +83,19 @@ Datum diffix_count_any_transfn(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(state);
 }
 
-Datum diffix_count_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_finalfn(PG_FUNCTION_ARGS)
 {
   ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
   CountResult result = count_calculate_final(state);
   PG_RETURN_INT64(result.noisy_count);
 }
 
-Datum diffix_count_any_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_any_finalfn(PG_FUNCTION_ARGS)
 {
-  return diffix_count_finalfn(fcinfo);
+  return anon_count_finalfn(fcinfo);
 }
 
-Datum diffix_count_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_explain_finalfn(PG_FUNCTION_ARGS)
 {
   ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
   CountResult result = count_calculate_final(state);
@@ -137,9 +137,9 @@ Datum diffix_count_explain_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-Datum diffix_count_any_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 {
-  return diffix_count_explain_finalfn(fcinfo);
+  return anon_count_explain_finalfn(fcinfo);
 }
 
 static CountResult count_calculate_final(ContributionTrackerState *state)
