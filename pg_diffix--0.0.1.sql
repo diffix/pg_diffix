@@ -4,18 +4,6 @@
 CREATE SCHEMA diffix;
 
 /* ----------------------------------------------------------------
- * Config
- * ----------------------------------------------------------------
- */
-
-CREATE TABLE diffix.config (
-  rel_namespace_name TEXT NOT NULL,
-  rel_name TEXT NOT NULL,
-  aid_attname TEXT NOT NULL,
-  PRIMARY KEY(rel_namespace_name, rel_name, aid_attname)
-);
-
-/* ----------------------------------------------------------------
  * lcf(aid)
  * ----------------------------------------------------------------
  */

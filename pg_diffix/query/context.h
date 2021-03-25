@@ -11,7 +11,6 @@
  */
 typedef struct AnonymizationID
 {
-  char *attname;     /* AID column name */
   AttrNumber attnum; /* AID column AttNumber */
   Oid atttype;       /* AID column type OID */
   int32 typmod;      /* AID pg_attribute typmod value */
@@ -23,12 +22,10 @@ typedef struct AnonymizationID
  */
 typedef struct SensitiveRelation
 {
-  char *namespace_name; /* Namespace name */
-  Oid namespace_oid;    /* Namespace OID */
-  char *name;           /* Relation name */
-  Oid oid;              /* Relation OID */
-  Index index;          /* Relation index in query rtable */
-  List *aids;           /* AIDs in relation (of type AnonymizationID) */
+  Oid namespace_oid; /* Namespace OID */
+  Oid oid;           /* Relation OID */
+  Index index;       /* Relation index in query rtable */
+  List *aids;        /* AIDs in relation (of type AnonymizationID) */
 } SensitiveRelation;
 
 /*
