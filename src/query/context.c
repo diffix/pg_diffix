@@ -54,11 +54,11 @@ static List *gather_sensitive_relations(Query *query)
     if (!OidIsValid(rte->relid))
       continue;
 
-    Oid rel_ns_oid = get_rel_namespace(rte->relid);
-    if (is_sensitive_relation(rel_ns_oid, rte->relid))
+    Oid namespace_oid = get_rel_namespace(rte->relid);
+    if (is_sensitive_relation(rte->relid, namespace_oid))
     {
       Index rel_index = foreach_current_index(lc) + 1;
-      SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, rel_ns_oid, rel_index);
+      SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, namespace_oid, rel_index);
       result = lappend(result, rel_data);
     }
   }

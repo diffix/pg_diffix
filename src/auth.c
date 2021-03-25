@@ -53,7 +53,7 @@ static inline bool is_aid_label(const char *seclabel)
   return strcasecmp(seclabel, "aid") == 0;
 }
 
-bool is_sensitive_relation(Oid namespace_oid, Oid relation_oid)
+bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
 {
   ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
   const char *seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
