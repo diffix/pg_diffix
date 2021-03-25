@@ -3,6 +3,7 @@ LOAD 'pg_diffix';
 
 SET pg_diffix.default_access_level = 'publish';
 
+-- Create test data.
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT);
 INSERT INTO test_customers VALUES
   (0, NULL), (1, 'Berlin'), (2, 'Berlin'), (3, 'Rome'), (4, 'London'), (5, 'Berlin'), (6, 'Rome'),
@@ -16,8 +17,11 @@ INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1)
   (7, 1), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
   (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL);
 
-INSERT INTO diffix.config (rel_namespace_name, rel_name, aid_attname) VALUES
-  ('public', 'test_customers', 'id'), ('public', 'test_purchases', 'cid');
+-- Config tables.
+SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE test_purchases IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
 
 -- Supported queries.
 SELECT COUNT(*) FROM test_customers;

@@ -44,6 +44,8 @@ static inline List *scan_table_by_name(
 #define FAILWITH_LOCATION(cursorpos, ...) \
   ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__), errposition((cursorpos) + 1)))
 
+#define FAILWITH_CODE(code, ...) ereport(ERROR, (errcode(code), errmsg("[PG_DIFFIX] " __VA_ARGS__)))
+
 #define DEBUG /* TODO: define externally */
 
 #ifdef DEBUG
