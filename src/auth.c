@@ -55,13 +55,13 @@ static inline bool is_aid_label(const char *seclabel)
 
 bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
 {
-  ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
-  const char *seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
+  ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
+  const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
 
   if (seclabel == NULL)
   {
-    ObjectAddress object = {.classId = NamespaceRelationId, .objectId = namespace_oid, .objectSubId = 0};
-    seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
+    ObjectAddress namespace_object = {.classId = NamespaceRelationId, .objectId = namespace_oid, .objectSubId = 0};
+    seclabel = GetSecurityLabel(&namespace_object, PROVIDER_TAG);
   }
 
   if (seclabel == NULL)
