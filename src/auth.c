@@ -6,6 +6,7 @@
 #include "commands/seclabel.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_database.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/utils.h"
@@ -62,6 +63,12 @@ bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
   {
     ObjectAddress namespace_object = {.classId = NamespaceRelationId, .objectId = namespace_oid, .objectSubId = 0};
     seclabel = GetSecurityLabel(&namespace_object, PROVIDER_TAG);
+
+    if (seclabel == NULL)
+    {
+      ObjectAddress database_object = {.classId = DatabaseRelationId, .objectId = MyDatabaseId, .objectSubId = 0};
+      seclabel = GetSecurityLabel(&database_object, PROVIDER_TAG);
+    }
   }
 
   if (seclabel == NULL)
@@ -103,7 +110,8 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
-    if ((object->classId == NamespaceRelationId ||
+    if ((object->classId == DatabaseRelationId ||
+         object->classId == NamespaceRelationId ||
          object->classId == RelationRelationId) &&
         object->objectSubId == 0)
       return;
