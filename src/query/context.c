@@ -37,15 +37,15 @@ static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_o
     }
   }
 
-  table_close(rel, NoLock);
+  table_close(rel, AccessShareLock);
 
   return sensitive_rel;
 }
 
-/* Returns a list (of DiffixRelation) of all relations in the query. */
+/* Returns a list of `SensitiveRelation`s in the query range. */
 static List *gather_sensitive_relations(Query *query)
 {
-  List *result = NIL; /* List with resulting DiffixRelation */
+  List *result = NIL;
 
   ListCell *lc;
   foreach (lc, query->rtable)
