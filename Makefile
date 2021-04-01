@@ -15,4 +15,6 @@ PG_CFLAGS = -std=c11 -Wno-declaration-after-statement -Werror-implicit-function-
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+
+override with_llvm=no
 include $(PGXS)
