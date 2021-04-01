@@ -42,3 +42,25 @@ If you have multiple libraries you want to preload, separate them with commas.
 ## Testing the extension
 
 Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
+
+## Running Docker image
+
+We provide a Docker image preconfigured with the extension.
+
+The example below shows how to build the image and run a minimally configured container.
+
+```sh
+# Build the image
+$ docker build -t pg_diffix .
+
+# Run the container in foreground and expose in port 10432
+$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
+```
+
+From another shell you can connect to the container via `psql`:
+
+```sh
+psql -h localhost -p 10432 -d postgres -U postgres
+```
+
+For more advanced usage see the [official image reference](https://hub.docker.com/_/postgres).
