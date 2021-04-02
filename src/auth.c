@@ -7,30 +7,12 @@
 #include "catalog/pg_class.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_database.h"
+#include "catalog/pg_authid.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/utils.h"
 
-static const char *PUBLISH_ROLE = "diffix_publish";
 static const char *PROVIDER_TAG = "pg_diffix";
-
-static bool has_publish_access(Oid member)
-{
-  Oid role_oid = get_role_oid(PUBLISH_ROLE, true);
-  return OidIsValid(role_oid)
-             ? is_member_of_role_nosuper(member, role_oid)
-             : false;
-}
-
-AccessLevel get_access_level(void)
-{
-  Oid user_id = GetSessionUserId();
-
-  if (has_publish_access(user_id))
-    return ACCESS_PUBLISH;
-
-  return (AccessLevel)g_config.default_access_level;
-}
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel);
 
@@ -52,6 +34,35 @@ static inline bool is_public_label(const char *seclabel)
 static inline bool is_aid_label(const char *seclabel)
 {
   return strcasecmp(seclabel, "aid") == 0;
+}
+
+static inline bool is_publish_label(const char *seclabel)
+{
+  return strcasecmp(seclabel, "publish") == 0;
+}
+
+static inline bool is_direct_label(const char *seclabel)
+{
+  return strcasecmp(seclabel, "direct") == 0;
+}
+
+#define FAIL_ON_INVALID_LABEL(seclabel) \
+  FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid anonymization label", seclabel);
+
+AccessLevel get_access_level(void)
+{
+  Oid user_id = GetSessionUserId();
+  ObjectAddress user_object = {.classId = AuthIdRelationId, .objectId = user_id, .objectSubId = 0};
+  const char *seclabel = GetSecurityLabel(&user_object, PROVIDER_TAG);
+
+  if (seclabel == NULL)
+    return (AccessLevel)g_config.default_access_level;
+  else if (is_direct_label(seclabel))
+    return ACCESS_DIRECT;
+  else if (is_publish_label(seclabel))
+    return ACCESS_PUBLISH;
+  else
+    FAIL_ON_INVALID_LABEL(seclabel);
 }
 
 bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
@@ -78,7 +89,7 @@ bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
   else if (is_public_label(seclabel))
     return false;
   else
-    FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid label", seclabel);
+    FAIL_ON_INVALID_LABEL(seclabel);
 }
 
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)
@@ -91,7 +102,7 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
   else if (is_aid_label(seclabel))
     return true;
   else
-    FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid label", seclabel);
+    FAIL_ON_INVALID_LABEL(seclabel);
 }
 
 #define FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object)                   \
@@ -117,13 +128,23 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
       return;
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
-
-  if (is_aid_label(seclabel))
+  else if (is_aid_label(seclabel))
   {
     if (object->classId == RelationRelationId && object->objectSubId != 0)
       return;
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
+  else if (is_publish_label(seclabel) || is_direct_label(seclabel))
+  {
+    if (object->classId == AuthIdRelationId)
+    {
+      if (superuser_arg(object->objectId))
+        FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Anonymization labels can not be set on superusers");
+      return;
+    }
 
-  FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid anonymization label", seclabel);
+    FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
+  }
+
+  FAIL_ON_INVALID_LABEL(seclabel);
 }
