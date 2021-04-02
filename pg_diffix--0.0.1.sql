@@ -2,6 +2,7 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 CREATE SCHEMA diffix;
+GRANT USAGE ON SCHEMA diffix TO PUBLIC;
 
 /* ----------------------------------------------------------------
  * lcf(aid)
