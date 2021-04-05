@@ -57,17 +57,17 @@ static char *config_to_string(DiffixConfig *config)
 void config_init(void)
 {
   DefineCustomEnumVariable(
-      "pg_diffix.default_access_level",                /* name */
-      "Access level for users without special roles.", /* short_desc */
-      NULL,                                            /* long_desc */
-      &g_config.default_access_level,                  /* valueAddr */
-      g_config.default_access_level,                   /* bootValue */
-      default_access_level_options,                    /* options */
-      PGC_SUSET,                                       /* context */
-      0,                                               /* flags */
-      NULL,                                            /* check_hook */
-      NULL,                                            /* assign_hook */
-      NULL);                                           /* show_hook */
+      "pg_diffix.default_access_level",    /* name */
+      "Access level for unlabeled users.", /* short_desc */
+      NULL,                                /* long_desc */
+      &g_config.default_access_level,      /* valueAddr */
+      g_config.default_access_level,       /* bootValue */
+      default_access_level_options,        /* options */
+      PGC_SUSET,                           /* context */
+      0,                                   /* flags */
+      NULL,                                /* check_hook */
+      NULL,                                /* assign_hook */
+      NULL);                               /* show_hook */
 
   DefineCustomStringVariable(
       "pg_diffix.noise_seed",                     /* name */
