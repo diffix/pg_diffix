@@ -2,12 +2,15 @@
 #include "lib/stringinfo.h"
 #include "fmgr.h"
 #include "utils/guc.h"
+#include "miscadmin.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/auth.h"
 
 DiffixConfig g_config = {
     .default_access_level = ACCESS_DIRECT,
+    .session_access_level = ACCESS_DIRECT,
 
     .noise_seed = "diffix",
     .noise_sigma = 1.0,
@@ -24,7 +27,7 @@ DiffixConfig g_config = {
 
 static const int MAX_NUMERIC_CONFIG = 1000;
 
-static const struct config_enum_entry default_access_level_options[] = {
+static const struct config_enum_entry access_level_options[] = {
     {"direct", ACCESS_DIRECT, false},
     {"publish", ACCESS_PUBLISH, false},
     {NULL, 0, false},
@@ -39,6 +42,7 @@ static char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, "{DIFFIX_CONFIG");
 
   appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
+  appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
   appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
   appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);
@@ -54,15 +58,44 @@ static char *config_to_string(DiffixConfig *config)
   return string.data;
 }
 
+static bool session_access_level_check(int *newval, void **extra, GucSource source)
+{
+  if (process_shared_preload_libraries_in_progress)
+    return true;
+
+  AccessLevel user_level = get_user_access_level();
+  if (*newval < user_level)
+  {
+    GUC_check_errmsg_string = "Invalid access level requested for the current session.";
+    GUC_check_errdetail_string = "Session access level can't be higher than the user access level.";
+    return false;
+  }
+
+  return true;
+}
+
 void config_init(void)
 {
+  DefineCustomEnumVariable(
+      "pg_diffix.session_access_level",    /* name */
+      "Access level for current session.", /* short_desc */
+      NULL,                                /* long_desc */
+      &g_config.session_access_level,      /* valueAddr */
+      g_config.session_access_level,       /* bootValue */
+      access_level_options,                /* options */
+      PGC_USERSET,                         /* context */
+      0,                                   /* flags */
+      session_access_level_check,          /* check_hook */
+      NULL,                                /* assign_hook */
+      NULL);                               /* show_hook */
+
   DefineCustomEnumVariable(
       "pg_diffix.default_access_level",    /* name */
       "Access level for unlabeled users.", /* short_desc */
       NULL,                                /* long_desc */
       &g_config.default_access_level,      /* valueAddr */
       g_config.default_access_level,       /* bootValue */
-      default_access_level_options,        /* options */
+      access_level_options,                /* options */
       PGC_SUSET,                           /* context */
       0,                                   /* flags */
       NULL,                                /* check_hook */
