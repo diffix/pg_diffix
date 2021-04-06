@@ -8,22 +8,7 @@
 #include "pg_diffix/utils.h"
 #include "pg_diffix/auth.h"
 
-DiffixConfig g_config = {
-    .default_access_level = ACCESS_DIRECT,
-    .session_access_level = ACCESS_DIRECT,
-
-    .noise_seed = "diffix",
-    .noise_sigma = 1.0,
-    .noise_cutoff = 5.0,
-
-    .minimum_allowed_aids = 2,
-
-    .outlier_count_min = 1,
-    .outlier_count_max = 2,
-
-    .top_count_min = 4,
-    .top_count_max = 6,
-};
+DiffixConfig g_config; /* Gets initialized by config_init. */
 
 static const int MAX_NUMERIC_CONFIG = 1000;
 
@@ -81,7 +66,7 @@ void config_init(void)
       "Access level for current session.", /* short_desc */
       NULL,                                /* long_desc */
       &g_config.session_access_level,      /* valueAddr */
-      g_config.session_access_level,       /* bootValue */
+      ACCESS_DIRECT,                       /* bootValue */
       access_level_options,                /* options */
       PGC_USERSET,                         /* context */
       0,                                   /* flags */
@@ -94,7 +79,7 @@ void config_init(void)
       "Access level for unlabeled users.", /* short_desc */
       NULL,                                /* long_desc */
       &g_config.default_access_level,      /* valueAddr */
-      g_config.default_access_level,       /* bootValue */
+      ACCESS_DIRECT,                       /* bootValue */
       access_level_options,                /* options */
       PGC_SUSET,                           /* context */
       0,                                   /* flags */
@@ -107,7 +92,7 @@ void config_init(void)
       "Seed used for initializing noise layers.", /* short_desc */
       NULL,                                       /* long_desc */
       &g_config.noise_seed,                       /* valueAddr */
-      g_config.noise_seed,                        /* bootValue */
+      "diffix",                                   /* bootValue */
       PGC_SUSET,                                  /* context */
       0,                                          /* flags */
       NULL,                                       /* check_hook */
@@ -119,7 +104,7 @@ void config_init(void)
       "Standard deviation of noise added to aggregates.", /* short_desc */
       NULL,                                               /* long_desc */
       &g_config.noise_sigma,                              /* valueAddr */
-      g_config.noise_sigma,                               /* bootValue */
+      1.0,                                                /* bootValue */
       0,                                                  /* minValue */
       MAX_NUMERIC_CONFIG,                                 /* maxValue */
       PGC_SUSET,                                          /* context */
@@ -133,7 +118,7 @@ void config_init(void)
       "Maximum absolute noise value.", /* short_desc */
       NULL,                            /* long_desc */
       &g_config.noise_cutoff,          /* valueAddr */
-      g_config.noise_cutoff,           /* bootValue */
+      5.0,                             /* bootValue */
       0,                               /* minValue */
       1e7,                             /* maxValue */
       PGC_SUSET,                       /* context */
@@ -147,7 +132,7 @@ void config_init(void)
       "The minimum number of distinct AIDs that can be in a reported bucket.", /* short_desc */
       NULL,                                                                    /* long_desc */
       &g_config.minimum_allowed_aids,                                          /* valueAddr */
-      g_config.minimum_allowed_aids,                                           /* bootValue */
+      2,                                                                       /* bootValue */
       2,                                                                       /* minValue */
       MAX_NUMERIC_CONFIG,                                                      /* maxValue */
       PGC_SUSET,                                                               /* context */
@@ -161,7 +146,7 @@ void config_init(void)
       "Minimum outlier count (inclusive).", /* short_desc */
       NULL,                                 /* long_desc */
       &g_config.outlier_count_min,          /* valueAddr */
-      g_config.outlier_count_min,           /* bootValue */
+      1,                                    /* bootValue */
       0,                                    /* minValue */
       MAX_NUMERIC_CONFIG,                   /* maxValue */
       PGC_SUSET,                            /* context */
@@ -175,7 +160,7 @@ void config_init(void)
       "Maximum outlier count (inclusive).", /* short_desc */
       NULL,                                 /* long_desc */
       &g_config.outlier_count_max,          /* valueAddr */
-      g_config.outlier_count_max,           /* bootValue */
+      2,                                    /* bootValue */
       0,                                    /* minValue */
       MAX_NUMERIC_CONFIG,                   /* maxValue */
       PGC_SUSET,                            /* context */
@@ -189,7 +174,7 @@ void config_init(void)
       "Minimum top contributors count (inclusive).", /* short_desc */
       NULL,                                          /* long_desc */
       &g_config.top_count_min,                       /* valueAddr */
-      g_config.top_count_min,                        /* bootValue */
+      4,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
@@ -203,7 +188,7 @@ void config_init(void)
       "Maximum top contributors count (inclusive).", /* short_desc */
       NULL,                                          /* long_desc */
       &g_config.top_count_max,                       /* valueAddr */
-      g_config.top_count_max,                        /* bootValue */
+      6,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
