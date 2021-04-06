@@ -2,43 +2,17 @@
 #include "lib/stringinfo.h"
 #include "fmgr.h"
 #include "utils/guc.h"
+#include "miscadmin.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/auth.h"
 
-#define INITIAL_DEFAULT_ACCESS_LEVEL ACCESS_DIRECT
-
-#define INITIAL_NOISE_SEED "diffix"
-#define INITIAL_NOISE_SIGMA 1.0
-#define INITIAL_NOISE_CUTOFF 5.0
-
-#define INITIAL_MINIMUM_ALLOWED_AIDS 2
-
-#define INITIAL_OUTLIER_COUNT_MIN 1
-#define INITIAL_OUTLIER_COUNT_MAX 2
-
-#define INITIAL_TOP_COUNT_MIN 4
-#define INITIAL_TOP_COUNT_MAX 6
-
-DiffixConfig g_config = {
-    .default_access_level = INITIAL_DEFAULT_ACCESS_LEVEL,
-
-    .noise_seed = INITIAL_NOISE_SEED,
-    .noise_sigma = INITIAL_NOISE_SIGMA,
-    .noise_cutoff = INITIAL_NOISE_CUTOFF,
-
-    .minimum_allowed_aids = INITIAL_MINIMUM_ALLOWED_AIDS,
-
-    .outlier_count_min = INITIAL_OUTLIER_COUNT_MIN,
-    .outlier_count_max = INITIAL_OUTLIER_COUNT_MAX,
-
-    .top_count_min = INITIAL_TOP_COUNT_MIN,
-    .top_count_max = INITIAL_TOP_COUNT_MAX,
-};
+DiffixConfig g_config; /* Gets initialized by config_init. */
 
 static const int MAX_NUMERIC_CONFIG = 1000;
 
-static const struct config_enum_entry default_access_level_options[] = {
+static const struct config_enum_entry access_level_options[] = {
     {"direct", ACCESS_DIRECT, false},
     {"publish", ACCESS_PUBLISH, false},
     {NULL, 0, false},
@@ -53,6 +27,7 @@ static char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, "{DIFFIX_CONFIG");
 
   appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
+  appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
   appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
   appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);
@@ -68,27 +43,56 @@ static char *config_to_string(DiffixConfig *config)
   return string.data;
 }
 
+static bool session_access_level_check(int *newval, void **extra, GucSource source)
+{
+  if (process_shared_preload_libraries_in_progress)
+    return true;
+
+  AccessLevel user_level = get_user_access_level();
+  if (*newval < user_level)
+  {
+    GUC_check_errmsg_string = "Invalid access level requested for the current session.";
+    GUC_check_errdetail_string = "Session access level can't be higher than the user access level.";
+    return false;
+  }
+
+  return true;
+}
+
 void config_init(void)
 {
   DefineCustomEnumVariable(
-      "pg_diffix.default_access_level",                /* name */
-      "Access level for users without special roles.", /* short_desc */
-      NULL,                                            /* long_desc */
-      &g_config.default_access_level,                  /* valueAddr */
-      INITIAL_DEFAULT_ACCESS_LEVEL,                    /* bootValue */
-      default_access_level_options,                    /* options */
-      PGC_SUSET,                                       /* context */
-      0,                                               /* flags */
-      NULL,                                            /* check_hook */
-      NULL,                                            /* assign_hook */
-      NULL);                                           /* show_hook */
+      "pg_diffix.session_access_level",    /* name */
+      "Access level for current session.", /* short_desc */
+      NULL,                                /* long_desc */
+      &g_config.session_access_level,      /* valueAddr */
+      ACCESS_DIRECT,                       /* bootValue */
+      access_level_options,                /* options */
+      PGC_USERSET,                         /* context */
+      0,                                   /* flags */
+      session_access_level_check,          /* check_hook */
+      NULL,                                /* assign_hook */
+      NULL);                               /* show_hook */
+
+  DefineCustomEnumVariable(
+      "pg_diffix.default_access_level",    /* name */
+      "Access level for unlabeled users.", /* short_desc */
+      NULL,                                /* long_desc */
+      &g_config.default_access_level,      /* valueAddr */
+      ACCESS_DIRECT,                       /* bootValue */
+      access_level_options,                /* options */
+      PGC_SUSET,                           /* context */
+      0,                                   /* flags */
+      NULL,                                /* check_hook */
+      NULL,                                /* assign_hook */
+      NULL);                               /* show_hook */
 
   DefineCustomStringVariable(
       "pg_diffix.noise_seed",                     /* name */
       "Seed used for initializing noise layers.", /* short_desc */
       NULL,                                       /* long_desc */
       &g_config.noise_seed,                       /* valueAddr */
-      INITIAL_NOISE_SEED,                         /* bootValue */
+      "diffix",                                   /* bootValue */
       PGC_SUSET,                                  /* context */
       0,                                          /* flags */
       NULL,                                       /* check_hook */
@@ -100,7 +104,7 @@ void config_init(void)
       "Standard deviation of noise added to aggregates.", /* short_desc */
       NULL,                                               /* long_desc */
       &g_config.noise_sigma,                              /* valueAddr */
-      INITIAL_NOISE_SIGMA,                                /* bootValue */
+      1.0,                                                /* bootValue */
       0,                                                  /* minValue */
       MAX_NUMERIC_CONFIG,                                 /* maxValue */
       PGC_SUSET,                                          /* context */
@@ -114,7 +118,7 @@ void config_init(void)
       "Maximum absolute noise value.", /* short_desc */
       NULL,                            /* long_desc */
       &g_config.noise_cutoff,          /* valueAddr */
-      INITIAL_NOISE_CUTOFF,            /* bootValue */
+      5.0,                             /* bootValue */
       0,                               /* minValue */
       1e7,                             /* maxValue */
       PGC_SUSET,                       /* context */
@@ -128,7 +132,7 @@ void config_init(void)
       "The minimum number of distinct AIDs that can be in a reported bucket.", /* short_desc */
       NULL,                                                                    /* long_desc */
       &g_config.minimum_allowed_aids,                                          /* valueAddr */
-      INITIAL_MINIMUM_ALLOWED_AIDS,                                            /* bootValue */
+      2,                                                                       /* bootValue */
       2,                                                                       /* minValue */
       MAX_NUMERIC_CONFIG,                                                      /* maxValue */
       PGC_SUSET,                                                               /* context */
@@ -142,7 +146,7 @@ void config_init(void)
       "Minimum outlier count (inclusive).", /* short_desc */
       NULL,                                 /* long_desc */
       &g_config.outlier_count_min,          /* valueAddr */
-      INITIAL_OUTLIER_COUNT_MIN,            /* bootValue */
+      1,                                    /* bootValue */
       0,                                    /* minValue */
       MAX_NUMERIC_CONFIG,                   /* maxValue */
       PGC_SUSET,                            /* context */
@@ -156,7 +160,7 @@ void config_init(void)
       "Maximum outlier count (inclusive).", /* short_desc */
       NULL,                                 /* long_desc */
       &g_config.outlier_count_max,          /* valueAddr */
-      INITIAL_OUTLIER_COUNT_MAX,            /* bootValue */
+      2,                                    /* bootValue */
       0,                                    /* minValue */
       MAX_NUMERIC_CONFIG,                   /* maxValue */
       PGC_SUSET,                            /* context */
@@ -170,7 +174,7 @@ void config_init(void)
       "Minimum top contributors count (inclusive).", /* short_desc */
       NULL,                                          /* long_desc */
       &g_config.top_count_min,                       /* valueAddr */
-      INITIAL_TOP_COUNT_MIN,                         /* bootValue */
+      4,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
@@ -184,7 +188,7 @@ void config_init(void)
       "Maximum top contributors count (inclusive).", /* short_desc */
       NULL,                                          /* long_desc */
       &g_config.top_count_max,                       /* valueAddr */
-      INITIAL_TOP_COUNT_MAX,                         /* bootValue */
+      6,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */

@@ -15,6 +15,7 @@ typedef enum AccessLevel
 typedef struct DiffixConfig
 {
   int default_access_level;
+  int session_access_level;
 
   char *noise_seed;
   double noise_sigma;

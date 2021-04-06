@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
 
-SET pg_diffix.default_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish';
 
 -- Create test data.
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT);

@@ -49,7 +49,7 @@ static inline bool is_direct_label(const char *seclabel)
 #define FAIL_ON_INVALID_LABEL(seclabel) \
   FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid anonymization label", seclabel);
 
-AccessLevel get_access_level(void)
+AccessLevel get_user_access_level(void)
 {
   Oid user_id = GetSessionUserId();
   ObjectAddress user_object = {.classId = AuthIdRelationId, .objectId = user_id, .objectSubId = 0};
@@ -63,6 +63,17 @@ AccessLevel get_access_level(void)
     return ACCESS_PUBLISH;
   else
     FAIL_ON_INVALID_LABEL(seclabel);
+}
+
+AccessLevel get_session_access_level(void)
+{
+  AccessLevel user_level = get_user_access_level();
+  if (g_config.session_access_level < user_level)
+  {
+    /* We always limit the current access level to the maximum allowed user access level. */
+    g_config.session_access_level = user_level;
+  }
+  return (AccessLevel)g_config.session_access_level;
 }
 
 bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)

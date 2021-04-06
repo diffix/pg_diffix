@@ -8,9 +8,14 @@
 extern void auth_init(void);
 
 /*
- * Returns access level for current session user.
+ * Returns the maximum access level for the current user.
  */
-extern AccessLevel get_access_level(void);
+extern AccessLevel get_user_access_level(void);
+
+/*
+ * Returns the access level for the current session.
+ */
+extern AccessLevel get_session_access_level(void);
 
 /*
  * Returns true if the relation has been labeled as sensitive, false otherwise.
