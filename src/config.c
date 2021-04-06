@@ -94,7 +94,7 @@ void config_init(void)
       &g_config.noise_seed,                       /* valueAddr */
       "diffix",                                   /* bootValue */
       PGC_SUSET,                                  /* context */
-      0,                                          /* flags */
+      GUC_SUPERUSER_ONLY,                         /* flags */
       NULL,                                       /* check_hook */
       NULL,                                       /* assign_hook */
       NULL);                                      /* show_hook */
