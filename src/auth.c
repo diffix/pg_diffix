@@ -10,6 +10,7 @@
 #include "catalog/pg_authid.h"
 
 #include "pg_diffix/auth.h"
+#include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
 
 static const char *PROVIDER_TAG = "pg_diffix";
@@ -68,7 +69,7 @@ AccessLevel get_user_access_level(void)
 AccessLevel get_session_access_level(void)
 {
   AccessLevel user_level = get_user_access_level();
-  if (g_config.session_access_level < user_level)
+  if (is_higher_access_level(g_config.session_access_level, user_level))
   {
     /* We always limit the current access level to the maximum allowed user access level. */
     g_config.session_access_level = user_level;

@@ -3,12 +3,6 @@
 
 #include "c.h"
 
-typedef enum AccessLevel
-{
-  ACCESS_DIRECT, /* No protection - access to raw data */
-  ACCESS_PUBLISH /* Publish access level */
-} AccessLevel;
-
 /*
  * Root configuration object.
  */
