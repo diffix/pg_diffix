@@ -52,7 +52,7 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
     return true;
 
   AccessLevel user_level = get_user_access_level();
-  if (*newval < user_level)
+  if (is_higher_access_level(*newval, user_level))
   {
     GUC_check_errmsg_string = "Invalid access level requested for the current session.";
     GUC_check_errdetail_string = "Session access level can't be higher than the user access level.";

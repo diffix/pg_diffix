@@ -1,11 +1,22 @@
 #ifndef PG_DIFFIX_AUTH_H
 #define PG_DIFFIX_AUTH_H
 
-#include "config.h"
-
 #include "access/attnum.h"
 
 extern void auth_init(void);
+
+typedef enum AccessLevel
+{
+  ACCESS_DIRECT, /* No protection - access to raw data */
+  ACCESS_PUBLISH /* Publish access level */
+} AccessLevel;
+
+/* Returns true if the first access level is higher privilege than the second one. */
+static inline bool is_higher_access_level(AccessLevel subject, AccessLevel target)
+{
+  /* The integer values of the access levels are in reverse order to privilege. */
+  return subject < target;
+}
 
 /*
  * Returns the maximum access level for the current user.
