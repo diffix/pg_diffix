@@ -14,10 +14,7 @@ void _PG_fini(void);
 
 void _PG_init(void)
 {
-#ifdef DEBUG
-  static int activation_count = 1;
-  DEBUG_LOG("Activating Diffix extension (%i)...", activation_count++);
-#endif
+  DEBUG_LOG("Activating Diffix extension...");
 
   auth_init();
   config_init();
