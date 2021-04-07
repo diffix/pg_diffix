@@ -12,7 +12,7 @@ REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
 
 PG_CFLAGS := -std=c11 -Wno-declaration-after-statement -Werror-implicit-function-declaration
-ifeq ($(DEBUG),yes)
+ifneq ($(TARGET),release)
 	PG_CFLAGS := $(PG_CFLAGS) -DDEBUG -DUSE_ASSERT_CHECKING
 endif
 
