@@ -43,9 +43,12 @@ static char *config_to_string(DiffixConfig *config)
   return string.data;
 }
 
+static bool g_initializing = false; /* Set to true during config initialization. */
+
 static bool session_access_level_check(int *newval, void **extra, GucSource source)
 {
-  if (process_shared_preload_libraries_in_progress)
+  /* We can't get user access level during initialization when preloading library. */
+  if (g_initializing)
     return true;
 
   AccessLevel user_level = get_user_access_level();
@@ -61,6 +64,8 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
 
 void config_init(void)
 {
+  g_initializing = true;
+
   DefineCustomEnumVariable(
       "pg_diffix.session_access_level",    /* name */
       "Access level for current session.", /* short_desc */
@@ -200,4 +205,6 @@ void config_init(void)
   char *config_str = config_to_string(&g_config);
   DEBUG_LOG("Config %s", config_str);
   pfree(config_str);
+
+  g_initializing = false;
 }
