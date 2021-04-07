@@ -46,8 +46,6 @@ static inline List *scan_table_by_name(
 
 #define FAILWITH_CODE(code, ...) ereport(ERROR, (errcode(code), errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
-#define DEBUG /* TODO: define externally */
-
 #ifdef DEBUG
 
 #define DEBUG_LOG(...) ereport(LOG, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))

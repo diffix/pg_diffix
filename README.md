@@ -6,6 +6,7 @@ The source is compiled with:
 
 ```sh
 $ make
+# or `make DEBUG=yes` for debug logs
 ```
 
 You should already have the `postgresql-server-dev-x` package installed if you have postgres version `x`.
