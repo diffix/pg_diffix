@@ -126,6 +126,7 @@ level for the current user; can be changed by all users; defaults to maximum acc
 the configuration file; can't be read by regular users.
 
 `pg_diffix.noise_sigma` - Default value is 1.0.
+
 `pg_diffix.noise_cutoff` - Default value is 5.0.
 
 #### Low count filter settings
@@ -135,6 +136,9 @@ the configuration file; can't be read by regular users.
 #### Aggregation settings
 
 `pg_diffix.outlier_count_min` - Default value is 1.
+
 `pg_diffix.outlier_count_max` - Default value is 2.
+
 `pg_diffix.top_count_min` - Default value is 4.
+
 `pg_diffix.top_count_max` - Default value is 6.
