@@ -30,9 +30,9 @@ Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
 ## Preloading the extension
 
-To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+To enable automatic activation you need to configure [library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 
-In your `postgresql.conf` file, add `pg_diffix` to `session_preload_libraries`.
+In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
 
 ```
 session_preload_libraries = 'pg_diffix'
@@ -65,3 +65,80 @@ psql -h localhost -p 10432 -d postgres -U postgres
 ```
 
 For more advanced usage see the [official image reference](https://hub.docker.com/_/postgres).
+
+## Configuring the extension
+
+System behaviour can be configured using a combination of custom variables and security labels.
+
+### Labeling database objects
+
+The module acts as a security provider and allows the marking of database objects with various anonymization labels,
+which associate additional metadata, needed for anonymization, with existing objects. For more details about security
+labels, see the official [documentation page](https://www.postgresql.org/docs/current/sql-security-label.html).
+
+Only superusers can set anonymization labels.
+To remove an anonymization label from an object, set it to `NULL`.
+
+Tables, schemas and databases can be labeled as `public` or `sensitive`. Direct access is allowed to public data
+even for restricted users.
+
+If a table targeted by a query is unlabeled, its schema label is checked. If the schema is also unlabeled, the
+database label is checked. If no label was found during this process, the table's data is presumed to be public.
+This provides the necessary flexibility to implement various data access policies.
+
+```sql
+SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON SCHEMA my_schema IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE my_schema.table IS 'public';
+```
+
+Anonymization ID (AID) columns for a sensitive table have to be marked with the anonymization label `aid`. A sensitive
+table can have zero, one or more AID columns.
+
+```SQL
+SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';
+```
+
+Regular users can be marked with the anoymization labels `direct` or `publish`. Superusers can not be labeled and
+always have full access rights to all data. The value of the custom variable `pg_diffix.default_access_level`
+determines the access level for unlabeled regular users.
+
+```SQL
+SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish';
+```
+
+### System settings
+
+The module exposes a bunch of custom variables, under the `pg_diffix` prefix, that can be set in the configuration file
+to control the system behaviour for all users. Superusers can change these variables at run-time for their own session,
+while regular users only have read access to them (with few notable exceptions).
+
+#### Data access settings
+
+`pg_diffix.default_access_level` - Determines the access level for unlabeled users; default value is `direct`.
+
+`pg_diffix.session_access_level` - Sets the access level for the current session; it can never be higher than the access
+level for the current user; can be changed by all users; defaults to maximum access level allowed.
+
+#### Noise settings
+
+`pg_diffix.noise_seed` - Secret seed that influences noise generation; needs to be set by the system administrator in
+the configuration file; can't be read by regular users.
+
+`pg_diffix.noise_sigma` - Default value is 1.0.
+
+`pg_diffix.noise_cutoff` - Default value is 5.0.
+
+#### Low count filter settings
+
+`pg_diffix.minimum_allowed_aids` - Default value is 2.
+
+#### Aggregation settings
+
+`pg_diffix.outlier_count_min` - Default value is 1.
+
+`pg_diffix.outlier_count_max` - Default value is 2.
+
+`pg_diffix.top_count_min` - Default value is 4.
+
+`pg_diffix.top_count_max` - Default value is 6.
