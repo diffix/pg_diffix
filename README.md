@@ -30,9 +30,9 @@ Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
 ## Preloading the extension
 
-To enable automatic activation you need to configure [shared library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+To enable automatic activation you need to configure [library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 
-In your `postgresql.conf` file, add `pg_diffix` to `session_preload_libraries`.
+In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
 
 ```
 session_preload_libraries = 'pg_diffix'
