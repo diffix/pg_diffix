@@ -78,6 +78,8 @@ The demo image extends the base image with a sample dataset and a user configure
 Once started, the container creates and populates the `banking` database. A user named
 `publish` (password `password`) is also created. This user has anonymized access to `banking`.
 
+**Note:** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
+
 ```sh
 # Build the image
 $ make demo-image
