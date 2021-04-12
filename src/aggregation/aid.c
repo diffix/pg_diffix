@@ -18,7 +18,7 @@ static aid_t make_int8_aid(Datum datum)
 
 static aid_t make_text_aid(Datum datum)
 {
-  char *str = text_to_cstring(DatumGetTextPP(datum));
+  char *str = TextDatumGetCString(datum);
   return hash_bytes((unsigned char *)str, strlen(str));
 }
 
@@ -38,6 +38,7 @@ AidDescriptor get_aid_descriptor(Oid aid_type)
     descriptor.make_aid = make_int8_aid;
     break;
   case TEXTOID:
+  case VARCHAROID:
     descriptor.make_aid = make_text_aid;
     descriptor.is_hash = true;
     break;
