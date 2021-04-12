@@ -21,3 +21,9 @@ PGXS := $(shell $(PG_CONFIG) --pgxs)
 
 override with_llvm=no
 include $(PGXS)
+
+image:
+	docker build --target pg_diffix -t pg_diffix .
+
+demo-image:
+	docker build --target pg_diffix_demo -t pg_diffix_demo .

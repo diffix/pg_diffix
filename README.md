@@ -44,15 +44,20 @@ If you have multiple libraries you want to preload, separate them with commas.
 
 Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
 
-## Running Docker image
+## Docker images
 
-We provide a Docker image preconfigured with the extension.
+We provide 2 Docker images preconfigured with the extension.
+
+### Base image
+
+The base image is a standard `postgres` image with `pg_diffix` installed and preloaded.
+It does not include any additional database or user out of the box.
 
 The example below shows how to build the image and run a minimally configured container.
 
 ```sh
 # Build the image
-$ docker build -t pg_diffix .
+$ make image
 
 # Run the container in foreground and expose in port 10432
 $ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
@@ -65,6 +70,24 @@ psql -h localhost -p 10432 -d postgres -U postgres
 ```
 
 For more advanced usage see the [official image reference](https://hub.docker.com/_/postgres).
+
+### Demo image
+
+The demo image extends the base image with a sample dataset and a user configured with `publish` access.
+
+Once started, the container creates and populates the `banking` database. A user named
+`publish` (password `password`) is also created. This user has anonymized access to `banking`.
+
+```sh
+# Build the image
+$ make demo-image
+
+# Run the container in foreground and expose in port 10432
+$ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix_demo
+
+# Connect to the banking database (from another shell)
+$ psql -h localhost -p 10432 -d banking -U publish
+```
 
 ## Configuring the extension
 
