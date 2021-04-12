@@ -3,14 +3,13 @@ FROM postgres:13 AS builder
 RUN set -ex \
   && apt-get update \
   && apt-get install -y build-essential postgresql-server-dev-13 \
-  && mkdir -p /usr/src/pg_diffix \
-  && cd /usr/src/pg_diffix
+  && mkdir -p /usr/src/pg_diffix
 
 WORKDIR /usr/src/pg_diffix
 COPY . .
 RUN make && make install
 
-FROM postgres:13
+FROM postgres:13 as pg_diffix
 
 # Hint that session_preload_libraries should have 'pg_diffix'.
 # This will get copied to the default config on initialization.
@@ -23,9 +22,15 @@ RUN sed -i \
   /usr/share/postgresql/postgresql.conf.sample
 
 # Runs CREATE EXTENSION in POSTGRES_DB.
-COPY init-pg_diffix.sh /docker-entrypoint-initdb.d/init-pg_diffix.sh
+COPY docker/0* /docker-entrypoint-initdb.d/
 
 # Copy artifacts from builder.
 # If LLVM is enabled, there will be other files that need to be copied.
 COPY --from=builder /usr/lib/postgresql/13/lib/pg_diffix.so /usr/lib/postgresql/13/lib/pg_diffix.so
 COPY --from=builder /usr/share/postgresql/13/extension/pg_diffix* /usr/share/postgresql/13/extension/
+
+FROM pg_diffix as pg_diffix_demo
+
+# Copy dataset SQL files.
+COPY docker/1* /docker-entrypoint-initdb.d/
+COPY docker/demo /docker-entrypoint-initdb.d/demo
