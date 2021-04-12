@@ -35,7 +35,6 @@ ALTER TABLE clients ADD CONSTRAINT clients_pkey PRIMARY KEY (client_id);
 --
 SECURITY LABEL FOR pg_diffix ON TABLE dispositions IS 'sensitive';
 
-SECURITY LABEL FOR pg_diffix ON COLUMN dispositions.disp_id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN dispositions.client_id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN dispositions.account_id IS 'aid';
 
