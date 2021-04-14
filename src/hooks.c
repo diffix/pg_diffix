@@ -10,22 +10,17 @@
 #include "pg_diffix/query/validation.h"
 
 /* Hooks type definitions */
-#include "parser/analyze.h"
 #include "optimizer/planner.h"
 #include "executor/executor.h"
 
-post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
 ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
-static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
+static void prepare_query(Query *query)
 {
-  if (prev_post_parse_analyze_hook)
-    prev_post_parse_analyze_hook(pstate, query);
-
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
 
@@ -66,8 +61,9 @@ static PlannedStmt *pg_diffix_planner(
     int cursorOptions,
     ParamListInfo boundParams)
 {
-  PlannedStmt *plan;
+  prepare_query(parse);
 
+  PlannedStmt *plan;
   if (prev_planner_hook)
     plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
   else
@@ -114,9 +110,6 @@ static void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 
 void hooks_init(void)
 {
-  prev_post_parse_analyze_hook = post_parse_analyze_hook;
-  post_parse_analyze_hook = pg_diffix_post_parse_analyze;
-
   prev_planner_hook = planner_hook;
   planner_hook = pg_diffix_planner;
 
@@ -135,7 +128,6 @@ void hooks_init(void)
 
 void hooks_cleanup(void)
 {
-  post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;
   ExecutorStart_hook = prev_ExecutorStart_hook;
   ExecutorRun_hook = prev_ExecutorRun_hook;
