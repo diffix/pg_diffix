@@ -12,12 +12,21 @@ CREATE TABLE test_purchases (cid INTEGER, pid INTEGER);
 INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1),
   (7, 1), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
   (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL);
+CREATE TABLE test_patients (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+INSERT INTO test_patients VALUES
+  (0, NULL, 'Berlin'), (1, 'John', 'Berlin'), (2, 'Alice', 'Berlin'), (3, 'Bob', 'Berlin'), (4, 'Emma', 'Berlin'),
+  (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Emma', 'Rome'), (9, 'Alice', 'Rome'),
+  (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE test_purchases IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 -- Supported queries.
+-- Basic queries.
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
@@ -49,6 +58,14 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     4
 (2 rows)
 
+-- Multi-AID queries.
+SELECT city FROM test_patients GROUP BY 1;
+  city  
+--------
+ Berlin
+(1 row)
+
+-- `JOIN` queries.
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
@@ -78,6 +95,7 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
  Berlin |     9
 (2 rows)
 
+-- Unsupported queries.
 -- Gets rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
 ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.

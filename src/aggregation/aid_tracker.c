@@ -1,7 +1,7 @@
 #include "postgres.h"
 #include "common/hashfn.h"
-#include "utils/elog.h"
 
+#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid_tracker.h"
 
 /*
@@ -17,16 +17,14 @@
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-AidTrackerState *aid_tracker_new(
-    MemoryContext context,
+static AidTrackerState *aid_tracker_new(
     AidDescriptor aid_descriptor,
     uint64 initial_seed)
 {
-  AidTrackerState *state = (AidTrackerState *)
-      MemoryContextAlloc(context, sizeof(AidTrackerState));
+  AidTrackerState *state = (AidTrackerState *)palloc0(sizeof(AidTrackerState));
 
   state->aid_descriptor = aid_descriptor;
-  state->aid_set = AidTracker_create(context, 128, NULL);
+  state->aid_set = AidTracker_create(128, NULL);
   state->aid_seed = initial_seed;
 
   return state;
@@ -42,8 +40,8 @@ void aid_tracker_update(AidTrackerState *state, aid_t aid)
   }
 }
 
-#define STATE_INDEX 0
-#define AID_INDEX 1
+static const int STATE_INDEX = 0;
+static const int AID_INDEX = 1;
 
 AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
 {
@@ -52,8 +50,40 @@ AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
 
   MemoryContext agg_context;
   if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
-    ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
+    FAILWITH("Aggregate called in non-aggregate context");
+
+  /* We want all memory allocations to be done per aggregation node. */
+  MemoryContext old_context = MemoryContextSwitchTo(agg_context);
 
   Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
-  return aid_tracker_new(agg_context, get_aid_descriptor(aid_type), 0);
+  AidTrackerState* tracker = aid_tracker_new(get_aid_descriptor(aid_type), 0);
+
+  MemoryContextSwitchTo(old_context);
+  return tracker;
+}
+
+List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
+{
+  if (!PG_ARGISNULL(STATE_INDEX))
+    return (List *)PG_GETARG_POINTER(STATE_INDEX);
+
+  MemoryContext agg_context;
+  if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
+    FAILWITH("Aggregate called in non-aggregate context");
+
+  Assert(PG_NARGS() > aids_offset);
+
+  /* We want all memory allocations to be done per aggregation node. */
+  MemoryContext old_context = MemoryContextSwitchTo(agg_context);
+
+  List *trackers = NIL;
+  for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
+  {
+    Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, arg_index);
+    AidTrackerState *tracker = aid_tracker_new(get_aid_descriptor(aid_type), 0);
+    trackers = lappend(trackers, tracker);
+  }
+
+  MemoryContextSwitchTo(old_context);
+  return trackers;
 }

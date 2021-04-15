@@ -3,6 +3,7 @@
 
 #include "c.h"
 #include "fmgr.h"
+#include "nodes/pg_list.h"
 
 #include "pg_diffix/aggregation/aid.h"
 
@@ -20,6 +21,7 @@ typedef struct AidTrackerHashEntry
 #define SH_KEY_TYPE aid_t
 #define SH_SCOPE extern
 #define SH_DECLARE
+#define SH_RAW_ALLOCATOR palloc0
 #include "lib/simplehash.h"
 
 typedef struct AidTrackerState
@@ -30,14 +32,6 @@ typedef struct AidTrackerState
 } AidTrackerState;
 
 /*
- * Creates a new empty state.
- */
-extern AidTrackerState *aid_tracker_new(
-    MemoryContext context,
-    AidDescriptor aid_descriptor,
-    uint64 initial_seed);
-
-/*
  * Updates state with an AID.
  */
 extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
@@ -46,5 +40,10 @@ extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
  * Gets or creates the aggregation state from the function arguments.
  */
 extern AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS);
+
+/*
+ * Gets or creates the multi-AID aggregation state from the function arguments.
+ */
+extern List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset);
 
 #endif /* PG_DIFFIX_AID_TRACKER_H */

@@ -9,29 +9,29 @@ GRANT USAGE ON SCHEMA diffix TO PUBLIC;
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.lcf_transfn(internal, anyelement)
+CREATE FUNCTION diffix.lcf_transfn(internal, variadic "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.lcf_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.lcf_finalfn(internal, variadic "any")
 RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.lcf_explain_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.lcf_explain_finalfn(internal, variadic "any")
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix.lcf(anyelement) (
+CREATE AGGREGATE diffix.lcf(variadic "any") (
   sfunc = diffix.lcf_transfn,
   stype = internal,
   finalfunc = diffix.lcf_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE diffix.explain_lcf(anyelement) (
+CREATE AGGREGATE diffix.explain_lcf(variadic "any") (
   sfunc = diffix.lcf_transfn,
   stype = internal,
   finalfunc = diffix.lcf_explain_finalfn,
