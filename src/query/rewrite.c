@@ -31,6 +31,7 @@ static void mark_aid_selected(QueryContext *context);
 
 /* Utils */
 static void inject_aid_arg(Aggref *aggref, QueryContext *context);
+static void append_aid_args(Aggref *aggref, QueryContext *context);
 
 void rewrite_query(QueryContext *context)
 {
@@ -156,7 +157,7 @@ static void add_low_count_filter(QueryContext *context)
   lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
   lcf_agg->location = -1;              /* Unknown location. */
 
-  inject_aid_arg(lcf_agg, context);
+  append_aid_args(lcf_agg, context);
 
   query->havingQual = make_and_qual(query->havingQual, (Node *)lcf_agg);
   query->hasAggs = true;
@@ -335,4 +336,33 @@ static void inject_aid_arg(Aggref *aggref, QueryContext *context)
     TargetEntry *tle = lfirst_node(TargetEntry, lc);
     tle->resno = foreach_current_index(lc) + 1;
   }
+}
+
+static void append_aid_args(Aggref *aggref, QueryContext *context)
+{
+  bool found_any = false;
+
+  ListCell *lcr;
+  foreach (lcr, context->relations)
+  {
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lcr);
+    ListCell *lca;
+    foreach (lca, relation->aids)
+    {
+      AnonymizationID *aid = (AnonymizationID *)lfirst(lca);
+
+      /* Create the AID argument. */
+      Expr *aid_expr = (Expr *)makeVar(relation->index, aid->attnum, aid->atttype, aid->typmod, aid->collid, 0);
+      TargetEntry *aid_entry = makeTargetEntry(aid_expr, list_length(aggref->args) + 1, "aid", false);
+
+      /* Append the AID argument to function's arguments. */
+      aggref->args = lappend(aggref->args, aid_entry);
+      aggref->aggargtypes = lappend_oid(aggref->aggargtypes, aid->atttype);
+
+      found_any = true;
+    }
+  }
+
+  if (!found_any)
+    FAILWITH("No AID found in target relations.");
 }
