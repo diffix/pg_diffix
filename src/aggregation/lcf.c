@@ -61,7 +61,7 @@ Datum lcf_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_BOOL(passes_lcf);
 }
 
-static void append_tracker_info(StringInfoData *string, const AidTrackerState *tracker)
+static void append_tracker_info(StringInfo string, const AidTrackerState *tracker)
 {
   LcfResult result = lcf_calculate_final(tracker);
 
