@@ -2,6 +2,7 @@
 #define PG_DIFFIX_UTILS_H
 
 #include "c.h"
+#include "fmgr.h"
 #include "access/htup.h"
 #include "access/htup_details.h" /* Convenience import for `heap_getattr`. */
 #include "access/tupdesc.h"
@@ -57,5 +58,15 @@ static inline List *scan_table_by_name(
 #define DEBUG_DUMP_NODE(label, node)
 
 #endif
+
+/*-------------------------------------------------------------------------
+ * Aggregation utils
+ *-------------------------------------------------------------------------
+ */
+
+/*
+ * Switches to the aggregation memory context.
+ */
+MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
 
 #endif /* PG_DIFFIX_UTILS_H */
