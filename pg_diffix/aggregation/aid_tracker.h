@@ -21,7 +21,6 @@ typedef struct AidTrackerHashEntry
 #define SH_KEY_TYPE aid_t
 #define SH_SCOPE extern
 #define SH_DECLARE
-#define SH_RAW_ALLOCATOR palloc0
 #include "lib/simplehash.h"
 
 typedef struct AidTrackerState
