@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include "pg_diffix/config.h"
+#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/contribution_tracker.h"
 #include "pg_diffix/aggregation/random.h"
 
@@ -15,12 +16,14 @@ typedef struct CountResult
   uint64 random_seed;
   int64 true_count;
   int64 flattened_count;
-  int64 noisy_count;
   uint32 noisy_outlier_count;
   uint32 noisy_top_count;
+  double noise_sigma;
+  int64 noise;
 } CountResult;
 
-static CountResult count_calculate_final(ContributionTrackerState *state);
+static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
+static int64 count_calculate_final(List *trackers);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -46,6 +49,9 @@ static const ContributionDescriptor count_descriptor = {
 
 static const contribution_t one_contribution = {.integer = 1};
 
+static const int COUNT_AIDS_OFFSET = 1;
+static const int COUNT_ANY_AIDS_OFFSET = 2;
+
 PG_FUNCTION_INFO_V1(anon_count_transfn);
 PG_FUNCTION_INFO_V1(anon_count_finalfn);
 PG_FUNCTION_INFO_V1(anon_count_explain_finalfn);
@@ -56,99 +62,132 @@ PG_FUNCTION_INFO_V1(anon_count_any_explain_finalfn);
 
 Datum anon_count_transfn(PG_FUNCTION_ARGS)
 {
-  ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_AIDS_OFFSET, &count_descriptor);
 
-  if (!PG_ARGISNULL(1))
+  Assert(PG_NARGS() == list_length(trackers) + COUNT_AIDS_OFFSET);
+
+  ListCell *lc;
+  foreach (lc, trackers)
   {
-    aid_t aid = state->aid_descriptor.make_aid(PG_GETARG_DATUM(1));
-    contribution_tracker_update_contribution(state, aid, one_contribution);
+    int aid_index = foreach_current_index(lc) + COUNT_AIDS_OFFSET;
+    if (!PG_ARGISNULL(aid_index))
+    {
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
+      contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
   }
 
-  PG_RETURN_POINTER(state);
+  PG_RETURN_POINTER(trackers);
 }
 
 Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 {
-  ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
 
-  if (!PG_ARGISNULL(1))
+  Assert(PG_NARGS() == list_length(trackers) + COUNT_ANY_AIDS_OFFSET);
+
+  ListCell *lc;
+  foreach (lc, trackers)
   {
-    aid_t aid = state->aid_descriptor.make_aid(PG_GETARG_DATUM(1));
-    if (PG_ARGISNULL(2))
-      contribution_tracker_update_aid(state, aid);
-    else
-      contribution_tracker_update_contribution(state, aid, one_contribution);
+    int aid_index = foreach_current_index(lc) + COUNT_ANY_AIDS_OFFSET;
+    if (!PG_ARGISNULL(aid_index))
+    {
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
+      if (PG_ARGISNULL(1))
+        contribution_tracker_update_aid(tracker, aid);
+      else
+        contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
   }
 
-  PG_RETURN_POINTER(state);
+  PG_RETURN_POINTER(trackers);
 }
 
 Datum anon_count_finalfn(PG_FUNCTION_ARGS)
 {
-  ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
-  CountResult result = count_calculate_final(state);
-  PG_RETURN_INT64(result.noisy_count);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_AIDS_OFFSET, &count_descriptor);
+  PG_RETURN_INT64(count_calculate_final(trackers));
 }
 
 Datum anon_count_any_finalfn(PG_FUNCTION_ARGS)
 {
-  return anon_count_finalfn(fcinfo);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
+  PG_RETURN_INT64(count_calculate_final(trackers));
 }
 
-Datum anon_count_explain_finalfn(PG_FUNCTION_ARGS)
+static void append_tracker_info(StringInfo string, const ContributionTrackerState *tracker)
 {
-  ContributionTrackerState *state = get_aggregate_contribution_tracker(fcinfo, &count_descriptor);
-  CountResult result = count_calculate_final(state);
+  CountResult result = count_calculate_aid_result(tracker);
 
-  StringInfoData string;
-  initStringInfo(&string);
-
-  appendStringInfo(&string, "uniq=%" PRIu32, state->contribution_table->members);
-
-  /* Print only effective part of the seed. */
-  uint16 *random_seed = (uint16 *)(&result.random_seed);
-  appendStringInfo(&string,
-                   ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
-                   random_seed[0], random_seed[1], random_seed[2]);
+  appendStringInfo(string, "uniq=%" PRIu32, tracker->contribution_table->members);
 
   /* Top contributors */
-  uint32 top_length = Min(state->top_contributors_length, state->distinct_contributors);
-  appendStringInfo(&string, "\ntop=[");
+  uint32 top_length = Min(tracker->top_contributors_length, tracker->distinct_contributors);
+  appendStringInfo(string, ", top=[");
 
   for (uint32 i = 0; i < top_length; i++)
   {
-    appendStringInfo(&string, "%" AID_FMT "\u2794%" CONTRIBUTION_INT_FMT,
-                     state->top_contributors[i].aid,
-                     state->top_contributors[i].contribution.integer);
+    appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" AID_FMT,
+                     tracker->top_contributors[i].contribution.integer,
+                     tracker->top_contributors[i].aid);
 
     if (i == result.noisy_outlier_count - 1)
-      appendStringInfo(&string, " | ");
+      appendStringInfo(string, " | ");
     else if (i < top_length - 1)
-      appendStringInfo(&string, ", ");
+      appendStringInfo(string, ", ");
   }
 
-  appendStringInfo(&string, "]");
+  appendStringInfo(string, "]");
 
-  appendStringInfo(&string, "\ntrue=%" PRIi64 ", flat=%" PRIi64 ", final=%" PRIi64,
-                   result.true_count,
-                   result.flattened_count,
-                   result.noisy_count);
+  appendStringInfo(string, ", true=%" PRIi64 ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
+                   result.true_count, result.flattened_count, result.noise, result.noise_sigma);
+
+  /* Print only effective part of the seed. */
+  const uint16 *random_seed = (const uint16 *)(&result.random_seed);
+  appendStringInfo(string,
+                   ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
+                   random_seed[0], random_seed[1], random_seed[2]);
+}
+
+static Datum explain_count_trackers(List *trackers)
+{
+  StringInfoData string;
+  initStringInfo(&string);
+
+  ListCell *lc;
+  foreach (lc, trackers)
+  {
+    if (foreach_current_index(lc) > 0)
+      appendStringInfo(&string, " \n");
+
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    append_tracker_info(&string, tracker);
+  }
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_explain_finalfn(PG_FUNCTION_ARGS)
 {
-  return anon_count_explain_finalfn(fcinfo);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_AIDS_OFFSET, &count_descriptor);
+  return explain_count_trackers(trackers);
 }
 
-static CountResult count_calculate_final(ContributionTrackerState *state)
+Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 {
-  CountResult result;
-  uint64 seed = make_seed(state->aid_seed);
+  List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
+  return explain_count_trackers(trackers);
+}
+
+static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker)
+{
+  CountResult result = {0};
+  uint64 seed = make_seed(tracker->aid_seed);
 
   result.random_seed = seed;
-  result.true_count = state->overall_contribution.integer;
+  result.true_count = tracker->overall_contribution.integer;
 
   /* Determine outlier/top counts. */
   result.noisy_outlier_count = next_uniform_int(
@@ -163,11 +202,11 @@ static CountResult count_calculate_final(ContributionTrackerState *state)
 
   /* Remove outliers from overall count. */
   result.flattened_count = result.true_count;
-  uint32 top_length = Min(state->top_contributors_length, state->distinct_contributors);
+  uint32 top_length = Min(tracker->top_contributors_length, tracker->distinct_contributors);
   uint32 outlier_end_index = Min(top_length, result.noisy_outlier_count);
   for (uint32 i = 0; i < outlier_end_index; i++)
   {
-    result.flattened_count -= state->top_contributors[i].contribution.integer;
+    result.flattened_count -= tracker->top_contributors[i].contribution.integer;
   }
 
   /* Compensate for dropped outliers. */
@@ -179,15 +218,47 @@ static CountResult count_calculate_final(ContributionTrackerState *state)
 
     for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
     {
-      top_contribution += state->top_contributors[i].contribution.integer;
+      top_contribution += tracker->top_contributors[i].contribution.integer;
     }
 
     uint64 outlier_compensation = round((double)top_contribution * result.noisy_outlier_count / actual_top_count);
     result.flattened_count += outlier_compensation;
   }
 
-  /* Apply noise to flattened count. */
-  result.noisy_count = apply_noise(result.flattened_count, &seed);
+  result.noise_sigma = g_config.noise_sigma;
+  result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
 
   return result;
+}
+
+static int64 count_calculate_final(List *trackers)
+{
+  int64 max_flattening = -1;
+  int64 max_flattened_count = 0;
+  double max_noise_sigma = -1.0;
+  int64 noise_with_max_sigma = 0;
+
+  ListCell *lc;
+  foreach (lc, trackers)
+  {
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    CountResult result = count_calculate_aid_result(tracker);
+
+    int64 flattening = result.true_count - result.flattened_count;
+    Assert(flattening >= 0);
+    if (flattening > max_flattening)
+    {
+      max_flattening = flattening;
+      /* Get the largest flattened count from the ones with the maximum flattening. */
+      max_flattened_count = Max(max_flattened_count, result.flattened_count);
+    }
+
+    if (result.noise_sigma > max_noise_sigma)
+    {
+      max_noise_sigma = result.noise_sigma;
+      noise_with_max_sigma = result.noise;
+    }
+  }
+
+  return Max(max_flattened_count + noise_with_max_sigma, 0);
 }

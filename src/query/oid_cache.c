@@ -22,8 +22,8 @@ void oid_cache_init(void)
 
   g_oid_cache.lcf = lookup_function("diffix", "lcf", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.anon_count = lookup_function("diffix", "anon_count", 1, (Oid[]){ANYELEMENTOID});
-  g_oid_cache.anon_count_any = lookup_function("diffix", "anon_count", 2, (Oid[]){ANYELEMENTOID, ANYOID});
+  g_oid_cache.anon_count = lookup_function("diffix", "anon_count", -1, (Oid[]){});
+  g_oid_cache.anon_count_any = lookup_function("diffix", "anon_count_any", -1, (Oid[]){});
 
   g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
 

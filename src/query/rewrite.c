@@ -9,20 +9,6 @@
 #include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/rewrite.h"
 
-/* Returns the first relation that has an AID. Fails the query if none exists. */
-static SensitiveRelation *first_aid_relation(QueryContext *context)
-{
-  ListCell *lc;
-  foreach (lc, context->relations)
-  {
-    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lc);
-    if (relation->aids != NIL)
-      return relation;
-  }
-
-  FAILWITH("No AID found in target relations.");
-}
-
 /* Mutators */
 static void group_and_expand_implicit_buckets(Query *query);
 static Node *aggregate_expression_mutator(Node *node, QueryContext *context);
@@ -30,7 +16,6 @@ static void add_low_count_filter(QueryContext *context);
 static void mark_aid_selected(QueryContext *context);
 
 /* Utils */
-static void inject_aid_arg(Aggref *aggref, QueryContext *context);
 static void append_aid_args(Aggref *aggref, QueryContext *context);
 
 void rewrite_query(QueryContext *context)
@@ -200,7 +185,7 @@ static void rewrite_count(Aggref *aggref, QueryContext *context)
 {
   aggref->aggfnoid = g_oid_cache.anon_count;
   aggref->aggstar = false;
-  inject_aid_arg(aggref, context);
+  append_aid_args(aggref, context);
 }
 
 static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
@@ -220,7 +205,7 @@ static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
 static void rewrite_count_any(Aggref *aggref, QueryContext *context)
 {
   aggref->aggfnoid = g_oid_cache.anon_count_any;
-  inject_aid_arg(aggref, context);
+  append_aid_args(aggref, context);
 }
 
 static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
@@ -285,13 +270,21 @@ static bool mark_aid_selected_walker(Node *node, QueryContext *context)
   else if (IsA(node, RangeTblEntry))
   {
     RangeTblEntry *rte = (RangeTblEntry *)node;
-    SensitiveRelation *relation = first_aid_relation(context);
-    if (rte->relid == relation->oid)
+    ListCell *lcr;
+    foreach (lcr, context->relations)
     {
-      AnonymizationID *aid = (AnonymizationID *)linitial(relation->aids);
-      /* Emulate what the parser does */
-      rte->selectedCols = bms_add_member(
-          rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
+      SensitiveRelation *relation = (SensitiveRelation *)lfirst(lcr);
+      if (rte->relid == relation->oid)
+      {
+        ListCell *lca;
+        foreach (lca, relation->aids)
+        {
+          AnonymizationID *aid = (AnonymizationID *)lfirst(lca);
+          /* Emulate what the parser does */
+          rte->selectedCols = bms_add_member(
+              rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
+        }
+      }
     }
   }
 
@@ -307,36 +300,6 @@ static void mark_aid_selected(QueryContext *context)
  * Utils
  *-------------------------------------------------------------------------
  */
-
-static void inject_aid_arg(Aggref *aggref, QueryContext *context)
-{
-  SensitiveRelation *relation = first_aid_relation(context);
-  AnonymizationID *aid = (AnonymizationID *)linitial(relation->aids);
-
-  /* Insert AID type in front of aggargtypes */
-  aggref->aggargtypes = lcons_oid(aid->atttype, aggref->aggargtypes);
-
-  Expr *aid_expr = (Expr *)makeVar(
-      relation->index, /* varno */
-      aid->attnum,     /* varattno */
-      aid->atttype,    /* vartype */
-      aid->typmod,     /* vartypmod */
-      aid->collid,     /* varcollid */
-      0                /* varlevelsup */
-  );
-  TargetEntry *aid_entry = makeTargetEntry(aid_expr, 1, NULL, false);
-
-  /* Insert AID target entry in front of args */
-  aggref->args = lcons(aid_entry, aggref->args);
-
-  /* Bump resno for all args */
-  ListCell *lc;
-  foreach (lc, aggref->args)
-  {
-    TargetEntry *tle = lfirst_node(TargetEntry, lc);
-    tle->resno = foreach_current_index(lc) + 1;
-  }
-}
 
 static void append_aid_args(Aggref *aggref, QueryContext *context)
 {

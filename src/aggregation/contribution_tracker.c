@@ -3,6 +3,7 @@
 #include "utils/elog.h"
 
 #include "pg_diffix/config.h"
+#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/contribution_tracker.h"
 
 /* ----------------------------------------------------------------
@@ -131,24 +132,21 @@ static void bump_or_add_top_contributor(
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-ContributionTrackerState *contribution_tracker_new(
-    MemoryContext context,
+static ContributionTrackerState *contribution_tracker_new(
     AidDescriptor aid_descriptor,
-    ContributionDescriptor contribution_descriptor,
-    uint64 initial_seed,
+    const ContributionDescriptor *contribution_descriptor,
     uint32 top_contributors_length)
 {
-  ContributionTrackerState *state = (ContributionTrackerState *)MemoryContextAlloc(
-      context,
+  ContributionTrackerState *state = (ContributionTrackerState *)palloc0(
       sizeof(ContributionTrackerState) + top_contributors_length * sizeof(TopContributor));
 
   state->aid_descriptor = aid_descriptor;
-  state->contribution_descriptor = contribution_descriptor;
-  state->contribution_table = ContributionTracker_create(context, 128, NULL);
+  state->contribution_descriptor = *contribution_descriptor;
+  state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 128, NULL);
   state->contributions_count = 0;
   state->distinct_contributors = 0;
-  state->overall_contribution = contribution_descriptor.contribution_initial;
-  state->aid_seed = initial_seed;
+  state->overall_contribution = contribution_descriptor->contribution_initial;
+  state->aid_seed = 0;
   state->top_contributors_length = top_contributors_length;
 
   return state;
@@ -208,25 +206,32 @@ void contribution_tracker_update_contribution(
   bump_or_add_top_contributor(state, top_length, entry->aid, contribution_old, entry->contribution);
 }
 
-#define STATE_INDEX 0
-#define AID_INDEX 1
+static const int STATE_INDEX = 0;
 
-ContributionTrackerState *get_aggregate_contribution_tracker(
+List *get_aggregate_contribution_trackers(
     PG_FUNCTION_ARGS,
+    int aids_offset,
     const ContributionDescriptor *descriptor)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
-    return (ContributionTrackerState *)PG_GETARG_POINTER(STATE_INDEX);
+    return (List *)PG_GETARG_POINTER(STATE_INDEX);
 
-  MemoryContext agg_context;
-  if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
-    ereport(ERROR, (errmsg("Aggregate called in non-aggregate context")));
+  Assert(PG_NARGS() > aids_offset);
 
-  Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
-  return contribution_tracker_new(
-      agg_context,
-      get_aid_descriptor(aid_type),
-      *descriptor,
-      0,
-      g_config.outlier_count_max + g_config.top_count_max);
+  /* We want all memory allocations to be done per aggregation node. */
+  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
+
+  List *trackers = NIL;
+  for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
+  {
+    Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, arg_index);
+    ContributionTrackerState *tracker = contribution_tracker_new(
+        get_aid_descriptor(aid_type),
+        descriptor,
+        g_config.outlier_count_max + g_config.top_count_max);
+    trackers = lappend(trackers, tracker);
+  }
+
+  MemoryContextSwitchTo(old_context);
+  return trackers;
 }
