@@ -24,7 +24,6 @@ typedef struct SensitiveRelation
 {
   Oid namespace_oid; /* Namespace OID */
   Oid oid;           /* Relation OID */
-  Index index;       /* Relation index in query rtable */
   List *aids;        /* AIDs in relation (of type AnonymizationID) */
 } SensitiveRelation;
 
