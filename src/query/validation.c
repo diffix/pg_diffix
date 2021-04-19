@@ -10,13 +10,17 @@
   if (cond)                          \
     FAILWITH("Feature '%s' is not currently supported.", (feature));
 
+static void verify_query(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 
 void verify_anonymization_requirements(QueryContext *context)
 {
-  Query *query = context->query;
+  verify_query(context->query);
+}
 
+static void verify_query(Query *query)
+{
   NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
   NOT_SUPPORTED(query->cteList, "WITH");
   NOT_SUPPORTED(query->hasForUpdate, "FOR [KEY] UPDATE/SHARE");
@@ -27,9 +31,15 @@ void verify_anonymization_requirements(QueryContext *context)
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
-  verify_rtable(query);
-
   verify_aggregators(query);
+  verify_rtable(query);
+}
+
+static void verify_subquery(Query *query)
+{
+  NOT_SUPPORTED(query->groupClause, "grouping in subqueries");
+  NOT_SUPPORTED(query->hasAggs, "aggregates in subqueries");
+  verify_query(query);
 }
 
 static void verify_rtable(Query *query)
@@ -38,7 +48,9 @@ static void verify_rtable(Query *query)
   foreach (lc, query->rtable)
   {
     RangeTblEntry *range_table = lfirst_node(RangeTblEntry, lc);
-    if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
+    if (range_table->rtekind == RTE_SUBQUERY)
+      verify_subquery(range_table->subquery);
+    else if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
       FAILWITH("Unsupported FROM clause.");
   }
 }
@@ -47,9 +59,6 @@ static bool verify_aggregator(Node *node, void *context)
 {
   if (node == NULL)
     return false;
-
-  if (IsA(node, Query))
-    return query_tree_walker((Query *)node, verify_aggregator, context, 0);
 
   if (IsA(node, Aggref))
   {
