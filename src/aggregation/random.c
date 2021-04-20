@@ -13,17 +13,17 @@ static inline double clamp_noise(double noise)
   return fmin(fmax(noise, -g_config.noise_cutoff), g_config.noise_cutoff);
 }
 
-uint64 make_seed(uint64 noise_layer_seed)
+uint64 make_seed(uint64 aid_seed)
 {
   uint64 base_seed = hash_bytes_extended(
       (unsigned char *)g_config.noise_seed,
       strlen(g_config.noise_seed),
       0);
 
-  return hash_combine64(base_seed, noise_layer_seed);
+  return hash_combine64(base_seed, aid_seed);
 }
 
-double next_gaussian_double(uint64 *seed, double stddev)
+double next_gaussian_double(uint64 *seed, double sigma)
 {
   /*
    * Marsaglia polar method
@@ -44,7 +44,7 @@ double next_gaussian_double(uint64 *seed, double stddev)
    * We discard one sample...
    * Needs optimization in case we need to generate multiple numbers.
    */
-  return stddev * v1 * sqrt(-2 * log(s) / s);
+  return sigma * v1 * sqrt(-2 * log(s) / s);
 }
 
 int next_uniform_int(uint64 *seed, int min, int max)
@@ -52,8 +52,7 @@ int next_uniform_int(uint64 *seed, int min, int max)
   return min + pg_erand48((unsigned short *)seed) * (max - min);
 }
 
-int64 apply_noise(int64 value, uint64 *seed)
+double generate_noise(uint64 *seed, double sigma)
 {
-  value += round(clamp_noise(next_gaussian_double(seed, g_config.noise_sigma)));
-  return Max(value, 0);
+  return clamp_noise(next_gaussian_double(seed, sigma));
 }

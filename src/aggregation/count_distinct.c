@@ -65,9 +65,12 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 
 static CountDistinctResult count_distinct_calculate_final(AidTrackerState *state)
 {
-  CountDistinctResult result;
+  CountDistinctResult result = {0};
   uint64 seed = make_seed(state->aid_seed);
+
   result.random_seed = seed;
-  result.noisy_count = apply_noise(state->aid_set->members, &seed);
+  result.noisy_count = state->aid_set->members + (int64)round(generate_noise(&seed, g_config.noise_sigma));
+  result.noisy_count = Max(result.noisy_count, 0);
+
   return result;
 }

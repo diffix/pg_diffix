@@ -100,7 +100,7 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
 
 static LcfResult lcf_calculate_final(const AidTrackerState *tracker)
 {
-  LcfResult result;
+  LcfResult result = {0};
   uint64 seed = make_seed(tracker->aid_seed);
 
   result.random_seed = seed;

@@ -65,6 +65,12 @@ SELECT city FROM test_patients GROUP BY 1;
  Berlin
 (1 row)
 
+SELECT COUNT(*), COUNT(city) FROM test_patients;
+ count | count 
+-------+-------
+    12 |    12
+(1 row)
+
 -- `JOIN` queries.
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;

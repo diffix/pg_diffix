@@ -46,6 +46,7 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 -- Multi-AID queries.
 SELECT city FROM test_patients GROUP BY 1;
+SELECT COUNT(*), COUNT(city) FROM test_patients;
 
 -- `JOIN` queries.
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers

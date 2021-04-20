@@ -3,6 +3,7 @@
 
 #include "c.h"
 #include "fmgr.h"
+#include "nodes/pg_list.h"
 
 #include <inttypes.h>
 
@@ -72,16 +73,6 @@ typedef struct ContributionTrackerState
 } ContributionTrackerState;
 
 /*
- * Creates a new empty state.
- */
-extern ContributionTrackerState *contribution_tracker_new(
-    MemoryContext context,
-    AidDescriptor aid_descriptor,
-    ContributionDescriptor contribution_descriptor,
-    uint64 initial_seed,
-    uint32 top_contributors_length);
-
-/*
  * Updates state with an AID without contribution.
  */
 extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid);
@@ -95,10 +86,11 @@ extern void contribution_tracker_update_contribution(
     contribution_t contribution);
 
 /*
- * Gets or creates the aggregation state from the function arguments.
+ * Gets or creates the multi-AID aggregation state from the function arguments.
  */
-extern ContributionTrackerState *get_aggregate_contribution_tracker(
+extern List *get_aggregate_contribution_trackers(
     PG_FUNCTION_ARGS,
+    int aids_offset,
     const ContributionDescriptor *descriptor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

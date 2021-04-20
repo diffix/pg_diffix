@@ -46,3 +46,12 @@ List *scan_table(Oid rel_oid, MapTupleFunc map_tuple)
 
   return result;
 }
+
+MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS)
+{
+  MemoryContext agg_context;
+  if (AggCheckCallContext(fcinfo, &agg_context) != AGG_CONTEXT_AGGREGATE)
+    FAILWITH("Aggregate called in non-aggregate context");
+
+  return MemoryContextSwitchTo(agg_context);
+}
