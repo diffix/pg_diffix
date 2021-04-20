@@ -119,18 +119,18 @@ void config_init(void)
       NULL);                                              /* show_hook */
 
   DefineCustomRealVariable(
-      "pg_diffix.noise_cutoff",        /* name */
-      "Maximum absolute noise value.", /* short_desc */
-      NULL,                            /* long_desc */
-      &g_config.noise_cutoff,          /* valueAddr */
-      5.0,                             /* bootValue */
-      0,                               /* minValue */
-      1e7,                             /* maxValue */
-      PGC_SUSET,                       /* context */
-      0,                               /* flags */
-      NULL,                            /* check_hook */
-      NULL,                            /* assign_hook */
-      NULL);                           /* show_hook */
+      "pg_diffix.noise_cutoff",                                  /* name */
+      "Factor for noise SD used to limit absolute noise value.", /* short_desc */
+      NULL,                                                      /* long_desc */
+      &g_config.noise_cutoff,                                    /* valueAddr */
+      3.0,                                                       /* bootValue */
+      0,                                                         /* minValue */
+      100,                                                       /* maxValue */
+      PGC_SUSET,                                                 /* context */
+      0,                                                         /* flags */
+      NULL,                                                      /* check_hook */
+      NULL,                                                      /* assign_hook */
+      NULL);                                                     /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.minimum_allowed_aids",                                        /* name */
