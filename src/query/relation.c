@@ -8,7 +8,7 @@
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/query/context.h"
+#include "pg_diffix/query/relation.h"
 
 static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_oid)
 {
@@ -54,7 +54,7 @@ static bool has_relation(List *relations, Oid rel_oid)
   return false;
 }
 
-static bool gather_sensitive_relations(Node *node, List **relations)
+static bool gather_sensitive_relations_walker(Node *node, List **relations)
 {
   if (node == NULL)
     return false;
@@ -75,21 +75,19 @@ static bool gather_sensitive_relations(Node *node, List **relations)
   else if (IsA(node, Query))
   {
     Query *query = (Query *)node;
-    range_table_walker(query->rtable, gather_sensitive_relations, relations, QTW_EXAMINE_RTES_BEFORE);
+    range_table_walker(
+        query->rtable,
+        gather_sensitive_relations_walker,
+        relations,
+        QTW_EXAMINE_RTES_BEFORE);
   }
 
   return false;
 }
 
-QueryContext build_query_context(Query *query)
+List *gather_sensitive_relations(Query *query)
 {
   List *relations = NIL;
-  gather_sensitive_relations((Node *)query, &relations);
-
-  QueryContext context = {
-      .query = query,
-      .relations = relations,
-  };
-
-  return context;
+  gather_sensitive_relations_walker((Node *)query, &relations);
+  return relations;
 }

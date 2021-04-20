@@ -14,9 +14,9 @@ static void verify_query(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 
-void verify_anonymization_requirements(QueryContext *context)
+void verify_anonymization_requirements(Query *query)
 {
-  verify_query(context->query);
+  verify_query(query);
 }
 
 static void verify_query(Query *query)

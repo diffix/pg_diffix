@@ -1,5 +1,5 @@
-#ifndef PG_DIFFIX_CONTEXT_H
-#define PG_DIFFIX_CONTEXT_H
+#ifndef PG_DIFFIX_RELATION_H
+#define PG_DIFFIX_RELATION_H
 
 #include "c.h"
 #include "nodes/parsenodes.h"
@@ -27,15 +27,6 @@ typedef struct SensitiveRelation
   List *aids;        /* AIDs in relation (of type AnonymizationID) */
 } SensitiveRelation;
 
-/*
- * Data needed for validating and rewriting queries.
- */
-typedef struct QueryContext
-{
-  Query *query;    /* Currently executing query */
-  List *relations; /* Sensitive relations in query (of type SensitiveRelation) */
-} QueryContext;
+extern List *gather_sensitive_relations(Query *query);
 
-extern QueryContext build_query_context(Query *query);
-
-#endif /* PG_DIFFIX_CONTEXT_H */
+#endif /* PG_DIFFIX_RELATION_H */
