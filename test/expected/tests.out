@@ -25,8 +25,9 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
--- Supported queries.
+----------------------------------------------------------------
 -- Basic queries.
+----------------------------------------------------------------
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
@@ -58,7 +59,9 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     4
 (2 rows)
 
+----------------------------------------------------------------
 -- Multi-AID queries.
+----------------------------------------------------------------
 SELECT city FROM test_patients GROUP BY 1;
   city  
 --------
@@ -71,7 +74,9 @@ SELECT COUNT(*), COUNT(city) FROM test_patients;
     12 |    12
 (1 row)
 
+----------------------------------------------------------------
 -- `JOIN` queries.
+----------------------------------------------------------------
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
@@ -101,12 +106,9 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
  Berlin |     9
 (2 rows)
 
--- Unsupported queries.
--- Gets rejected because `city` is not the AID.
-SELECT COUNT(DISTINCT city) FROM test_customers;
-ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
-LINE 1: SELECT COUNT(DISTINCT city) FROM test_customers;
-                              ^
+----------------------------------------------------------------
+-- LCF & Filtering.
+----------------------------------------------------------------
 SELECT city FROM test_customers;
   city  
 --------
@@ -134,6 +136,14 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
      0
 (1 row)
 
+----------------------------------------------------------------
+-- Unsupported queries.
+----------------------------------------------------------------
+-- Gets rejected because `city` is not the AID.
+SELECT COUNT(DISTINCT city) FROM test_customers;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
+LINE 1: SELECT COUNT(DISTINCT city) FROM test_customers;
+                              ^
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
