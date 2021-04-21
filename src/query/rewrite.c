@@ -14,8 +14,8 @@ typedef struct AidReference
 {
   SensitiveRelation *relation; /* Source relation of AID */
   AnonymizationID *aid;        /* Column data for AID */
-  Index rte_index;             /* Index in range */
-  AttrNumber attnum;           /* AttrNumber in relation/subquery */
+  Index rte_index;             /* RTE index in query rtable */
+  AttrNumber aid_attnum;       /* AID AttrNumber in relation/subquery */
 } AidReference;
 
 typedef struct QueryContext
@@ -307,7 +307,7 @@ static Expr *make_aid_expr(AidReference *ref)
 {
   return (Expr *)makeVar(
       ref->rte_index,
-      ref->attnum,
+      ref->aid_attnum,
       ref->aid->atttype,
       ref->aid->typmod,
       ref->aid->collid,
@@ -359,7 +359,7 @@ static void gather_relation_aids(
     aid_ref->relation = (SensitiveRelation *)relation;
     aid_ref->aid = aid;
     aid_ref->rte_index = rte_index;
-    aid_ref->attnum = aid->attnum;
+    aid_ref->aid_attnum = aid->attnum;
 
     *aid_references = lappend(*aid_references, aid_ref);
 
@@ -397,7 +397,7 @@ static void gather_subquery_aids(
     parent_aid_ref->relation = child_aid_ref->relation;
     parent_aid_ref->aid = child_aid_ref->aid;
     parent_aid_ref->rte_index = rte_index;
-    parent_aid_ref->attnum = attnum;
+    parent_aid_ref->aid_attnum = attnum;
 
     *aid_references = lappend(*aid_references, parent_aid_ref);
   }
