@@ -7,20 +7,41 @@
 
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
+#include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/rewrite.h"
+
+typedef struct AidReference
+{
+  SensitiveRelation *relation; /* Source relation of AID */
+  AnonymizationID *aid;        /* Column data for AID */
+  Index rte_index;             /* Index in range */
+  AttrNumber attnum;           /* AttrNumber in relation/subquery */
+} AidReference;
+
+typedef struct QueryContext
+{
+  Query *query;         /* Current query/subquery */
+  List *aid_references; /* `AidReference`s in scope */
+  List *child_contexts; /* `QueryContext`s of subqueries */
+} QueryContext;
 
 /* Mutators */
 static void group_and_expand_implicit_buckets(Query *query);
 static Node *aggregate_expression_mutator(Node *node, QueryContext *context);
 static void add_low_count_filter(QueryContext *context);
-static void mark_aid_selected(QueryContext *context);
 
-/* Utils */
+/* AID Utils */
+static QueryContext *build_context(Query *query, List *relations);
 static void append_aid_args(Aggref *aggref, QueryContext *context);
 
-void rewrite_query(QueryContext *context)
+/*-------------------------------------------------------------------------
+ * Public API
+ *-------------------------------------------------------------------------
+ */
+
+void rewrite_query(Query *query, List *sensitive_relations)
 {
-  Query *query = context->query;
+  QueryContext *context = build_context(query, sensitive_relations);
 
   group_and_expand_implicit_buckets(query);
 
@@ -31,8 +52,6 @@ void rewrite_query(QueryContext *context)
       QTW_DONT_COPY_QUERY);
 
   add_low_count_filter(context);
-
-  mark_aid_selected(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
@@ -153,31 +172,58 @@ static void add_low_count_filter(QueryContext *context)
  *-------------------------------------------------------------------------
  */
 
-/* Returns true if the target entry is a direct reference to the AID. */
-static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
+/*
+ * Resolves `rel_oid` and `attnum` if target entry is a simple reference to a table column.
+ * Returns false if target entry is not a simple reference.
+ */
+static bool find_source_column(Query *query, TargetEntry *te, Oid *rel_oid, AttrNumber *attnum)
 {
-  if (!IsA(arg->expr, Var))
+  if (OidIsValid(te->resorigtbl) && AttributeNumberIsValid(te->resorigcol))
+  {
+    *rel_oid = te->resorigtbl;
+    *attnum = te->resorigcol;
+    return true;
+  }
+
+  if (!IsA(te->expr, Var))
     return false;
 
-  Var *var = (Var *)arg->expr;
+  Var *var = (Var *)te->expr;
+  RangeTblEntry *rte = list_nth(query->rtable, var->varno - 1);
 
-  ListCell *rlc;
-  foreach (rlc, context->relations)
+  if (rte->rtekind == RTE_RELATION)
   {
-    SensitiveRelation *relation = (SensitiveRelation *)lfirst(rlc);
-    if (var->varno != relation->index)
-      continue;
-
-    ListCell *alc;
-    foreach (alc, relation->aids)
-    {
-      AnonymizationID *aid = (AnonymizationID *)lfirst(alc);
-      if (var->varattno != aid->attnum)
-        continue;
-      /* We have a variable to the same relation and same attnum as an AID. */
-      return true;
-    }
+    *rel_oid = rte->relid;
+    *attnum = var->varattno;
+    return true;
   }
+  else if (rte->rtekind == RTE_SUBQUERY)
+    return find_source_column(
+        rte->subquery,
+        list_nth(rte->subquery->targetList, var->varattno - 1),
+        rel_oid,
+        attnum);
+  else
+    return false;
+}
+
+/* Returns true if the target entry is an unmodified reference to an AID. */
+static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
+{
+  Oid rel_oid;
+  AttrNumber attnum;
+
+  if (!find_source_column(context->query, arg, &rel_oid, &attnum))
+    return false;
+
+  ListCell *lc;
+  foreach (lc, context->aid_references)
+  {
+    AidReference *aid_ref = (AidReference *)lfirst(lc);
+    if (rel_oid == aid_ref->relation->oid && attnum == aid_ref->aid->attnum)
+      return true;
+  }
+
   return false;
 }
 
@@ -249,81 +295,161 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
 }
 
 /*-------------------------------------------------------------------------
- * RTEs
+ * AID Utils
  *-------------------------------------------------------------------------
  */
 
-static bool mark_aid_selected_walker(Node *node, QueryContext *context)
+static Expr *make_aid_expr(AidReference *ref)
 {
-  if (node == NULL)
-    return false;
+  return (Expr *)makeVar(
+      ref->rte_index,
+      ref->attnum,
+      ref->aid->atttype,
+      ref->aid->typmod,
+      ref->aid->collid,
+      0);
+}
 
-  if (IsA(node, Query))
+static TargetEntry *make_aid_target(AidReference *ref, AttrNumber resno, bool resjunk)
+{
+  TargetEntry *te = makeTargetEntry(
+      make_aid_expr(ref),
+      resno,
+      "aid",
+      resjunk);
+
+  te->resorigtbl = ref->relation->oid;
+  te->resorigcol = ref->aid->attnum;
+
+  return te;
+}
+
+static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
+{
+  ListCell *lc;
+  foreach (lc, relations)
   {
-    Query *query = (Query *)node;
-    return range_table_walker(
-        query->rtable,
-        mark_aid_selected_walker,
-        context,
-        QTW_EXAMINE_RTES_BEFORE);
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lc);
+    if (relation->oid == rel_oid)
+      return relation;
   }
-  else if (IsA(node, RangeTblEntry))
+
+  return NULL;
+}
+
+/*
+ * Adds references targeting AIDs of relation to `aid_references`.
+ */
+static void gather_relation_aids(
+    SensitiveRelation *relation,
+    RangeTblEntry *rte,
+    Index rte_index,
+    List **aid_references)
+{
+  ListCell *lc;
+  foreach (lc, relation->aids)
   {
-    RangeTblEntry *rte = (RangeTblEntry *)node;
-    ListCell *lcr;
-    foreach (lcr, context->relations)
+    AnonymizationID *aid = (AnonymizationID *)lfirst(lc);
+
+    AidReference *aid_ref = palloc(sizeof(AidReference));
+    aid_ref->relation = relation;
+    aid_ref->aid = aid;
+    aid_ref->rte_index = rte_index;
+    aid_ref->attnum = aid->attnum;
+
+    *aid_references = lappend(*aid_references, aid_ref);
+
+    /* Emulate what the parser does */
+    rte->selectedCols = bms_add_member(
+        rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
+  }
+}
+
+/*
+ * Appends AID expressions of the subquery to its target list for use in parent query.
+ * References to the (re-exported) AIDs are added to `aid_references`.
+ */
+static void gather_subquery_aids(
+    QueryContext *child_context,
+    Index rte_index,
+    List **aid_references)
+{
+  Query *subquery = child_context->query;
+  AttrNumber next_attnum = list_length(subquery->targetList) + 1;
+
+  ListCell *lc;
+  foreach (lc, child_context->aid_references)
+  {
+    AidReference *child_aid_ref = (AidReference *)lfirst(lc);
+
+    /* Export AID from subquery */
+    AttrNumber attnum = next_attnum++;
+    subquery->targetList = lappend(
+        subquery->targetList,
+        make_aid_target(child_aid_ref, attnum, true));
+
+    /* Path to AID from parent query */
+    AidReference *parent_aid_ref = palloc(sizeof(AidReference));
+    parent_aid_ref->relation = child_aid_ref->relation;
+    parent_aid_ref->aid = child_aid_ref->aid;
+    parent_aid_ref->rte_index = rte_index;
+    parent_aid_ref->attnum = attnum;
+
+    *aid_references = lappend(*aid_references, parent_aid_ref);
+  }
+}
+
+/*
+ * Collects and prepares AIDs for use in the current query's scope.
+ * Subqueries are rewritten to export all their AIDs.
+ */
+static QueryContext *build_context(Query *query, List *relations)
+{
+  List *aid_references = NIL;
+  List *child_contexts = NIL;
+
+  ListCell *lc;
+  foreach (lc, query->rtable)
+  {
+    RangeTblEntry *rte = (RangeTblEntry *)lfirst(lc);
+    Index rte_index = foreach_current_index(lc) + 1;
+
+    if (rte->rtekind == RTE_RELATION)
     {
-      SensitiveRelation *relation = (SensitiveRelation *)lfirst(lcr);
-      if (rte->relid == relation->oid)
-      {
-        ListCell *lca;
-        foreach (lca, relation->aids)
-        {
-          AnonymizationID *aid = (AnonymizationID *)lfirst(lca);
-          /* Emulate what the parser does */
-          rte->selectedCols = bms_add_member(
-              rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
-        }
-      }
+      SensitiveRelation *relation = find_relation(rte->relid, relations);
+      if (relation != NULL)
+        gather_relation_aids(relation, rte, rte_index, &aid_references);
+    }
+    else if (rte->rtekind == RTE_SUBQUERY)
+    {
+      QueryContext *child_context = build_context(rte->subquery, relations);
+      child_contexts = lappend(child_contexts, child_context);
+      gather_subquery_aids(child_context, rte_index, &aid_references);
     }
   }
 
-  return false;
+  QueryContext *context = palloc(sizeof(QueryContext));
+  context->query = query;
+  context->child_contexts = child_contexts;
+  context->aid_references = aid_references;
+  return context;
 }
-
-static void mark_aid_selected(QueryContext *context)
-{
-  mark_aid_selected_walker((Node *)context->query, context);
-}
-
-/*-------------------------------------------------------------------------
- * Utils
- *-------------------------------------------------------------------------
- */
 
 static void append_aid_args(Aggref *aggref, QueryContext *context)
 {
   bool found_any = false;
 
-  ListCell *lcr;
-  foreach (lcr, context->relations)
+  ListCell *lc;
+  foreach (lc, context->aid_references)
   {
-    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lcr);
-    ListCell *lca;
-    foreach (lca, relation->aids)
-    {
-      AnonymizationID *aid = (AnonymizationID *)lfirst(lca);
+    AidReference *aid_ref = (AidReference *)lfirst(lc);
+    TargetEntry *aid_entry = make_aid_target(aid_ref, list_length(aggref->args) + 1, false);
 
-      /* Create the AID argument. */
-      Expr *aid_expr = (Expr *)makeVar(relation->index, aid->attnum, aid->atttype, aid->typmod, aid->collid, 0);
-      TargetEntry *aid_entry = makeTargetEntry(aid_expr, list_length(aggref->args) + 1, "aid", false);
+    /* Append the AID argument to function's arguments. */
+    aggref->args = lappend(aggref->args, aid_entry);
+    aggref->aggargtypes = lappend_oid(aggref->aggargtypes, aid_ref->aid->atttype);
 
-      /* Append the AID argument to function's arguments. */
-      aggref->args = lappend(aggref->args, aid_entry);
-      aggref->aggargtypes = lappend_oid(aggref->aggargtypes, aid->atttype);
-
-      found_any = true;
-    }
+    found_any = true;
   }
 
   if (!found_any)
