@@ -79,13 +79,53 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 
 ----------------------------------------------------------------
+-- Non-aggregating subqueries.
+----------------------------------------------------------------
+
+-- Reference result
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM test_customers
+) x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM test_customers ) y
+) x;
+
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, 'City: ' || city as user_city
+  FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+
+----------------------------------------------------------------
 -- Unsupported queries.
 ----------------------------------------------------------------
 
--- Gets rejected because `city` is not the AID.
+-- Get rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
+SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_customers ) x;
+
+-- Get rejected because AID is modified.
+SELECT COUNT(DISTINCT id + 1) FROM test_customers;
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
 
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 SELECT MIN(id) + MAX(id) FROM test_customers;
 SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+
+-- Get rejected because aggregating subqueries are not supported.
+SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
+
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM test_customers
+  GROUP BY 1
+) x;

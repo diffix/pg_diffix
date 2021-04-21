@@ -137,12 +137,67 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 (1 row)
 
 ----------------------------------------------------------------
+-- Non-aggregating subqueries.
+----------------------------------------------------------------
+-- Reference result
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
+ count | count | count 
+-------+-------+-------
+    12 |    11 |    14
+(1 row)
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM test_customers
+) x;
+ count | count | count 
+-------+-------+-------
+    12 |    11 |    14
+(1 row)
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM test_customers ) y
+) x;
+ count | count | count 
+-------+-------+-------
+    12 |    11 |    14
+(1 row)
+
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, 'City: ' || city as user_city
+  FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+  user_city   | count | count | count 
+--------------+-------+-------+-------
+ City: Berlin |     8 |     4 |     4
+ City: Rome   |    10 |     5 |     5
+(2 rows)
+
+----------------------------------------------------------------
 -- Unsupported queries.
 ----------------------------------------------------------------
--- Gets rejected because `city` is not the AID.
+-- Get rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
 ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
 LINE 1: SELECT COUNT(DISTINCT city) FROM test_customers;
+                              ^
+SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_customers ) x;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
+LINE 1: SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_c...
+                              ^
+-- Get rejected because AID is modified.
+SELECT COUNT(DISTINCT id + 1) FROM test_customers;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
+LINE 1: SELECT COUNT(DISTINCT id + 1) FROM test_customers;
+                              ^
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
+LINE 1: SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS...
                               ^
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
@@ -157,3 +212,12 @@ SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
 LINE 1: ...LECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH...
                                                              ^
+-- Get rejected because aggregating subqueries are not supported.
+SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
+ERROR:  [PG_DIFFIX] Feature 'aggregates in subqueries' is not currently supported.
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM test_customers
+  GROUP BY 1
+) x;
+ERROR:  [PG_DIFFIX] Feature 'grouping in subqueries' is not currently supported.
