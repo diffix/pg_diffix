@@ -176,7 +176,11 @@ static void add_low_count_filter(QueryContext *context)
  * Resolves `rel_oid` and `attnum` if target entry is a simple reference to a table column.
  * Returns false if target entry is not a simple reference.
  */
-static bool find_source_column(Query *query, TargetEntry *te, Oid *rel_oid, AttrNumber *attnum)
+static bool find_source_column(
+    const Query *query,
+    const TargetEntry *te,
+    Oid *rel_oid,
+    AttrNumber *attnum)
 {
   if (OidIsValid(te->resorigtbl) && AttributeNumberIsValid(te->resorigcol))
   {
@@ -341,9 +345,9 @@ static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
  * Adds references targeting AIDs of relation to `aid_references`.
  */
 static void gather_relation_aids(
-    SensitiveRelation *relation,
+    const SensitiveRelation *relation,
+    const Index rte_index,
     RangeTblEntry *rte,
-    Index rte_index,
     List **aid_references)
 {
   ListCell *lc;
@@ -352,7 +356,7 @@ static void gather_relation_aids(
     AnonymizationID *aid = (AnonymizationID *)lfirst(lc);
 
     AidReference *aid_ref = palloc(sizeof(AidReference));
-    aid_ref->relation = relation;
+    aid_ref->relation = (SensitiveRelation *)relation;
     aid_ref->aid = aid;
     aid_ref->rte_index = rte_index;
     aid_ref->attnum = aid->attnum;
@@ -370,8 +374,8 @@ static void gather_relation_aids(
  * References to the (re-exported) AIDs are added to `aid_references`.
  */
 static void gather_subquery_aids(
-    QueryContext *child_context,
-    Index rte_index,
+    const QueryContext *child_context,
+    const Index rte_index,
     List **aid_references)
 {
   Query *subquery = child_context->query;
@@ -418,7 +422,7 @@ static QueryContext *build_context(Query *query, List *relations)
     {
       SensitiveRelation *relation = find_relation(rte->relid, relations);
       if (relation != NULL)
-        gather_relation_aids(relation, rte, rte_index, &aid_references);
+        gather_relation_aids(relation, rte_index, rte, &aid_references);
     }
     else if (rte->rtekind == RTE_SUBQUERY)
     {
