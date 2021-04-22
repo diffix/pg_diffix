@@ -15,7 +15,7 @@ static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_o
   SensitiveRelation *sensitive_rel = palloc(sizeof(SensitiveRelation));
   sensitive_rel->namespace_oid = namespace_oid;
   sensitive_rel->oid = rel_oid;
-  sensitive_rel->aids = NIL;
+  sensitive_rel->aid_columns = NIL;
 
   Relation rel = table_open(rel_oid, AccessShareLock);
   TupleDesc rel_desc = RelationGetDescr(rel);
@@ -26,13 +26,13 @@ static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_o
 
     if (is_aid_column(rel_oid, att->attnum))
     {
-      AnonymizationID *aid = palloc(sizeof(AnonymizationID));
-      aid->attnum = att->attnum;
-      aid->atttype = att->atttypid;
-      aid->typmod = att->atttypmod;
-      aid->collid = att->attcollation;
+      AidColumn *aid_col = palloc(sizeof(AidColumn));
+      aid_col->attnum = att->attnum;
+      aid_col->atttype = att->atttypid;
+      aid_col->typmod = att->atttypmod;
+      aid_col->collid = att->attcollation;
 
-      sensitive_rel->aids = lappend(sensitive_rel->aids, aid);
+      sensitive_rel->aid_columns = lappend(sensitive_rel->aid_columns, aid_col);
     }
   }
 
