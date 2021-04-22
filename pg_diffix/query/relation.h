@@ -7,15 +7,15 @@
 #include "access/attnum.h"
 
 /*
- * Data for an anonymization ID.
+ * Data for an Anonymization ID column.
  */
-typedef struct AnonymizationID
+typedef struct AidColumn
 {
   AttrNumber attnum; /* AID column AttNumber */
   Oid atttype;       /* AID column type OID */
   int32 typmod;      /* AID pg_attribute typmod value */
   Oid collid;        /* AID collation */
-} AnonymizationID;
+} AidColumn;
 
 /*
  * Data for a sensitive relation.
@@ -24,7 +24,7 @@ typedef struct SensitiveRelation
 {
   Oid namespace_oid; /* Namespace OID */
   Oid oid;           /* Relation OID */
-  List *aids;        /* AIDs in relation (of type AnonymizationID) */
+  List *aid_columns; /* AID columns in relation (of type AidColumn) */
 } SensitiveRelation;
 
 extern List *gather_sensitive_relations(Query *query);

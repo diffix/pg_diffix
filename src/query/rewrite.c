@@ -13,7 +13,7 @@
 typedef struct AidReference
 {
   const SensitiveRelation *relation; /* Source relation of AID */
-  const AnonymizationID *aid;        /* Column data for AID */
+  const AidColumn *aid_column;       /* Column data for AID */
   Index rte_index;                   /* RTE index in query rtable */
   AttrNumber aid_attnum;             /* AID AttrNumber in relation/subquery */
 } AidReference;
@@ -224,7 +224,7 @@ static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
   foreach (lc, context->aid_references)
   {
     AidReference *aid_ref = (AidReference *)lfirst(lc);
-    if (rel_oid == aid_ref->relation->oid && attnum == aid_ref->aid->attnum)
+    if (rel_oid == aid_ref->relation->oid && attnum == aid_ref->aid_column->attnum)
       return true;
   }
 
@@ -308,9 +308,9 @@ static Expr *make_aid_expr(AidReference *ref)
   return (Expr *)makeVar(
       ref->rte_index,
       ref->aid_attnum,
-      ref->aid->atttype,
-      ref->aid->typmod,
-      ref->aid->collid,
+      ref->aid_column->atttype,
+      ref->aid_column->typmod,
+      ref->aid_column->collid,
       0);
 }
 
@@ -323,7 +323,7 @@ static TargetEntry *make_aid_target(AidReference *ref, AttrNumber resno, bool re
       resjunk);
 
   te->resorigtbl = ref->relation->oid;
-  te->resorigcol = ref->aid->attnum;
+  te->resorigcol = ref->aid_column->attnum;
 
   return te;
 }
@@ -351,21 +351,21 @@ static void gather_relation_aids(
     List **aid_references)
 {
   ListCell *lc;
-  foreach (lc, relation->aids)
+  foreach (lc, relation->aid_columns)
   {
-    AnonymizationID *aid = (AnonymizationID *)lfirst(lc);
+    AidColumn *aid_col = (AidColumn *)lfirst(lc);
 
     AidReference *aid_ref = palloc(sizeof(AidReference));
     aid_ref->relation = relation;
-    aid_ref->aid = aid;
+    aid_ref->aid_column = aid_col;
     aid_ref->rte_index = rte_index;
-    aid_ref->aid_attnum = aid->attnum;
+    aid_ref->aid_attnum = aid_col->attnum;
 
     *aid_references = lappend(*aid_references, aid_ref);
 
     /* Emulate what the parser does */
     rte->selectedCols = bms_add_member(
-        rte->selectedCols, aid->attnum - FirstLowInvalidHeapAttributeNumber);
+        rte->selectedCols, aid_col->attnum - FirstLowInvalidHeapAttributeNumber);
   }
 }
 
@@ -395,7 +395,7 @@ static void gather_subquery_aids(
     /* Path to AID from parent query */
     AidReference *parent_aid_ref = palloc(sizeof(AidReference));
     parent_aid_ref->relation = child_aid_ref->relation;
-    parent_aid_ref->aid = child_aid_ref->aid;
+    parent_aid_ref->aid_column = child_aid_ref->aid_column;
     parent_aid_ref->rte_index = rte_index;
     parent_aid_ref->aid_attnum = attnum;
 
@@ -451,7 +451,7 @@ static void append_aid_args(Aggref *aggref, QueryContext *context)
 
     /* Append the AID argument to function's arguments. */
     aggref->args = lappend(aggref->args, aid_entry);
-    aggref->aggargtypes = lappend_oid(aggref->aggargtypes, aid_ref->aid->atttype);
+    aggref->aggargtypes = lappend_oid(aggref->aggargtypes, aid_ref->aid_column->atttype);
 
     found_any = true;
   }
