@@ -1,11 +1,11 @@
 #ifndef PG_DIFFIX_REWRITE_H
 #define PG_DIFFIX_REWRITE_H
 
-#include "pg_diffix/query/context.h"
+#include "nodes/parsenodes.h"
 
 /*
  * Rewrites a regular query to an anonymizing query.
  */
-void rewrite_query(QueryContext *context);
+extern void rewrite_query(Query *query, List *sensitive_relations);
 
 #endif /* PG_DIFFIX_REWRITE_H */

@@ -6,6 +6,7 @@
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
+#include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/rewrite.h"
 #include "pg_diffix/query/validation.h"
 
@@ -31,10 +32,10 @@ static void prepare_query(Query *query)
     return;
   }
 
-  QueryContext context = build_query_context(query);
+  List *sensitive_relations = gather_sensitive_relations(query);
 
   /* A query requires anonymization if it targets sensitive relations. */
-  if (context.relations == NIL)
+  if (sensitive_relations == NIL)
   {
     DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
     return;
@@ -47,9 +48,9 @@ static void prepare_query(Query *query)
   oid_cache_init();
 
   /* Halts execution if requirements are not met. */
-  verify_anonymization_requirements(&context);
+  verify_anonymization_requirements(query);
 
-  rewrite_query(&context);
+  rewrite_query(query, sensitive_relations);
 
   /* Print rewritten query. */
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));

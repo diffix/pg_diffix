@@ -32,9 +32,10 @@ SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 
--- Supported queries.
-
+----------------------------------------------------------------
 -- Basic queries.
+----------------------------------------------------------------
+
 SELECT COUNT(*) FROM test_customers;
 SELECT COUNT(*) FROM test_purchases;
 
@@ -44,11 +45,18 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+----------------------------------------------------------------
 -- Multi-AID queries.
+----------------------------------------------------------------
+
 SELECT city FROM test_patients GROUP BY 1;
+
 SELECT COUNT(*), COUNT(city) FROM test_patients;
 
+----------------------------------------------------------------
 -- `JOIN` queries.
+----------------------------------------------------------------
+
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
 
@@ -57,12 +65,12 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
+
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 
--- Unsupported queries.
-
--- Gets rejected because `city` is not the AID.
-SELECT COUNT(DISTINCT city) FROM test_customers;
+----------------------------------------------------------------
+-- LCF & Filtering.
+----------------------------------------------------------------
 
 SELECT city FROM test_customers;
 
@@ -70,7 +78,54 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 
+----------------------------------------------------------------
+-- Non-aggregating subqueries.
+----------------------------------------------------------------
+
+-- Reference result
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM test_customers
+) x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM test_customers ) y
+) x;
+
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, 'City: ' || city as user_city
+  FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+
+----------------------------------------------------------------
+-- Unsupported queries.
+----------------------------------------------------------------
+
+-- Get rejected because `city` is not the AID.
+SELECT COUNT(DISTINCT city) FROM test_customers;
+SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_customers ) x;
+
+-- Get rejected because AID is modified.
+SELECT COUNT(DISTINCT id + 1) FROM test_customers;
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 SELECT MIN(id) + MAX(id) FROM test_customers;
 SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+
+-- Get rejected because aggregating subqueries are not supported.
+SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
+
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM test_customers
+  GROUP BY 1
+) x;
