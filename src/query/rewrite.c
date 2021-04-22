@@ -12,10 +12,10 @@
 
 typedef struct AidReference
 {
-  SensitiveRelation *relation; /* Source relation of AID */
-  AnonymizationID *aid;        /* Column data for AID */
-  Index rte_index;             /* RTE index in query rtable */
-  AttrNumber aid_attnum;       /* AID AttrNumber in relation/subquery */
+  const SensitiveRelation *relation; /* Source relation of AID */
+  const AnonymizationID *aid;        /* Column data for AID */
+  Index rte_index;                   /* RTE index in query rtable */
+  AttrNumber aid_attnum;             /* AID AttrNumber in relation/subquery */
 } AidReference;
 
 typedef struct QueryContext
@@ -346,7 +346,7 @@ static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
  */
 static void gather_relation_aids(
     const SensitiveRelation *relation,
-    const Index rte_index,
+    Index rte_index,
     RangeTblEntry *rte,
     List **aid_references)
 {
@@ -356,7 +356,7 @@ static void gather_relation_aids(
     AnonymizationID *aid = (AnonymizationID *)lfirst(lc);
 
     AidReference *aid_ref = palloc(sizeof(AidReference));
-    aid_ref->relation = (SensitiveRelation *)relation;
+    aid_ref->relation = relation;
     aid_ref->aid = aid;
     aid_ref->rte_index = rte_index;
     aid_ref->aid_attnum = aid->attnum;
@@ -375,7 +375,7 @@ static void gather_relation_aids(
  */
 static void gather_subquery_aids(
     const QueryContext *child_context,
-    const Index rte_index,
+    Index rte_index,
     List **aid_references)
 {
   Query *subquery = child_context->query;
