@@ -5,6 +5,16 @@ CREATE SCHEMA diffix;
 GRANT USAGE ON SCHEMA diffix TO PUBLIC;
 
 /* ----------------------------------------------------------------
+ * Utilities
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION diffix.access_level()
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+/* ----------------------------------------------------------------
  * lcf(aids...)
  * ----------------------------------------------------------------
  */

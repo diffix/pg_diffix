@@ -1,6 +1,8 @@
 #include "postgres.h"
+#include "fmgr.h"
 #include "miscadmin.h"
 #include "utils/acl.h"
+#include "utils/builtins.h"
 
 /* Security labels type definitions */
 #include "commands/seclabel.h"
@@ -159,4 +161,29 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
   }
 
   FAIL_ON_INVALID_LABEL(seclabel);
+}
+
+static char *level_to_string(AccessLevel level)
+{
+  switch (level)
+  {
+  case ACCESS_DIRECT:
+    return "direct";
+  case ACCESS_PUBLISH:
+    return "publish";
+  default:
+    return NULL;
+  }
+}
+
+PG_FUNCTION_INFO_V1(access_level);
+
+Datum access_level(PG_FUNCTION_ARGS)
+{
+  AccessLevel level = get_session_access_level();
+  char *str = level_to_string(level);
+  if (str != NULL)
+    PG_RETURN_TEXT_P(cstring_to_text(str));
+  else
+    PG_RETURN_NULL();
 }

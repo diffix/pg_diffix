@@ -33,7 +33,13 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 
 ----------------------------------------------------------------
--- Basic queries.
+-- Utilities
+----------------------------------------------------------------
+
+SELECT diffix.access_level();
+
+----------------------------------------------------------------
+-- Basic queries
 ----------------------------------------------------------------
 
 SELECT COUNT(*) FROM test_customers;
@@ -46,7 +52,7 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
--- Multi-AID queries.
+-- Multi-AID queries
 ----------------------------------------------------------------
 
 SELECT city FROM test_patients GROUP BY 1;
@@ -54,7 +60,7 @@ SELECT city FROM test_patients GROUP BY 1;
 SELECT COUNT(*), COUNT(city) FROM test_patients;
 
 ----------------------------------------------------------------
--- `JOIN` queries.
+-- `JOIN` queries
 ----------------------------------------------------------------
 
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
@@ -69,7 +75,7 @@ SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
--- LCF & Filtering.
+-- LCF & Filtering
 ----------------------------------------------------------------
 
 SELECT city FROM test_customers;
@@ -79,7 +85,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 
 ----------------------------------------------------------------
--- Non-aggregating subqueries.
+-- Non-aggregating subqueries
 ----------------------------------------------------------------
 
 -- Reference result
@@ -105,7 +111,7 @@ FROM (
 GROUP BY 1;
 
 ----------------------------------------------------------------
--- Unsupported queries.
+-- Unsupported queries
 ----------------------------------------------------------------
 
 -- Get rejected because `city` is not the AID.
