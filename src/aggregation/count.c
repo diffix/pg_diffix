@@ -212,6 +212,7 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
   /* Compensate for dropped outliers. */
   uint32 top_end_index = Min(top_length, result.noisy_outlier_count + result.noisy_top_count);
   uint32 actual_top_count = top_end_index - result.noisy_outlier_count;
+  double top_average = 0.0;
   if (actual_top_count > 0)
   {
     uint64 top_contribution = 0;
@@ -221,11 +222,13 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       top_contribution += tracker->top_contributors[i].contribution.integer;
     }
 
-    uint64 outlier_compensation = round((double)top_contribution * result.noisy_outlier_count / actual_top_count);
+    top_average = top_contribution / (double)actual_top_count;
+    uint64 outlier_compensation = round(top_average * result.noisy_outlier_count);
     result.flattened_count += outlier_compensation;
   }
 
-  result.noise_sigma = g_config.noise_sigma;
+  double average = result.flattened_count / (double)tracker->distinct_contributors;
+  result.noise_sigma = g_config.noise_sigma * Max(average, 0.5 * top_average);
   result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
 
   return result;

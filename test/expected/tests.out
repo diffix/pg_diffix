@@ -36,7 +36,7 @@ SELECT COUNT(*) FROM test_customers;
 SELECT COUNT(*) FROM test_purchases;
  count 
 -------
-    25
+    23
 (1 row)
 
 SELECT COUNT(city) FROM test_customers;
@@ -68,7 +68,7 @@ SELECT city FROM test_patients GROUP BY 1;
 SELECT COUNT(*), COUNT(city) FROM test_patients;
  count | count 
 -------+-------
-    12 |    12
+    11 |    11
 (1 row)
 
 -- `JOIN` queries.
@@ -76,7 +76,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    25 |    14 |    14
+    23 |    14 |    14
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -84,21 +84,21 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
  count | count 
 -------+-------
-    22 |    21
+    21 |    20
 (1 row)
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    13
- Berlin |     9
+ Berlin |     7
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    13
- Berlin |     9
+ Berlin |     7
 (2 rows)
 
 -- Unsupported queries.

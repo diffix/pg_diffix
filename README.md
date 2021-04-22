@@ -150,13 +150,14 @@ level for the current user; can be changed by all users; defaults to maximum acc
 `pg_diffix.noise_seed` - Secret seed that influences noise generation; needs to be set by the system administrator in
 the configuration file; can't be read by regular users.
 
-`pg_diffix.noise_sigma` - Default value is 1.0.
+`pg_diffix.noise_sigma` - Standard deviation of noise added to aggregates. Default value is 1.0.
 
-`pg_diffix.noise_cutoff` - Default value is 5.0.
+`pg_diffix.noise_cutoff` - Factor for noise SD used to limit absolute noise value. Default value is 3.0.
 
 #### Low count filter settings
 
-`pg_diffix.minimum_allowed_aids` - Default value is 2.
+`pg_diffix.minimum_allowed_aids` - The minimum number of distinct AIDs that can be in a reported bucket.
+Default value is 2.
 
 #### Aggregation settings
 
