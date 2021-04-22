@@ -26,7 +26,16 @@ SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 ----------------------------------------------------------------
--- Basic queries.
+-- Utilities
+----------------------------------------------------------------
+SELECT diffix.access_level();
+ access_level 
+--------------
+ publish
+(1 row)
+
+----------------------------------------------------------------
+-- Basic queries
 ----------------------------------------------------------------
 SELECT COUNT(*) FROM test_customers;
  count 
@@ -60,7 +69,7 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 (2 rows)
 
 ----------------------------------------------------------------
--- Multi-AID queries.
+-- Multi-AID queries
 ----------------------------------------------------------------
 SELECT city FROM test_patients GROUP BY 1;
   city  
@@ -75,7 +84,7 @@ SELECT COUNT(*), COUNT(city) FROM test_patients;
 (1 row)
 
 ----------------------------------------------------------------
--- `JOIN` queries.
+-- `JOIN` queries
 ----------------------------------------------------------------
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
@@ -107,7 +116,7 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 (2 rows)
 
 ----------------------------------------------------------------
--- LCF & Filtering.
+-- LCF & Filtering
 ----------------------------------------------------------------
 SELECT city FROM test_customers;
   city  
@@ -137,7 +146,7 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 (1 row)
 
 ----------------------------------------------------------------
--- Non-aggregating subqueries.
+-- Non-aggregating subqueries
 ----------------------------------------------------------------
 -- Reference result
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
@@ -174,12 +183,12 @@ FROM (
 GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
- City: Berlin |     8 |     4 |     4
+ City: Berlin |     7 |     4 |     4
  City: Rome   |    10 |     5 |     5
 (2 rows)
 
 ----------------------------------------------------------------
--- Unsupported queries.
+-- Unsupported queries
 ----------------------------------------------------------------
 -- Get rejected because `city` is not the AID.
 SELECT COUNT(DISTINCT city) FROM test_customers;
