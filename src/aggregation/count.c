@@ -20,10 +20,11 @@ typedef struct CountResult
   uint32 noisy_top_count;
   double noise_sigma;
   int64 noise;
+  bool low_count;
 } CountResult;
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
-static int64 count_calculate_final(List *trackers);
+static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -108,13 +109,13 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 Datum anon_count_finalfn(PG_FUNCTION_ARGS)
 {
   List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_AIDS_OFFSET, &count_descriptor);
-  PG_RETURN_INT64(count_calculate_final(trackers));
+  return count_calculate_final(fcinfo, trackers);
 }
 
 Datum anon_count_any_finalfn(PG_FUNCTION_ARGS)
 {
   List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
-  PG_RETURN_INT64(count_calculate_final(trackers));
+  return count_calculate_final(fcinfo, trackers);
 }
 
 static void append_tracker_info(StringInfo string, const ContributionTrackerState *tracker)
@@ -141,8 +142,13 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
 
   appendStringInfo(string, "]");
 
-  appendStringInfo(string, ", true=%" PRIi64 ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
-                   result.true_count, result.flattened_count, result.noise, result.noise_sigma);
+  appendStringInfo(string, ", true=%" PRIi64, result.true_count);
+
+  if (result.low_count)
+    appendStringInfo(string, ", insufficient AIDs");
+  else
+    appendStringInfo(string, ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
+                     result.flattened_count, result.noise, result.noise_sigma);
 
   /* Print only effective part of the seed. */
   const uint16 *random_seed = (const uint16 *)(&result.random_seed);
@@ -200,32 +206,26 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       g_config.top_count_min,
       g_config.top_count_max + 1);
 
+  uint32 top_contributors_count = Min(tracker->top_contributors_length, tracker->distinct_contributors);
+  uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
+
+  result.low_count = top_end_index > top_contributors_count;
+  if (result.low_count)
+    return result;
+
   /* Remove outliers from overall count. */
   result.flattened_count = result.true_count;
-  uint32 top_length = Min(tracker->top_contributors_length, tracker->distinct_contributors);
-  uint32 outlier_end_index = Min(top_length, result.noisy_outlier_count);
-  for (uint32 i = 0; i < outlier_end_index; i++)
-  {
+  for (uint32 i = 0; i < result.noisy_outlier_count; i++)
     result.flattened_count -= tracker->top_contributors[i].contribution.integer;
-  }
+
+  /* Compute average of top values. */
+  uint64 top_contribution = 0;
+  for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
+    top_contribution += tracker->top_contributors[i].contribution.integer;
+  double top_average = top_contribution / (double)result.noisy_top_count;
 
   /* Compensate for dropped outliers. */
-  uint32 top_end_index = Min(top_length, result.noisy_outlier_count + result.noisy_top_count);
-  uint32 actual_top_count = top_end_index - result.noisy_outlier_count;
-  double top_average = 0.0;
-  if (actual_top_count > 0)
-  {
-    uint64 top_contribution = 0;
-
-    for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
-    {
-      top_contribution += tracker->top_contributors[i].contribution.integer;
-    }
-
-    top_average = top_contribution / (double)actual_top_count;
-    uint64 outlier_compensation = round(top_average * result.noisy_outlier_count);
-    result.flattened_count += outlier_compensation;
-  }
+  result.flattened_count += (int64)round(top_average * result.noisy_outlier_count);
 
   double average = result.flattened_count / (double)tracker->distinct_contributors;
   result.noise_sigma = g_config.noise_sigma * Max(average, 0.5 * top_average);
@@ -234,7 +234,7 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
   return result;
 }
 
-static int64 count_calculate_final(List *trackers)
+static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
   int64 max_flattening = -1;
   int64 max_flattened_count = 0;
@@ -246,6 +246,9 @@ static int64 count_calculate_final(List *trackers)
   {
     ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
     CountResult result = count_calculate_aid_result(tracker);
+
+    if (result.low_count)
+      PG_RETURN_NULL();
 
     int64 flattening = result.true_count - result.flattened_count;
     Assert(flattening >= 0);
@@ -263,5 +266,5 @@ static int64 count_calculate_final(List *trackers)
     }
   }
 
-  return Max(max_flattened_count + noise_with_max_sigma, 0);
+  PG_RETURN_INT64(Max(max_flattened_count + noise_with_max_sigma, 0));
 }
