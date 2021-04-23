@@ -7,7 +7,8 @@ SET pg_diffix.session_access_level = 'publish';
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT);
 INSERT INTO test_customers VALUES
   (0, NULL), (1, 'Berlin'), (2, 'Berlin'), (3, 'Rome'), (4, 'London'), (5, 'Berlin'), (6, 'Rome'),
-  (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome');
+  (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome'),
+  (14, 'Berlin'), (15, 'Berlin');
 
 CREATE TABLE test_products (id INTEGER PRIMARY KEY, name TEXT, price REAL);
 INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5), (2, 'Car', 100.0);
@@ -20,7 +21,7 @@ INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1)
 CREATE TABLE test_patients (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
 INSERT INTO test_patients VALUES
   (0, NULL, 'Berlin'), (1, 'John', 'Berlin'), (2, 'Alice', 'Berlin'), (3, 'Bob', 'Berlin'), (4, 'Emma', 'Berlin'),
-  (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Emma', 'Rome'), (9, 'Alice', 'Rome'),
+  (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 
 -- Config tables.
