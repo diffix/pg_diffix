@@ -15,7 +15,7 @@ typedef struct DiffixConfig
   double noise_sigma;
   double noise_cutoff;
 
-  int minimum_allowed_aids;
+  int minimum_allowed_aid_values;
 
   int outlier_count_min;
   int outlier_count_max;
