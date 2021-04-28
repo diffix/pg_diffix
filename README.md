@@ -156,7 +156,7 @@ the configuration file; can't be read by regular users.
 
 #### Low count filter settings
 
-`pg_diffix.minimum_allowed_aids` - The minimum number of distinct AIDs that can be in a reported bucket.
+`pg_diffix.minimum_allowed_aid_values` - The minimum number of distinct AID values that can be in a reported bucket.
 Default value is 2.
 
 #### Aggregation settings
