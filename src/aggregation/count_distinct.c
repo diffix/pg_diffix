@@ -1,9 +1,8 @@
 #include "postgres.h"
 #include "fmgr.h"
-#include "utils/datum.h"
-#include "nodes/pg_list.h"
 #include "lib/stringinfo.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"
 #include "utils/lsyscache.h"
 
 #include <math.h>
