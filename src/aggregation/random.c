@@ -57,3 +57,12 @@ double generate_noise(uint64 *seed, double sigma)
 {
   return clamp_noise(next_gaussian_double(seed, sigma), sigma);
 }
+
+int generate_lcf_threshold(uint64 *seed)
+{
+  /* Pick an integer in interval [min, min + LCF_RANGE]. */
+  return next_uniform_int(
+      seed,
+      g_config.minimum_allowed_aid_values,
+      g_config.minimum_allowed_aid_values + LCF_RANGE + 1); /* +1 because max is exclusive. */
+}

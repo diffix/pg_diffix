@@ -46,7 +46,7 @@ SELECT diffix.access_level();
 SELECT COUNT(*) FROM test_customers;
 SELECT COUNT(*) FROM test_purchases;
 
-SELECT COUNT(city) FROM test_customers;
+SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
@@ -58,7 +58,7 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 SELECT city FROM test_patients GROUP BY 1;
 
-SELECT COUNT(*), COUNT(city) FROM test_patients;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 
 ----------------------------------------------------------------
 -- `JOIN` queries
@@ -115,12 +115,7 @@ GROUP BY 1;
 -- Unsupported queries
 ----------------------------------------------------------------
 
--- Get rejected because `city` is not the AID.
-SELECT COUNT(DISTINCT city) FROM test_customers;
-SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_customers ) x;
-
 -- Get rejected because AID is modified.
-SELECT COUNT(DISTINCT id + 1) FROM test_customers;
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
 
 -- Get rejected because aggregators are unsupported.

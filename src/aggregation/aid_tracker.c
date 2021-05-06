@@ -41,22 +41,6 @@ void aid_tracker_update(AidTrackerState *state, aid_t aid)
 }
 
 static const int STATE_INDEX = 0;
-static const int AID_INDEX = 1;
-
-AidTrackerState *get_aggregate_aid_tracker(PG_FUNCTION_ARGS)
-{
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (AidTrackerState *)PG_GETARG_POINTER(STATE_INDEX);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
-
-  Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, AID_INDEX);
-  AidTrackerState *tracker = aid_tracker_new(get_aid_descriptor(aid_type), 0);
-
-  MemoryContextSwitchTo(old_context);
-  return tracker;
-}
 
 List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
 {

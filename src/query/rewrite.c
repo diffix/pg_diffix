@@ -171,90 +171,11 @@ static void add_low_count_filter(QueryContext *context)
  * Anonymizing aggregates
  *-------------------------------------------------------------------------
  */
-
-/*
- * Resolves `rel_oid` and `attnum` if target entry is a simple reference to a table column.
- * Returns false if target entry is not a simple reference.
- */
-static bool find_source_column(
-    const Query *query,
-    const TargetEntry *te,
-    Oid *rel_oid,
-    AttrNumber *attnum)
+static void rewrite_to_anon_aggregator(Aggref *aggref, QueryContext *context, Oid fnoid)
 {
-  if (OidIsValid(te->resorigtbl) && AttributeNumberIsValid(te->resorigcol))
-  {
-    *rel_oid = te->resorigtbl;
-    *attnum = te->resorigcol;
-    return true;
-  }
-
-  if (!IsA(te->expr, Var))
-    return false;
-
-  Var *var = (Var *)te->expr;
-  RangeTblEntry *rte = list_nth(query->rtable, var->varno - 1);
-
-  if (rte->rtekind == RTE_RELATION)
-  {
-    *rel_oid = rte->relid;
-    *attnum = var->varattno;
-    return true;
-  }
-  else if (rte->rtekind == RTE_SUBQUERY)
-    return find_source_column(
-        rte->subquery,
-        list_nth(rte->subquery->targetList, var->varattno - 1),
-        rel_oid,
-        attnum);
-  else
-    return false;
-}
-
-/* Returns true if the target entry is an unmodified reference to an AID. */
-static bool is_aid_arg(TargetEntry *arg, QueryContext *context)
-{
-  Oid rel_oid;
-  AttrNumber attnum;
-
-  if (!find_source_column(context->query, arg, &rel_oid, &attnum))
-    return false;
-
-  ListCell *lc;
-  foreach (lc, context->aid_references)
-  {
-    AidReference *aid_ref = (AidReference *)lfirst(lc);
-    if (rel_oid == aid_ref->relation->oid && attnum == aid_ref->aid_column->attnum)
-      return true;
-  }
-
-  return false;
-}
-
-static void rewrite_count(Aggref *aggref, QueryContext *context)
-{
-  aggref->aggfnoid = g_oid_cache.anon_count;
+  aggref->aggfnoid = fnoid;
   aggref->aggstar = false;
-  append_aid_args(aggref, context);
-}
-
-static void rewrite_count_distinct(Aggref *aggref, QueryContext *context)
-{
-  aggref->aggfnoid = g_oid_cache.anon_count_distinct;
-  /* The UDF handles distinct counting internally */
   aggref->aggdistinct = false;
-  TargetEntry *arg = linitial_node(TargetEntry, aggref->args);
-  if (!is_aid_arg(arg, context))
-  {
-    FAILWITH_LOCATION(
-        exprLocation((Node *)arg->expr),
-        "COUNT(DISTINCT col) requires an AID column as its argument.");
-  }
-}
-
-static void rewrite_count_any(Aggref *aggref, QueryContext *context)
-{
-  aggref->aggfnoid = g_oid_cache.anon_count_any;
   append_aid_args(aggref, context);
 }
 
@@ -282,11 +203,11 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
     Oid aggfnoid = aggref->aggfnoid;
 
     if (aggfnoid == g_oid_cache.count)
-      rewrite_count(aggref, context);
+      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count);
     else if (aggfnoid == g_oid_cache.count_any && aggref->aggdistinct)
-      rewrite_count_distinct(aggref, context);
+      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_distinct);
     else if (aggfnoid == g_oid_cache.count_any)
-      rewrite_count_any(aggref, context);
+      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_any);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");

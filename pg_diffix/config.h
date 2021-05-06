@@ -24,6 +24,8 @@ typedef struct DiffixConfig
   int top_count_max;
 } DiffixConfig;
 
+static const int LCF_RANGE = 2;
+
 /*
  * Global instance of root configuration.
  */

@@ -5,7 +5,6 @@
 
 #include <inttypes.h>
 
-#include "pg_diffix/config.h"
 #include "pg_diffix/aggregation/aid_tracker.h"
 #include "pg_diffix/aggregation/random.h"
 
@@ -104,14 +103,7 @@ static LcfResult lcf_calculate_final(const AidTrackerState *tracker)
   uint64 seed = make_seed(tracker->aid_seed);
 
   result.random_seed = seed;
-
-  /* Pick an integer in interval [min, min+2]. */
-  const int LCF_RANGE = 2;
-  result.threshold = next_uniform_int(
-      &seed,
-      g_config.minimum_allowed_aid_values,
-      g_config.minimum_allowed_aid_values + LCF_RANGE + 1); /* +1 because max is exclusive. */
-
+  result.threshold = generate_lcf_threshold(&seed);
   result.passes_lcf = tracker->aid_set->members >= result.threshold;
 
   return result;
