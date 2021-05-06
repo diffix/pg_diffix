@@ -184,16 +184,15 @@ GROUP BY 1;
  City: Rome   |    10 |       |      
 (2 rows)
 
-----------------------------------------------------------------
--- Unsupported queries
-----------------------------------------------------------------
--- Get rejected because AID is modified.
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
  count 
 -------
       
 (1 row)
 
+----------------------------------------------------------------
+-- Unsupported queries
+----------------------------------------------------------------
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.

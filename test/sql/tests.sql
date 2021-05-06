@@ -111,12 +111,11 @@ FROM (
 ) x
 GROUP BY 1;
 
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
-
--- Get rejected because AID is modified.
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
 
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
