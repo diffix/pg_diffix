@@ -24,4 +24,9 @@ extern int next_uniform_int(uint64 *seed, int min, int max);
  */
 extern double generate_noise(uint64 *seed, double sigma);
 
+/*
+ * Generates a LCF threshold value.
+ */
+extern int generate_lcf_threshold(uint64 *seed);
+
 #endif /* PG_DIFFIX_RANDOM_H */

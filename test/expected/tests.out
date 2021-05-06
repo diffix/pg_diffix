@@ -50,23 +50,23 @@ SELECT COUNT(*) FROM test_purchases;
     23
 (1 row)
 
-SELECT COUNT(city) FROM test_customers;
- count 
--------
-    14
+SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
+ count | count 
+-------+-------
+    14 |     2
 (1 row)
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
  count 
 -------
-    14
+      
 (1 row)
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |     5
- Berlin |     7
+ Rome   |      
+ Berlin |      
 (2 rows)
 
 ----------------------------------------------------------------
@@ -78,10 +78,10 @@ SELECT city FROM test_patients GROUP BY 1;
  Berlin
 (1 row)
 
-SELECT COUNT(*), COUNT(city) FROM test_patients;
- count | count 
--------+-------
-    14 |    14
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
+ count | count | count 
+-------+-------+-------
+    14 |    14 |     1
 (1 row)
 
 ----------------------------------------------------------------
@@ -91,7 +91,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    23 |    14 |    14
+    23 |       |      
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -149,7 +149,7 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |    18
+    15 |    14 |      
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
@@ -158,7 +158,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |    18
+    15 |    14 |      
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
@@ -168,7 +168,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |    18
+    15 |    14 |      
 (1 row)
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
@@ -180,31 +180,19 @@ FROM (
 GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
- City: Berlin |       |     4 |     4
- City: Rome   |    10 |     5 |     5
+ City: Berlin |       |       |      
+ City: Rome   |    10 |       |      
 (2 rows)
+
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+ count 
+-------
+      
+(1 row)
 
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
--- Get rejected because `city` is not the AID.
-SELECT COUNT(DISTINCT city) FROM test_customers;
-ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
-LINE 1: SELECT COUNT(DISTINCT city) FROM test_customers;
-                              ^
-SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_customers ) x;
-ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
-LINE 1: SELECT COUNT(DISTINCT x.city) FROM ( SELECT city FROM test_c...
-                              ^
--- Get rejected because AID is modified.
-SELECT COUNT(DISTINCT id + 1) FROM test_customers;
-ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
-LINE 1: SELECT COUNT(DISTINCT id + 1) FROM test_customers;
-                              ^
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
-ERROR:  [PG_DIFFIX] COUNT(DISTINCT col) requires an AID column as its argument.
-LINE 1: SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS...
-                              ^
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.

@@ -49,33 +49,33 @@ CREATE AGGREGATE diffix.explain_lcf(variadic "any") (
 );
 
 /* ----------------------------------------------------------------
- * anon_count_distinct(aid)
+ * anon_count_distinct(any, aids...)
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.anon_count_distinct_transfn(internal, anyelement)
+CREATE FUNCTION diffix.anon_count_distinct_transfn(internal, "any", variadic "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_distinct_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.anon_count_distinct_finalfn(internal, "any", variadic "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_distinct_explain_finalfn(internal, anyelement)
+CREATE FUNCTION diffix.anon_count_distinct_explain_finalfn(internal, "any", variadic "any")
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix.anon_count_distinct(anyelement) (
+CREATE AGGREGATE diffix.anon_count_distinct("any", variadic "any") (
   sfunc = diffix.anon_count_distinct_transfn,
   stype = internal,
   finalfunc = diffix.anon_count_distinct_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE diffix.explain_anon_count_distinct(anyelement) (
+CREATE AGGREGATE diffix.explain_anon_count_distinct("any", variadic "any") (
   sfunc = diffix.anon_count_distinct_transfn,
   stype = internal,
   finalfunc = diffix.anon_count_distinct_explain_finalfn,
