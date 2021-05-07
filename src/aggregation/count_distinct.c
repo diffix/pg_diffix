@@ -13,7 +13,7 @@
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/random.h"
 
-static int32 hash_datum(Datum value, bool typbyval, int16 typlen)
+static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 {
   const void *data = NULL;
   size_t data_size = 0;

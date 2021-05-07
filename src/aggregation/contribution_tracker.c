@@ -158,7 +158,7 @@ void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
   ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
   if (!found)
   {
-    state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
+    state->aid_seed ^= aid;
     entry->has_contribution = false;
   }
 }
@@ -182,7 +182,7 @@ void contribution_tracker_update_contribution(
     entry->has_contribution = true;
     entry->contribution = contribution;
     state->distinct_contributors++;
-    state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
+    state->aid_seed ^= aid;
 
     add_top_contributor(state, top_length, aid, contribution);
     return;

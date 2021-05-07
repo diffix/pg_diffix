@@ -47,7 +47,7 @@ SELECT COUNT(*) FROM test_customers;
 SELECT COUNT(*) FROM test_purchases;
  count 
 -------
-    23
+    27
 (1 row)
 
 SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
@@ -91,7 +91,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    23 |       |      
+    27 |       |      
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -99,36 +99,43 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
  count | count 
 -------+-------
-    22 |    22
+    25 |    21
 (1 row)
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    13
- Berlin |      
+ Rome   |    14
+ Berlin |    12
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    13
- Berlin |      
+ Rome   |    14
+ Berlin |    12
 (2 rows)
 
 ----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
 SELECT city FROM test_customers;
- city 
-------
+  city  
+--------
  Rome
  Rome
  Rome
  Rome
  Rome
  Rome
-(6 rows)
+ Rome
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+(13 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  

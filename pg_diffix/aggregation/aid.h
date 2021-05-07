@@ -15,9 +15,6 @@ typedef aid_t (*MakeAidFunc)(Datum datum);
 typedef struct AidDescriptor
 {
   MakeAidFunc make_aid; /* Function which gets an AID from a Datum */
-  bool is_hash;         /* Whether the created AIDs are already hashed.
-                         * This is set to true for TEXT AIDs,
-                         * meaning we don't need to hash again. */
 } AidDescriptor;
 
 extern AidDescriptor get_aid_descriptor(Oid aid_type);
