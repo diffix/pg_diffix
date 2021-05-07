@@ -36,7 +36,7 @@ void aid_tracker_update(AidTrackerState *state, aid_t aid)
   AidTracker_insert(state->aid_set, aid, &found);
   if (!found)
   {
-    state->aid_seed ^= state->aid_descriptor.is_hash ? aid : HASH_AID_64(aid);
+    state->aid_seed ^= aid;
   }
 }
 

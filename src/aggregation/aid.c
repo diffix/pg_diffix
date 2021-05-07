@@ -8,12 +8,20 @@
 
 static aid_t make_int4_aid(Datum datum)
 {
-  return DatumGetUInt32(datum);
+  aid_t aid = DatumGetUInt32(datum);
+#ifndef DEBUG
+  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+#endif
+  return aid;
 }
 
 static aid_t make_int8_aid(Datum datum)
 {
-  return DatumGetUInt64(datum);
+  aid_t aid = DatumGetUInt64(datum);
+#ifndef DEBUG
+  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+#endif
+  return aid;
 }
 
 static aid_t make_text_aid(Datum datum)
@@ -24,10 +32,7 @@ static aid_t make_text_aid(Datum datum)
 
 AidDescriptor get_aid_descriptor(Oid aid_type)
 {
-  AidDescriptor descriptor = {
-      .make_aid = NULL,
-      .is_hash = false,
-  };
+  AidDescriptor descriptor = {0};
 
   switch (aid_type)
   {
@@ -40,7 +45,6 @@ AidDescriptor get_aid_descriptor(Oid aid_type)
   case TEXTOID:
   case VARCHAROID:
     descriptor.make_aid = make_text_aid;
-    descriptor.is_hash = true;
     break;
   default:
     ereport(ERROR, (errmsg("Unsupported AID type (OID %u)", aid_type)));
