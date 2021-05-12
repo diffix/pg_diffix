@@ -85,7 +85,7 @@ Once started, the container creates and populates the `banking` database. A user
 $ make demo-image
 
 # Run the container in foreground and expose in port 10432
-$ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix_demo
+$ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
 
 # Connect to the banking database (from another shell)
 $ psql -h localhost -p 10432 -d banking -U publish
