@@ -60,7 +60,7 @@ The example below shows how to build the image and run a minimally configured co
 $ make image
 
 # Run the container in foreground and expose in port 10432
-$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 --restart unless-stopped pg_diffix
+$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
 ```
 
 From another shell you can connect to the container via `psql`:
@@ -89,6 +89,12 @@ $ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING
 
 # Connect to the banking database (from another shell)
 $ psql -h localhost -p 10432 -d banking -U publish
+```
+
+To keep the container running you can start it in detached mode and with a restart policy:
+
+```sh
+$ docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
 ```
 
 ## Configuring the extension
