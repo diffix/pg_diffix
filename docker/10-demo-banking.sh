@@ -2,21 +2,30 @@
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-	CREATE DATABASE banking;
+  CREATE DATABASE banking;
 EOSQL
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "banking" <<-EOSQL
-	CREATE EXTENSION pg_diffix;
-EOSQL
+function sql {
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "banking" "$@"
+}
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "banking" \
-	-f "/docker-entrypoint-initdb.d/demo/00-banking-schema.sql" \
-	-f "/docker-entrypoint-initdb.d/demo/01-banking-data.sql" \
-	-f "/docker-entrypoint-initdb.d/demo/02-banking-constraints.sql"
+sql -c "CREATE EXTENSION pg_diffix"
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "banking" <<-EOSQL
-	CREATE USER publish WITH PASSWORD 'password';
-	SECURITY LABEL FOR pg_diffix ON ROLE publish IS 'publish';
-	GRANT CONNECT ON DATABASE banking TO publish;
-	GRANT SELECT ON ALL TABLES IN SCHEMA public TO publish;
+sql -f "/docker-entrypoint-initdb.d/demo/00-banking-schema.sql" \
+    -f "/docker-entrypoint-initdb.d/demo/01-banking-data.sql" \
+    -f "/docker-entrypoint-initdb.d/demo/02-banking-constraints.sql"
+
+banking_password=${BANKING_PASSWORD:-demo}
+
+sql -c "CREATE USER banking WITH PASSWORD '$banking_password';"
+
+sql -c "CREATE USER banking_publish WITH PASSWORD '$banking_password';"
+
+sql <<-EOSQL
+  GRANT CONNECT ON DATABASE banking TO banking;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking;
+
+  GRANT CONNECT ON DATABASE banking TO banking_publish;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_publish;
+  SECURITY LABEL FOR pg_diffix ON ROLE banking_publish IS 'publish';
 EOSQL
