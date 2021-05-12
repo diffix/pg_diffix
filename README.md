@@ -60,7 +60,7 @@ The example below shows how to build the image and run a minimally configured co
 $ make image
 
 # Run the container in foreground and expose in port 10432
-$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
+$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 --restart unless-stopped pg_diffix
 ```
 
 From another shell you can connect to the container via `psql`:
