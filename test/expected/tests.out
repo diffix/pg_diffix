@@ -59,14 +59,14 @@ SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
  count 
 -------
-      
+    14
 (1 row)
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |      
- Berlin |      
+ Rome   |     7
+ Berlin |     6
 (2 rows)
 
 ----------------------------------------------------------------
@@ -91,7 +91,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    27 |       |      
+    27 |    14 |    14
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -156,7 +156,7 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |      
+    15 |    14 |    15
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
@@ -165,7 +165,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |      
+    15 |    14 |    15
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
@@ -175,7 +175,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    15 |    14 |      
+    15 |    14 |    15
 (1 row)
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
@@ -188,13 +188,13 @@ GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
  City: Berlin |       |       |      
- City: Rome   |    10 |       |      
+ City: Rome   |    10 |     7 |     7
 (2 rows)
 
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
  count 
 -------
-      
+    15
 (1 row)
 
 ----------------------------------------------------------------
