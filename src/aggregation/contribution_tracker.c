@@ -12,20 +12,13 @@
  */
 
 static inline uint32 find_aid_index(
-    ContributionTrackerState *state,
+    const TopContributor *top_contributors,
     uint32 top_length,
-    aid_t aid,
-    contribution_t old_contribution)
+    aid_t aid)
 {
-  for (uint32 i = state->contribution_descriptor.contribution_greater(
-                      old_contribution,
-                      state->top_contributors[top_length / 2].contribution)
-                      ? 0
-                      : (top_length / 2);
-       i < top_length;
-       i++)
+  for (uint32 i = 0; i < top_length; i++)
   {
-    if (aid == state->top_contributors[i].aid)
+    if (aid == top_contributors[i].aid)
       return i;
   }
 
@@ -33,85 +26,87 @@ static inline uint32 find_aid_index(
 }
 
 static inline uint32 find_insertion_index(
-    ContributionTrackerState *state,
+    const ContributionDescriptor *descriptor,
+    const TopContributor *top_contributors,
     uint32 top_length,
     contribution_t contribution)
 {
-  ContributionGreaterFunc greater = state->contribution_descriptor.contribution_greater;
+  ContributionGreaterFunc greater = descriptor->contribution_greater;
 
   /*
    * Do a single comparison in the middle to halve lookup steps.
    * No. elements won't be large enough to bother with a full binary search.
    */
-  for (uint32 i = greater(contribution, state->top_contributors[top_length / 2].contribution)
-                      ? 0
-                      : (top_length / 2 + 1);
-       i < top_length;
-       i++)
+  contribution_t middle_contribution = top_contributors[top_length / 2].contribution;
+  uint32 start_index = greater(contribution, middle_contribution) ? 0 : (top_length / 2 + 1);
+  for (uint32 i = start_index; i < top_length; i++)
   {
-    if (greater(contribution, state->top_contributors[i].contribution))
+    if (greater(contribution, top_contributors[i].contribution))
       return i;
   }
 
   return top_length;
 }
 
-static void add_top_contributor(
-    ContributionTrackerState *state,
+void add_top_contributor(
+    const ContributionDescriptor *descriptor,
+    TopContributor *top_contributors,
+    uint32 capacity,
     uint32 top_length,
     aid_t aid,
     contribution_t contribution)
 {
+  Assert(capacity >= top_length);
+
   /*
    * Entry is not a top contributor if capacity is exhausted and
    * contribution is not greater than the lowest top contribution.
    */
-  uint32 capacity = state->top_contributors_length;
-  ContributionDescriptor *descriptor = &state->contribution_descriptor;
   if (top_length == capacity &&
-      !descriptor->contribution_greater(contribution, state->top_contributors[top_length - 1].contribution))
+      !descriptor->contribution_greater(contribution, top_contributors[top_length - 1].contribution))
     return;
 
-  uint32 insertion_index = find_insertion_index(state, top_length, contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, top_length, contribution);
   Assert(insertion_index < capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
   size_t elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
-  memmove(
-      &state->top_contributors[insertion_index + 1],
-      &state->top_contributors[insertion_index],
-      elements * sizeof(TopContributor));
+  memmove(&top_contributors[insertion_index + 1],
+          &top_contributors[insertion_index],
+          elements * sizeof(TopContributor));
 
-  state->top_contributors[insertion_index].aid = aid;
-  state->top_contributors[insertion_index].contribution = contribution;
+  top_contributors[insertion_index].aid = aid;
+  top_contributors[insertion_index].contribution = contribution;
 }
 
-static void bump_or_add_top_contributor(
-    ContributionTrackerState *state,
+void update_or_add_top_contributor(
+    const ContributionDescriptor *descriptor,
+    TopContributor *top_contributors,
+    uint32 capacity,
     uint32 top_length,
     aid_t aid,
-    contribution_t old_contribution,
-    contribution_t new_contribution)
+    contribution_t contribution)
 {
-  uint32 aid_index = find_aid_index(state, top_length, aid, old_contribution);
+  Assert(capacity >= top_length);
+
+  uint32 aid_index = find_aid_index(top_contributors, top_length, aid);
   if (aid_index == top_length)
   {
     /* Not an existing top contributor, try to add it as a new entry and return. */
-    add_top_contributor(state, top_length, aid, new_contribution);
+    add_top_contributor(descriptor, top_contributors, capacity, top_length, aid, contribution);
     return;
   }
 
-  uint32 insertion_index = find_insertion_index(state, top_length, new_contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, top_length, contribution);
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
-  memmove(
-      &state->top_contributors[insertion_index + 1],
-      &state->top_contributors[insertion_index],
-      elements * sizeof(TopContributor));
+  memmove(&top_contributors[insertion_index + 1],
+          &top_contributors[insertion_index],
+          elements * sizeof(TopContributor));
 
-  state->top_contributors[insertion_index].aid = aid;
-  state->top_contributors[insertion_index].contribution = new_contribution;
+  top_contributors[insertion_index].aid = aid;
+  top_contributors[insertion_index].contribution = contribution;
 }
 
 /* ----------------------------------------------------------------
@@ -184,7 +179,9 @@ void contribution_tracker_update_contribution(
     state->distinct_contributors++;
     state->aid_seed ^= aid;
 
-    add_top_contributor(state, top_length, aid, contribution);
+    add_top_contributor(&state->contribution_descriptor,
+                        state->top_contributors, state->top_contributors_length, top_length,
+                        aid, contribution);
     return;
   }
   else if (!entry->has_contribution)
@@ -194,16 +191,21 @@ void contribution_tracker_update_contribution(
     entry->contribution = contribution;
     state->distinct_contributors++;
 
-    add_top_contributor(state, top_length, aid, contribution);
+    add_top_contributor(
+        &state->contribution_descriptor,
+        state->top_contributors, state->top_contributors_length, top_length,
+        aid, contribution);
     return;
   }
 
-  /* Save old contribution and set new value. */
-  contribution_t contribution_old = entry->contribution;
-  entry->contribution = descriptor->contribution_combine(contribution_old, contribution);
+  /* Aggregate new contribution. */
+  entry->contribution = descriptor->contribution_combine(entry->contribution, contribution);
 
   /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
-  bump_or_add_top_contributor(state, top_length, entry->aid, contribution_old, entry->contribution);
+  update_or_add_top_contributor(
+      &state->contribution_descriptor,
+      state->top_contributors, state->top_contributors_length, top_length,
+      entry->aid, entry->contribution);
 }
 
 static const int STATE_INDEX = 0;
