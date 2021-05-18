@@ -111,14 +111,14 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
   appendStringInfo(string, "uniq=%" PRIu32, tracker->contribution_table->members);
 
   /* Top contributors */
-  uint32 top_length = Min(tracker->top_contributors_length, tracker->distinct_contributors);
+  uint32 top_length = tracker->top_contributors.length;
   appendStringInfo(string, ", top=[");
 
   for (uint32 i = 0; i < top_length; i++)
   {
+    const Contributor *contributor = &tracker->top_contributors.members[i];
     appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" AID_FMT,
-                     tracker->top_contributors[i].contribution.integer,
-                     tracker->top_contributors[i].aid);
+                     contributor->contribution.integer, contributor->aid);
 
     if (i == result.noisy_outlier_count - 1)
       appendStringInfo(string, " | ");
@@ -174,8 +174,8 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 }
 
 CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint32 distinct_contributors,
-    const TopContributor *top_contributors, uint32 top_contributors_length)
+    uint64 seed, uint64 true_count, uint64 distinct_contributors,
+    const Contributors *top_contributors)
 {
   seed = make_seed(seed);
 
@@ -195,22 +195,21 @@ CountResult aggregate_count_contributions(
       g_config.top_count_min,
       g_config.top_count_max + 1);
 
-  uint32 top_contributors_count = Min(top_contributors_length, distinct_contributors);
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
-  result.low_count = top_end_index > top_contributors_count;
+  result.low_count = top_end_index > top_contributors->length;
   if (result.low_count)
     return result;
 
   /* Remove outliers from overall count. */
   result.flattened_count = result.true_count;
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
-    result.flattened_count -= top_contributors[i].contribution.integer;
+    result.flattened_count -= top_contributors->members[i].contribution.integer;
 
   /* Compute average of top values. */
   uint64 top_contribution = 0;
   for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
-    top_contribution += top_contributors[i].contribution.integer;
+    top_contribution += top_contributors->members[i].contribution.integer;
   double top_average = top_contribution / (double)result.noisy_top_count;
 
   /* Compensate for dropped outliers. */
@@ -229,8 +228,7 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       tracker->aid_seed,
       tracker->overall_contribution.integer,
       tracker->distinct_contributors,
-      tracker->top_contributors,
-      tracker->top_contributors_length);
+      &tracker->top_contributors);
 }
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)

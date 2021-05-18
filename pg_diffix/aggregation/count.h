@@ -21,8 +21,8 @@ typedef struct CountResult
 } CountResult;
 
 extern CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint32 distinct_contributors,
-    const TopContributor *top_contributors, uint32 top_contributors_length);
+    uint64 seed, uint64 true_count, uint64 distinct_contributors,
+    const Contributors *top_contributors);
 
 /*
  * Helper data structure and functions to combine multiple count results into one value.

@@ -396,8 +396,8 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 
 /* Computes the aggregation seed, total count of contributors and fills the top contributors array. */
 static void process_lc_values_contributions(
-    List *per_aid_values, uint64 *seed, uint32 *contributors_count,
-    TopContributor *top_contributors, uint32 top_contributors_capacity)
+    List *per_aid_values, uint64 *seed, uint64 *contributors_count,
+    Contributors *top_contributors)
 {
   *contributors_count = 0;
   *seed = 0;
@@ -409,11 +409,8 @@ static void process_lc_values_contributions(
     *seed ^= entry->aid;
     if (entry->contributions > 0)
     {
-      uint32 top_contributors_length = Min(*contributors_count, top_contributors_capacity);
-      add_top_contributor(
-          &count_descriptor,
-          top_contributors, top_contributors_capacity, top_contributors_length,
-          entry->aid, (contribution_t){.integer = entry->contributions});
+      contribution_t contribution = {.integer = entry->contributions};
+      add_top_contributor(&count_descriptor, top_contributors, entry->aid, contribution);
       (*contributors_count)++;
     }
   }
@@ -429,7 +426,10 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
-  TopContributor *top_contributors = palloc(top_contributors_capacity * sizeof(TopContributor));
+  Contributors *top_contributors =
+      palloc(sizeof(Contributors) + top_contributors_capacity * sizeof(Contributor));
+  top_contributors->length = 0;
+  top_contributors->capacity = top_contributors_capacity;
 
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
@@ -442,15 +442,14 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
     uint64 seed = 0;
-    uint32 contributors_count = 0;
+    uint64 contributors_count = 0;
     process_lc_values_contributions(
         per_aid_values,
         &seed, &contributors_count,
-        top_contributors, top_contributors_capacity);
+        top_contributors);
 
     CountResult result = aggregate_count_contributions(
-        seed, lc_values_true_count, contributors_count,
-        top_contributors, Min(contributors_count, top_contributors_capacity));
+        seed, lc_values_true_count, contributors_count, top_contributors);
 
     list_free_deep(per_aid_values);
 

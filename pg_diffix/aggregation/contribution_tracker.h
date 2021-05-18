@@ -53,22 +53,28 @@ typedef struct ContributionTrackerHashEntry
 #define SH_DECLARE
 #include "lib/simplehash.h"
 
-typedef struct TopContributor
+typedef struct Contributor
 {
   aid_t aid;
   contribution_t contribution;
-} TopContributor;
+} Contributor;
+
+typedef struct Contributors
+{
+  uint32 length;
+  uint32 capacity;
+  Contributor members[FLEXIBLE_ARRAY_MEMBER];
+} Contributors;
 
 typedef struct ContributionTrackerState
 {
-  AidDescriptor aid_descriptor;                           /* Behavior for AIDs */
-  ContributionDescriptor contribution_descriptor;         /* Behavior for contributions */
-  ContributionTracker_hash *contribution_table;           /* Hash set of all AIDs */
-  uint32 distinct_contributors;                           /* Count of distinct non-NULL contributors */
-  contribution_t overall_contribution;                    /* Combined contribution from all contributors */
-  uint64 aid_seed;                                        /* Current AID seed */
-  uint32 top_contributors_length;                         /* Length of top_contributors array */
-  TopContributor top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
+  AidDescriptor aid_descriptor;                   /* Behavior for AIDs */
+  ContributionDescriptor contribution_descriptor; /* Behavior for contributions */
+  ContributionTracker_hash *contribution_table;   /* Hash set of all AIDs */
+  uint64 aid_seed;                                /* Current AID seed */
+  uint64 distinct_contributors;                   /* Count of distinct non-NULL contributors */
+  contribution_t overall_contribution;            /* Combined contribution from all contributors */
+  Contributors top_contributors;                  /* Variable size field, has to be last in the list. */
 } ContributionTrackerState;
 
 /*
@@ -94,17 +100,13 @@ extern List *get_aggregate_contribution_trackers(
 
 extern void add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
+    Contributors *top_contributors,
     aid_t aid,
     contribution_t contribution);
 
 extern void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
+    Contributors *top_contributors,
     aid_t aid,
     contribution_t contribution);
 
