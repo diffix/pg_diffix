@@ -64,7 +64,6 @@ typedef struct ContributionTrackerState
   AidDescriptor aid_descriptor;                           /* Behavior for AIDs */
   ContributionDescriptor contribution_descriptor;         /* Behavior for contributions */
   ContributionTracker_hash *contribution_table;           /* Hash set of all AIDs */
-  uint64 contributions_count;                             /* Total count of non-NULL contributions */
   uint32 distinct_contributors;                           /* Count of distinct non-NULL contributors */
   contribution_t overall_contribution;                    /* Combined contribution from all contributors */
   uint64 aid_seed;                                        /* Current AID seed */

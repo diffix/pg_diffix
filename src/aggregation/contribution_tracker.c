@@ -138,7 +138,6 @@ static ContributionTrackerState *contribution_tracker_new(
   state->aid_descriptor = aid_descriptor;
   state->contribution_descriptor = *contribution_descriptor;
   state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 128, NULL);
-  state->contributions_count = 0;
   state->distinct_contributors = 0;
   state->overall_contribution = contribution_descriptor->contribution_initial;
   state->aid_seed = 0;
@@ -166,7 +165,6 @@ void contribution_tracker_update_contribution(
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
   uint32 top_length = Min(state->distinct_contributors, state->top_contributors_length);
 
-  state->contributions_count++;
   state->overall_contribution = descriptor->contribution_combine(state->overall_contribution, contribution);
 
   bool found;
