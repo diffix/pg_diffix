@@ -409,8 +409,8 @@ static void process_lc_values_contributions(
     *seed ^= entry->aid;
     if (entry->contributions > 0)
     {
-      contribution_t contribution = {.integer = entry->contributions};
-      add_top_contributor(&count_descriptor, top_contributors, entry->aid, contribution);
+      Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
+      add_top_contributor(&count_descriptor, top_contributors, contributor);
       (*contributors_count)++;
     }
   }

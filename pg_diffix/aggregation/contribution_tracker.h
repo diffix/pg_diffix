@@ -35,24 +35,6 @@ typedef struct ContributionDescriptor
   contribution_t contribution_initial; /* Initial or "zero" value for a contribution */
 } ContributionDescriptor;
 
-typedef struct ContributionTrackerHashEntry
-{
-  contribution_t contribution; /* Contribution from AID */
-  aid_t aid;                   /* Entry key */
-  bool has_contribution;       /* Whether the AID has contributed yet */
-  char status;                 /* Required for hash table */
-} ContributionTrackerHashEntry;
-
-/*
- * Declarations for HashTable<aid_t, ContributionTrackerHashEntry>
- */
-#define SH_PREFIX ContributionTracker
-#define SH_ELEMENT_TYPE ContributionTrackerHashEntry
-#define SH_KEY_TYPE aid_t
-#define SH_SCOPE extern
-#define SH_DECLARE
-#include "lib/simplehash.h"
-
 typedef struct Contributor
 {
   aid_t aid;
@@ -65,6 +47,23 @@ typedef struct Contributors
   uint32 capacity;
   Contributor members[FLEXIBLE_ARRAY_MEMBER];
 } Contributors;
+
+typedef struct ContributionTrackerHashEntry
+{
+  Contributor contributor; /* Contributor info */
+  bool has_contribution;   /* Whether the AID has contributed yet */
+  char status;             /* Required for hash table */
+} ContributionTrackerHashEntry;
+
+/*
+ * Declarations for HashTable<aid_t, ContributionTrackerHashEntry>
+ */
+#define SH_PREFIX ContributionTracker
+#define SH_ELEMENT_TYPE ContributionTrackerHashEntry
+#define SH_KEY_TYPE aid_t
+#define SH_SCOPE extern
+#define SH_DECLARE
+#include "lib/simplehash.h"
 
 typedef struct ContributionTrackerState
 {
@@ -101,13 +100,11 @@ extern List *get_aggregate_contribution_trackers(
 extern void add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
-    aid_t aid,
-    contribution_t contribution);
+    Contributor contributor);
 
 extern void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
-    aid_t aid,
-    contribution_t contribution);
+    Contributor contributor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

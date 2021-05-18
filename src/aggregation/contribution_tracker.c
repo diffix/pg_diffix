@@ -47,8 +47,7 @@ static inline uint32 find_insertion_index(
 void add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
-    aid_t aid,
-    contribution_t contribution)
+    Contributor contributor)
 {
   uint32 length = top_contributors->length, capacity = top_contributors->capacity;
   Assert(capacity >= length);
@@ -57,11 +56,14 @@ void add_top_contributor(
    * Entry is not a top contributor if capacity is exhausted and
    * contribution is not greater than the lowest top contribution.
    */
-  if (length == capacity &&
-      !descriptor->contribution_greater(contribution, top_contributors->members[length - 1].contribution))
-    return;
+  if (length == capacity)
+  {
+    Contributor lowest_contributor = top_contributors->members[length - 1];
+    if (!descriptor->contribution_greater(contributor.contribution, lowest_contributor.contribution))
+      return;
+  }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
   Assert(insertion_index < top_contributors->capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
@@ -70,27 +72,26 @@ void add_top_contributor(
           &top_contributors->members[insertion_index],
           elements * sizeof(Contributor));
 
-  top_contributors->members[insertion_index] = (Contributor){.aid = aid, .contribution = contribution};
+  top_contributors->members[insertion_index] = contributor;
   top_contributors->length = Min(length + 1, capacity);
 }
 
 void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
-    aid_t aid,
-    contribution_t contribution)
+    Contributor contributor)
 {
   Assert(top_contributors->capacity >= top_contributors->length);
 
-  uint32 aid_index = find_aid_index(top_contributors, aid);
+  uint32 aid_index = find_aid_index(top_contributors, contributor.aid);
   if (aid_index == top_contributors->length)
   {
     /* Not an existing top contributor, try to add it as a new entry and return. */
-    add_top_contributor(descriptor, top_contributors, aid, contribution);
+    add_top_contributor(descriptor, top_contributors, contributor);
     return;
   }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
@@ -98,7 +99,7 @@ void update_or_add_top_contributor(
           &top_contributors->members[insertion_index],
           elements * sizeof(Contributor));
 
-  top_contributors->members[insertion_index] = (Contributor){.aid = aid, .contribution = contribution};
+  top_contributors->members[insertion_index] = contributor;
 }
 
 /* ----------------------------------------------------------------
@@ -111,7 +112,7 @@ void update_or_add_top_contributor(
  */
 #define SH_PREFIX ContributionTracker
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
-#define SH_KEY aid
+#define SH_KEY contributor.aid
 #define SH_KEY_TYPE aid_t
 #define SH_EQUAL(tb, a, b) a == b
 #define SH_HASH_KEY(tb, key) HASH_AID_32(key)
@@ -165,37 +166,37 @@ void contribution_tracker_update_contribution(
   {
     /* AID does not exist in table. */
     entry->has_contribution = true;
-    entry->contribution = contribution;
+    entry->contributor.contribution = contribution;
     state->distinct_contributors++;
     state->aid_seed ^= aid;
 
     add_top_contributor(&state->contribution_descriptor,
                         &state->top_contributors,
-                        aid, contribution);
+                        entry->contributor);
     return;
   }
   else if (!entry->has_contribution)
   {
     /* AID exists but hasn't contributed yet. */
     entry->has_contribution = true;
-    entry->contribution = contribution;
+    entry->contributor.contribution = contribution;
     state->distinct_contributors++;
 
     add_top_contributor(
         &state->contribution_descriptor,
         &state->top_contributors,
-        aid, contribution);
+        entry->contributor);
     return;
   }
 
   /* Aggregate new contribution. */
-  entry->contribution = descriptor->contribution_combine(entry->contribution, contribution);
+  entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
 
   /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
   update_or_add_top_contributor(
       &state->contribution_descriptor,
       &state->top_contributors,
-      entry->aid, entry->contribution);
+      entry->contributor);
 }
 
 static const int STATE_INDEX = 0;
