@@ -1,7 +1,7 @@
 #ifndef PG_DIFFIX_COUNT_H
 #define PG_DIFFIX_COUNT_H
 
-#include "contribution_tracker.h"
+#include "pg_diffix/aggregation/contribution_tracker.h"
 
 extern const ContributionDescriptor count_descriptor;
 

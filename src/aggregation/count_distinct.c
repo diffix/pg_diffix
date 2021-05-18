@@ -12,7 +12,6 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/random.h"
-#include "pg_diffix/aggregation/contribution_tracker.h"
 #include "pg_diffix/aggregation/count.h"
 
 static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
