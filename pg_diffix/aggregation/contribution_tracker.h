@@ -93,4 +93,20 @@ extern List *get_aggregate_contribution_trackers(
     int aids_offset,
     const ContributionDescriptor *descriptor);
 
+extern void add_top_contributor(
+    const ContributionDescriptor *descriptor,
+    TopContributor *top_contributors,
+    uint32 capacity,
+    uint32 top_length,
+    aid_t aid,
+    contribution_t contribution);
+
+extern void update_or_add_top_contributor(
+    const ContributionDescriptor *descriptor,
+    TopContributor *top_contributors,
+    uint32 capacity,
+    uint32 top_length,
+    aid_t aid,
+    contribution_t contribution);
+
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

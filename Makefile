@@ -13,7 +13,7 @@ REGRESS_OPTS = --inputdir=test
 
 PG_CFLAGS := -std=c11 -Wno-declaration-after-statement -Werror-implicit-function-declaration
 ifneq ($(TARGET),release)
-	PG_CFLAGS := $(PG_CFLAGS) -DDEBUG -DUSE_ASSERT_CHECKING
+	PG_CFLAGS := $(PG_CFLAGS) -DDEBUG -DUSE_ASSERT_CHECKING -O0
 endif
 
 PG_CONFIG = pg_config

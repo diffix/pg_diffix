@@ -8,20 +8,8 @@
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/aggregation/contribution_tracker.h"
+#include "pg_diffix/aggregation/count.h"
 #include "pg_diffix/aggregation/random.h"
-
-typedef struct CountResult
-{
-  uint64 random_seed;
-  int64 true_count;
-  int64 flattened_count;
-  uint32 noisy_outlier_count;
-  uint32 noisy_top_count;
-  double noise_sigma;
-  int64 noise;
-  bool low_count;
-} CountResult;
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
@@ -41,14 +29,12 @@ static contribution_t contribution_combine(contribution_t x, contribution_t y)
   return (contribution_t){.integer = x.integer + y.integer};
 }
 
-static const ContributionDescriptor count_descriptor = {
+const ContributionDescriptor count_descriptor = {
     .contribution_greater = contribution_greater,
     .contribution_equal = contribution_equal,
     .contribution_combine = contribution_combine,
     .contribution_initial = {.integer = 0},
 };
-
-static const contribution_t one_contribution = {.integer = 1};
 
 static const int COUNT_AIDS_OFFSET = 1;
 static const int COUNT_ANY_AIDS_OFFSET = 2;
@@ -187,13 +173,16 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
   return explain_count_trackers(trackers);
 }
 
-static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker)
+CountResult aggregate_count_contributions(
+    uint64 seed, uint64 true_count, uint32 distinct_contributors,
+    const TopContributor *top_contributors, uint32 top_contributors_length)
 {
+  seed = make_seed(seed);
+
   CountResult result = {0};
-  uint64 seed = make_seed(tracker->aid_seed);
 
   result.random_seed = seed;
-  result.true_count = tracker->overall_contribution.integer;
+  result.true_count = true_count;
 
   /* Determine outlier/top counts. */
   result.noisy_outlier_count = next_uniform_int(
@@ -206,7 +195,7 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       g_config.top_count_min,
       g_config.top_count_max + 1);
 
-  uint32 top_contributors_count = Min(tracker->top_contributors_length, tracker->distinct_contributors);
+  uint32 top_contributors_count = Min(top_contributors_length, distinct_contributors);
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
   result.low_count = top_end_index > top_contributors_count;
@@ -216,30 +205,62 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
   /* Remove outliers from overall count. */
   result.flattened_count = result.true_count;
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
-    result.flattened_count -= tracker->top_contributors[i].contribution.integer;
+    result.flattened_count -= top_contributors[i].contribution.integer;
 
   /* Compute average of top values. */
   uint64 top_contribution = 0;
   for (uint32 i = result.noisy_outlier_count; i < top_end_index; i++)
-    top_contribution += tracker->top_contributors[i].contribution.integer;
+    top_contribution += top_contributors[i].contribution.integer;
   double top_average = top_contribution / (double)result.noisy_top_count;
 
   /* Compensate for dropped outliers. */
   result.flattened_count += (int64)round(top_average * result.noisy_outlier_count);
 
-  double average = result.flattened_count / (double)tracker->distinct_contributors;
+  double average = result.flattened_count / (double)distinct_contributors;
   result.noise_sigma = g_config.noise_sigma * Max(average, 0.5 * top_average);
   result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
 
   return result;
 }
 
+static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker)
+{
+  return aggregate_count_contributions(
+      tracker->aid_seed,
+      tracker->overall_contribution.integer,
+      tracker->distinct_contributors,
+      tracker->top_contributors,
+      tracker->top_contributors_length);
+}
+
+void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
+{
+  Assert(result->low_count == false);
+
+  int64 flattening = result->true_count - result->flattened_count;
+  Assert(flattening >= 0);
+  if (flattening >= accumulator->max_flattening)
+  {
+    accumulator->max_flattening = flattening;
+    /* Get the largest flattened count from the ones with the maximum flattening. */
+    accumulator->max_flattened_count = Max(accumulator->max_flattened_count, result->flattened_count);
+  }
+
+  if (result->noise_sigma > accumulator->max_noise_sigma)
+  {
+    accumulator->max_noise_sigma = result->noise_sigma;
+    accumulator->noise_with_max_sigma = result->noise;
+  }
+}
+
+int64 finalize_count_result(const CountResultAccumulator *accumulator)
+{
+  return Max(accumulator->max_flattened_count + accumulator->noise_with_max_sigma, 0);
+}
+
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
-  int64 max_flattening = -1;
-  int64 max_flattened_count = 0;
-  double max_noise_sigma = -1.0;
-  int64 noise_with_max_sigma = 0;
+  CountResultAccumulator result_accumulator = {0};
 
   ListCell *lc;
   foreach (lc, trackers)
@@ -250,21 +271,8 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
     if (result.low_count)
       PG_RETURN_NULL();
 
-    int64 flattening = result.true_count - result.flattened_count;
-    Assert(flattening >= 0);
-    if (flattening > max_flattening)
-    {
-      max_flattening = flattening;
-      /* Get the largest flattened count from the ones with the maximum flattening. */
-      max_flattened_count = Max(max_flattened_count, result.flattened_count);
-    }
-
-    if (result.noise_sigma > max_noise_sigma)
-    {
-      max_noise_sigma = result.noise_sigma;
-      noise_with_max_sigma = result.noise;
-    }
+    accumulate_count_result(&result_accumulator, &result);
   }
 
-  PG_RETURN_INT64(Max(max_flattened_count + noise_with_max_sigma, 0));
+  PG_RETURN_INT64(finalize_count_result(&result_accumulator));
 }

@@ -11,12 +11,14 @@ INSERT INTO test_customers VALUES
   (14, 'Berlin'), (15, 'Berlin');
 
 CREATE TABLE test_products (id INTEGER PRIMARY KEY, name TEXT, price REAL);
-INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5), (2, 'Car', 100.0);
+INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5),
+  (2, 'Car', 100.0), (3, 'House', 400.0), (4, 'Movie', 10.0);
 
 CREATE TABLE test_purchases (cid INTEGER, pid INTEGER);
 INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1),
   (7, 1), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
-  (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL);
+  (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL), (4, 3), (5, 3), (6, 4), (7, -1),
+  (7, 4), (8, -2), (9, -3), (10, -4);
 
 CREATE TABLE test_patients (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
 INSERT INTO test_patients VALUES
