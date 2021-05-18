@@ -14,6 +14,8 @@
 #include "pg_diffix/aggregation/random.h"
 #include "pg_diffix/aggregation/count.h"
 
+static const bool TYPE_BY_REF = false;
+
 static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 {
   const void *data = NULL;
@@ -26,7 +28,7 @@ static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
   else
   {
     data = DatumGetPointer(value);
-    data_size = datumGetSize(value, typbyval, typlen);
+    data_size = datumGetSize(value, TYPE_BY_REF, typlen);
   }
   return hash_bytes(data, data_size);
 }
@@ -255,8 +257,8 @@ static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b
   }
   else
   {
-    Size size_a = datumGetSize(value_a, g_compare_values_data->typbyval, g_compare_values_data->typlen);
-    Size size_b = datumGetSize(value_b, g_compare_values_data->typbyval, g_compare_values_data->typlen);
+    Size size_a = datumGetSize(value_a, TYPE_BY_REF, g_compare_values_data->typlen);
+    Size size_b = datumGetSize(value_b, TYPE_BY_REF, g_compare_values_data->typlen);
     return memcmp(DatumGetPointer(value_a), DatumGetPointer(value_b), Min(size_a, size_b));
   }
 }
