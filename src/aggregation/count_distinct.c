@@ -275,7 +275,7 @@ typedef struct PerAidValuesEntry
   uint32 contributions;
 } PerAidValuesEntry;
 
-static List *map_value_per_aid(List *per_aid_values, aid_t aid, Datum value)
+static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum value)
 {
   /*
    * Do a binary search for an existing entry or for the insertion location of a new entry.
@@ -328,7 +328,7 @@ static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint
     foreach (aid_cell, aids)
     {
       aid_t aid = (aid_t)lfirst(aid_cell);
-      per_aid_values = map_value_per_aid(per_aid_values, aid, entry->value);
+      per_aid_values = associate_value_with_aid(per_aid_values, aid, entry->value);
     }
   }
 
