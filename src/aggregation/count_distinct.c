@@ -203,9 +203,11 @@ static uint64 seed_from_aidv(const List *aidv)
 
 static bool aid_set_is_high_count(const List *aidv)
 {
+  if (list_length(aidv) < g_config.minimum_allowed_aid_values)
+    return false; /* Less AID values than minimum threshold, value is low-count. */
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
-  if (list_length(aidv) == max_size) // set is full, value is not low-count
-    return true;
+  if (list_length(aidv) == max_size)
+    return true; /* More AID values than maximum threshold, value is high-count. */
   uint64 seed = seed_from_aidv(aidv);
   int threshold = generate_lcf_threshold(&seed);
   return list_length(aidv) >= threshold;
