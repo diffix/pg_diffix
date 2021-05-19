@@ -35,12 +35,24 @@ typedef struct ContributionDescriptor
   contribution_t contribution_initial; /* Initial or "zero" value for a contribution */
 } ContributionDescriptor;
 
+typedef struct Contributor
+{
+  aid_t aid;
+  contribution_t contribution;
+} Contributor;
+
+typedef struct Contributors
+{
+  uint32 length;
+  uint32 capacity;
+  Contributor members[FLEXIBLE_ARRAY_MEMBER];
+} Contributors;
+
 typedef struct ContributionTrackerHashEntry
 {
-  contribution_t contribution; /* Contribution from AID */
-  aid_t aid;                   /* Entry key */
-  bool has_contribution;       /* Whether the AID has contributed yet */
-  char status;                 /* Required for hash table */
+  Contributor contributor; /* Contributor info */
+  bool has_contribution;   /* Whether the AID has contributed yet */
+  char status;             /* Required for hash table */
 } ContributionTrackerHashEntry;
 
 /*
@@ -53,23 +65,15 @@ typedef struct ContributionTrackerHashEntry
 #define SH_DECLARE
 #include "lib/simplehash.h"
 
-typedef struct TopContributor
-{
-  aid_t aid;
-  contribution_t contribution;
-} TopContributor;
-
 typedef struct ContributionTrackerState
 {
-  AidDescriptor aid_descriptor;                           /* Behavior for AIDs */
-  ContributionDescriptor contribution_descriptor;         /* Behavior for contributions */
-  ContributionTracker_hash *contribution_table;           /* Hash set of all AIDs */
-  uint64 contributions_count;                             /* Total count of non-NULL contributions */
-  uint32 distinct_contributors;                           /* Count of distinct non-NULL contributors */
-  contribution_t overall_contribution;                    /* Combined contribution from all contributors */
-  uint64 aid_seed;                                        /* Current AID seed */
-  uint32 top_contributors_length;                         /* Length of top_contributors array */
-  TopContributor top_contributors[FLEXIBLE_ARRAY_MEMBER]; /* Stores top_contributors_length number of top contributors */
+  AidDescriptor aid_descriptor;                   /* Behavior for AIDs */
+  ContributionDescriptor contribution_descriptor; /* Behavior for contributions */
+  ContributionTracker_hash *contribution_table;   /* Hash set of all AIDs */
+  uint64 aid_seed;                                /* Current AID seed */
+  uint64 distinct_contributors;                   /* Count of distinct non-NULL contributors */
+  contribution_t overall_contribution;            /* Combined contribution from all contributors */
+  Contributors top_contributors;                  /* Variable size field, has to be last in the list. */
 } ContributionTrackerState;
 
 /*
@@ -95,18 +99,12 @@ extern List *get_aggregate_contribution_trackers(
 
 extern void add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t contribution);
+    Contributors *top_contributors,
+    Contributor contributor);
 
 extern void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t contribution);
+    Contributors *top_contributors,
+    Contributor contributor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

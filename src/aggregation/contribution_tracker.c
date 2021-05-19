@@ -11,24 +11,20 @@
  * ----------------------------------------------------------------
  */
 
-static inline uint32 find_aid_index(
-    const TopContributor *top_contributors,
-    uint32 top_length,
-    aid_t aid)
+static inline uint32 find_aid_index(const Contributors *top_contributors, aid_t aid)
 {
-  for (uint32 i = 0; i < top_length; i++)
+  for (uint32 i = 0; i < top_contributors->length; i++)
   {
-    if (aid == top_contributors[i].aid)
+    if (aid == top_contributors->members[i].aid)
       return i;
   }
 
-  return top_length;
+  return top_contributors->length;
 }
 
 static inline uint32 find_insertion_index(
     const ContributionDescriptor *descriptor,
-    const TopContributor *top_contributors,
-    uint32 top_length,
+    const Contributors *top_contributors,
     contribution_t contribution)
 {
   ContributionGreaterFunc greater = descriptor->contribution_greater;
@@ -37,76 +33,73 @@ static inline uint32 find_insertion_index(
    * Do a single comparison in the middle to halve lookup steps.
    * No. elements won't be large enough to bother with a full binary search.
    */
-  contribution_t middle_contribution = top_contributors[top_length / 2].contribution;
-  uint32 start_index = greater(contribution, middle_contribution) ? 0 : (top_length / 2 + 1);
-  for (uint32 i = start_index; i < top_length; i++)
+  contribution_t middle_contribution = top_contributors->members[top_contributors->length / 2].contribution;
+  uint32 start_index = greater(contribution, middle_contribution) ? 0 : (top_contributors->length / 2 + 1);
+  for (uint32 i = start_index; i < top_contributors->length; i++)
   {
-    if (greater(contribution, top_contributors[i].contribution))
+    if (greater(contribution, top_contributors->members[i].contribution))
       return i;
   }
 
-  return top_length;
+  return top_contributors->length;
 }
 
 void add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t contribution)
+    Contributors *top_contributors,
+    Contributor contributor)
 {
-  Assert(capacity >= top_length);
+  uint32 length = top_contributors->length, capacity = top_contributors->capacity;
+  Assert(capacity >= length);
 
   /*
    * Entry is not a top contributor if capacity is exhausted and
    * contribution is not greater than the lowest top contribution.
    */
-  if (top_length == capacity &&
-      !descriptor->contribution_greater(contribution, top_contributors[top_length - 1].contribution))
-    return;
+  if (length == capacity)
+  {
+    Contributor lowest_contributor = top_contributors->members[length - 1];
+    if (!descriptor->contribution_greater(contributor.contribution, lowest_contributor.contribution))
+      return;
+  }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, top_length, contribution);
-  Assert(insertion_index < capacity); /* sanity check */
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
+  Assert(insertion_index < top_contributors->capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
-  size_t elements = (top_length < capacity ? top_length + 1 : capacity) - insertion_index - 1;
-  memmove(&top_contributors[insertion_index + 1],
-          &top_contributors[insertion_index],
-          elements * sizeof(TopContributor));
+  size_t elements = (length < capacity ? length + 1 : capacity) - insertion_index - 1;
+  memmove(&top_contributors->members[insertion_index + 1],
+          &top_contributors->members[insertion_index],
+          elements * sizeof(Contributor));
 
-  top_contributors[insertion_index].aid = aid;
-  top_contributors[insertion_index].contribution = contribution;
+  top_contributors->members[insertion_index] = contributor;
+  top_contributors->length = Min(length + 1, capacity);
 }
 
 void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
-    TopContributor *top_contributors,
-    uint32 capacity,
-    uint32 top_length,
-    aid_t aid,
-    contribution_t contribution)
+    Contributors *top_contributors,
+    Contributor contributor)
 {
-  Assert(capacity >= top_length);
+  Assert(top_contributors->capacity >= top_contributors->length);
 
-  uint32 aid_index = find_aid_index(top_contributors, top_length, aid);
-  if (aid_index == top_length)
+  uint32 aid_index = find_aid_index(top_contributors, contributor.aid);
+  if (aid_index == top_contributors->length)
   {
     /* Not an existing top contributor, try to add it as a new entry and return. */
-    add_top_contributor(descriptor, top_contributors, capacity, top_length, aid, contribution);
+    add_top_contributor(descriptor, top_contributors, contributor);
     return;
   }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, top_length, contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
-  memmove(&top_contributors[insertion_index + 1],
-          &top_contributors[insertion_index],
-          elements * sizeof(TopContributor));
+  memmove(&top_contributors->members[insertion_index + 1],
+          &top_contributors->members[insertion_index],
+          elements * sizeof(Contributor));
 
-  top_contributors[insertion_index].aid = aid;
-  top_contributors[insertion_index].contribution = contribution;
+  top_contributors->members[insertion_index] = contributor;
 }
 
 /* ----------------------------------------------------------------
@@ -119,7 +112,7 @@ void update_or_add_top_contributor(
  */
 #define SH_PREFIX ContributionTracker
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
-#define SH_KEY aid
+#define SH_KEY contributor.aid
 #define SH_KEY_TYPE aid_t
 #define SH_EQUAL(tb, a, b) a == b
 #define SH_HASH_KEY(tb, key) HASH_AID_32(key)
@@ -129,20 +122,20 @@ void update_or_add_top_contributor(
 
 static ContributionTrackerState *contribution_tracker_new(
     AidDescriptor aid_descriptor,
-    const ContributionDescriptor *contribution_descriptor,
-    uint32 top_contributors_length)
+    const ContributionDescriptor *contribution_descriptor)
 {
+  uint32 top_capacity = g_config.outlier_count_max + g_config.top_count_max;
   ContributionTrackerState *state = (ContributionTrackerState *)palloc0(
-      sizeof(ContributionTrackerState) + top_contributors_length * sizeof(TopContributor));
+      sizeof(ContributionTrackerState) + top_capacity * sizeof(Contributor));
 
   state->aid_descriptor = aid_descriptor;
   state->contribution_descriptor = *contribution_descriptor;
   state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 128, NULL);
-  state->contributions_count = 0;
+  state->aid_seed = 0;
   state->distinct_contributors = 0;
   state->overall_contribution = contribution_descriptor->contribution_initial;
-  state->aid_seed = 0;
-  state->top_contributors_length = top_contributors_length;
+  state->top_contributors.length = 0;
+  state->top_contributors.capacity = top_capacity;
 
   return state;
 }
@@ -164,9 +157,7 @@ void contribution_tracker_update_contribution(
     contribution_t contribution)
 {
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
-  uint32 top_length = Min(state->distinct_contributors, state->top_contributors_length);
 
-  state->contributions_count++;
   state->overall_contribution = descriptor->contribution_combine(state->overall_contribution, contribution);
 
   bool found;
@@ -175,37 +166,37 @@ void contribution_tracker_update_contribution(
   {
     /* AID does not exist in table. */
     entry->has_contribution = true;
-    entry->contribution = contribution;
+    entry->contributor.contribution = contribution;
     state->distinct_contributors++;
     state->aid_seed ^= aid;
 
     add_top_contributor(&state->contribution_descriptor,
-                        state->top_contributors, state->top_contributors_length, top_length,
-                        aid, contribution);
+                        &state->top_contributors,
+                        entry->contributor);
     return;
   }
   else if (!entry->has_contribution)
   {
     /* AID exists but hasn't contributed yet. */
     entry->has_contribution = true;
-    entry->contribution = contribution;
+    entry->contributor.contribution = contribution;
     state->distinct_contributors++;
 
     add_top_contributor(
         &state->contribution_descriptor,
-        state->top_contributors, state->top_contributors_length, top_length,
-        aid, contribution);
+        &state->top_contributors,
+        entry->contributor);
     return;
   }
 
   /* Aggregate new contribution. */
-  entry->contribution = descriptor->contribution_combine(entry->contribution, contribution);
+  entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
 
   /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
   update_or_add_top_contributor(
       &state->contribution_descriptor,
-      state->top_contributors, state->top_contributors_length, top_length,
-      entry->aid, entry->contribution);
+      &state->top_contributors,
+      entry->contributor);
 }
 
 static const int STATE_INDEX = 0;
@@ -227,10 +218,7 @@ List *get_aggregate_contribution_trackers(
   for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
   {
     Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, arg_index);
-    ContributionTrackerState *tracker = contribution_tracker_new(
-        get_aid_descriptor(aid_type),
-        descriptor,
-        g_config.outlier_count_max + g_config.top_count_max);
+    ContributionTrackerState *tracker = contribution_tracker_new(get_aid_descriptor(aid_type), descriptor);
     trackers = lappend(trackers, tracker);
   }
 
