@@ -14,6 +14,26 @@ RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
+CREATE OR REPLACE FUNCTION diffix.show_settings()
+RETURNS table(name text, setting text, short_desc text)
+LANGUAGE SQL
+AS $$
+  SELECT
+    name, setting, short_desc
+  FROM pg_settings
+  WHERE name LIKE 'pg_diffix.%';
+$$;
+
+CREATE OR REPLACE FUNCTION diffix.show_labels()
+RETURNS table(object text, label text)
+LANGUAGE SQL
+AS $$
+  SELECT
+    pg_describe_object(classoid, objoid, objsubid), label
+  FROM pg_seclabel
+  WHERE provider = 'pg_diffix';
+$$;
+
 /* ----------------------------------------------------------------
  * lcf(aids...)
  * ----------------------------------------------------------------

@@ -110,6 +110,8 @@ labels, see the official [documentation page](https://www.postgresql.org/docs/cu
 Only superusers can set anonymization labels.
 To remove an anonymization label from an object, set it to `NULL`.
 
+Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
+
 Tables, schemas and databases can be labeled as `public` or `sensitive`. Direct access is allowed to public data
 even for restricted users.
 
@@ -143,6 +145,8 @@ SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish';
 The module exposes a bunch of custom variables, under the `pg_diffix` prefix, that can be set in the configuration file
 to control the system behaviour for all users. Superusers can change these variables at run-time for their own session,
 while regular users only have read access to them (with few notable exceptions).
+
+Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension.
 
 #### Data access settings
 
