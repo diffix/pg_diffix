@@ -1,5 +1,9 @@
 # PG Diffix
 
+`pg_diffix` is a PostgreSQL extension for strong dynamic anonymization. It enables you to query your PostgreSQL
+database (nearly) as you’re used to, but makes sure you receive fully anonymous output.
+For details, visit the [Open Diffix](https://www.open-diffix.org/) website.
+
 ## Installation
 
 The source is compiled with:
@@ -43,6 +47,12 @@ If you have multiple libraries you want to preload, separate them with commas.
 ## Testing the extension
 
 Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
+
+Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
+```sh
+$ docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
+    sh -c 'cd /repo && pg-start 13 && pg-build-test'
+```
 
 ## Docker images
 
