@@ -9,6 +9,16 @@
 #include "utils/elog.h"
 
 /*-------------------------------------------------------------------------
+ * Compatibility shims
+ *-------------------------------------------------------------------------
+ */
+#if PG_MAJORVERSION_NUM < 13
+#error "This module requires PostgreSQL version 13 or higher!"
+#elif PG_MAJORVERSION_NUM >= 14
+#define getObjectTypeDescription(object) getObjectTypeDescription(object, false)
+#endif
+
+/*-------------------------------------------------------------------------
  * Table utils
  *-------------------------------------------------------------------------
  */

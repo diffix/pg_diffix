@@ -4,6 +4,8 @@
 database (nearly) as you’re used to, but makes sure you receive fully anonymous output.
 For details, visit the [Open Diffix](https://www.open-diffix.org/) website.
 
+This extension requires a PostgreSQL server version of 13 or higher.
+
 ## Installation
 
 The source is compiled with:

@@ -122,7 +122,7 @@ static void expand_implicit_buckets(Query *query)
   TargetEntry *expand_entry = makeTargetEntry((Expr *)generate_series, target_count + 1, NULL, false);
   expand_entry->resjunk = true; /* Hide output values. */
 
-  lappend(query->targetList, expand_entry);
+  query->targetList = lappend(query->targetList, expand_entry);
   query->hasTargetSRFs = true;
 }
 
