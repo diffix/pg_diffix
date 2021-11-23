@@ -8,6 +8,8 @@ This extension requires a PostgreSQL server version of 13 or higher.
 
 ## Installation
 
+PostgreSQL version > 13 is required.
+
 The source is compiled with:
 
 ```sh
@@ -26,9 +28,12 @@ $ make install
 
 You probably need to run it with superuser permission as `sudo make install`.
 
-In `psql`, you have to install the extension with `create extension pg_diffix;`.
+In `psql`, you have to install the extension with `CREATE EXTENSION pg_diffix;`.
 
 ## Using the extension
+
+Load the extension with `LOAD 'pg_diffix';`, unless you configured it to preload using [these instructions](#preloading-the-extension).
+**NOTE** that the extension is automatically loaded after `CREATE EXTENSION`.
 
 Once installed, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
@@ -48,7 +53,16 @@ If you have multiple libraries you want to preload, separate them with commas.
 
 ## Testing the extension
 
-Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
+### `make installcheck`
+
+Once you have a running server with the extension installed, execute `make installcheck` to run the tests. You must ensure all the required permissions to have this succeed, for example:
+
+1. In your `pg_hba.conf` your PostgreSQL superuser to have `trust` authentication `METHOD`. `systemctl restart postgresql.service` in case you needed to modify
+2. Invoke using `PGUSER=<postgres-superuser> make installcheck`
+
+or if available, just make your usual PostgreSQL user a `SUPERUSER`.
+
+### `PGXN Test Tools`
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
 ```sh
@@ -87,8 +101,10 @@ For more advanced usage see the [official image reference](https://hub.docker.co
 
 The demo image extends the base image with a sample dataset and a user configured with `publish` access.
 
-Once started, the container creates and populates the `banking` database. A user named
-`publish` (password `password`) is also created. This user has anonymized access to `banking`.
+Once started, the container creates and populates the `banking` database.
+Two users are created, with password `demo`:
+  - `banking_publish` with anonymized access to `banking`
+  - `banking` with direct (non-anonymized) access to `banking`
 
 **Note:** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
 
@@ -99,8 +115,8 @@ $ make demo-image
 # Run the container in foreground and expose in port 10432
 $ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
 
-# Connect to the banking database (from another shell)
-$ psql -h localhost -p 10432 -d banking -U publish
+# Connect to the banking database (from another shell) for anonymized access
+$ psql -h localhost -p 10432 -d banking -U banking_publish
 ```
 
 To keep the container running you can start it in detached mode and with a restart policy:
@@ -158,7 +174,7 @@ The module exposes a bunch of custom variables, under the `pg_diffix` prefix, th
 to control the system behaviour for all users. Superusers can change these variables at run-time for their own session,
 while regular users only have read access to them (with few notable exceptions).
 
-Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension.
+Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension. **NOTE** if this results empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 #### Data access settings
 
