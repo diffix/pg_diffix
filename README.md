@@ -33,7 +33,6 @@ In `psql`, you have to install the extension with `CREATE EXTENSION pg_diffix;`.
 ## Using the extension
 
 Load the extension with `LOAD 'pg_diffix';`, unless you configured it to preload using [these instructions](#preloading-the-extension).
-**NOTE** that the extension is automatically loaded after `CREATE EXTENSION`.
 
 Once installed, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
@@ -41,7 +40,7 @@ Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
 ## Preloading the extension
 
-To enable automatic activation you need to configure [library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+To enable automatic activation on every session start, you need to configure [library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 
 In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
 
@@ -55,7 +54,7 @@ If you have multiple libraries you want to preload, separate them with commas.
 
 ### `make installcheck`
 
-Once you have a running server with the extension installed, execute `make installcheck` to run the tests. You must ensure all the required permissions to have this succeed, for example:
+Once you have a running server with the extension installed, execute `make installcheck` to run the tests. You must ensure you have all the required permissions for this to succeed, for example:
 
 1. In your `pg_hba.conf` your PostgreSQL superuser to have `trust` authentication `METHOD`. `systemctl restart postgresql.service` in case you needed to modify
 2. Invoke using `PGUSER=<postgres-superuser> make installcheck`
@@ -174,7 +173,7 @@ The module exposes a bunch of custom variables, under the `pg_diffix` prefix, th
 to control the system behaviour for all users. Superusers can change these variables at run-time for their own session,
 while regular users only have read access to them (with few notable exceptions).
 
-Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension. **NOTE** if this results empty, make sure [`pg_diffix` is loaded](#using-the-extension).
+Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension. **NOTE** if the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 #### Data access settings
 
