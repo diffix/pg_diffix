@@ -186,6 +186,12 @@ CountResult aggregate_count_contributions(
   result.random_seed = seed;
   result.true_count = true_count;
 
+  if (distinct_contributors < g_config.outlier_count_min + g_config.top_count_min)
+  {
+    result.not_enough_aidvs = true;
+    return result;
+  }
+
   /* Determine outlier/top counts. */
   result.noisy_outlier_count = next_uniform_int(
       &seed,
@@ -270,6 +276,9 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 
     if (result.low_count)
       PG_RETURN_NULL();
+
+    if (result.not_enough_aidvs) 
+      PG_RETURN_INT64(g_config.minimum_allowed_aid_values);
 
     accumulate_count_result(&result_accumulator, &result);
   }

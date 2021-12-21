@@ -18,6 +18,7 @@ typedef struct CountResult
   double noise_sigma;
   int64 noise;
   bool low_count;
+  bool not_enough_aidvs;
 } CountResult;
 
 extern CountResult aggregate_count_contributions(

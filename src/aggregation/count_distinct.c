@@ -427,6 +427,11 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   List *lc_entries = filter_lc_entries(tracker);
   sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
 
+  CountDistinctResult result = {0};
+  result.lc_values_count = list_length(lc_entries);
+  result.hc_values_count = tracker->members - result.lc_values_count;
+  result.noisy_count = result.hc_values_count;
+
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
   Contributors *top_contributors =
       palloc(sizeof(Contributors) + top_contributors_capacity * sizeof(Contributor));
@@ -450,25 +455,28 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
         &seed, &contributors_count,
         top_contributors);
 
-    CountResult result = aggregate_count_contributions(
+    CountResult inner_count_result = aggregate_count_contributions(
         seed, lc_values_true_count, contributors_count, top_contributors);
 
     list_free_deep(per_aid_values);
 
-    if (result.low_count)
+    if (inner_count_result.not_enough_aidvs)
+    {
+      result.noisy_count += g_config.minimum_allowed_aid_values;
+      insufficient_data = true;
+      break;
+    }
+
+    if (inner_count_result.low_count)
     {
       insufficient_data = true;
       break;
     }
-    accumulate_count_result(&result_accumulator, &result);
+    accumulate_count_result(&result_accumulator, &inner_count_result);
   }
 
   pfree(top_contributors);
 
-  CountDistinctResult result = {0};
-  result.lc_values_count = list_length(lc_entries);
-  result.hc_values_count = tracker->members - result.lc_values_count;
-  result.noisy_count = result.hc_values_count;
   if (!insufficient_data)
     result.noisy_count += finalize_count_result(&result_accumulator);
 
