@@ -84,6 +84,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
       ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
       aid_hash_t aid_hash = tracker->aid_descriptor.hash_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(ANY_INDEX))
+        /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid_hash);
       else
         contribution_tracker_update_contribution(tracker, aid_hash, one_contribution);
@@ -241,8 +242,8 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
   if (flattening >= accumulator->max_flattening)
   {
     accumulator->max_flattening = flattening;
-    /* Get the largest flattened count from the ones with the maximum flattening. */
-    accumulator->max_flattened_count = Max(accumulator->max_flattened_count, result->flattened_count);
+    accumulator->max_flattened_count_with_max_flattening = Max(accumulator->max_flattened_count_with_max_flattening,
+                                                               result->flattened_count);
   }
 
   if (result->noise_sigma > accumulator->max_noise_sigma)
@@ -254,7 +255,7 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  return Max(accumulator->max_flattened_count + accumulator->noise_with_max_sigma, 0);
+  return Max(accumulator->max_flattened_count_with_max_flattening + accumulator->noise_with_max_sigma, 0);
 }
 
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
