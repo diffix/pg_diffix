@@ -126,15 +126,15 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
     int aids_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
     DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aids_count);
 
-    ListCell *lc;
-    foreach (lc, entry->aidvs)
+    ListCell *aidv_list_cell;
+    foreach (aidv_list_cell, entry->aidvs)
     {
-      int aid_index = foreach_current_index(lc) + COUNT_DISTINCT_AIDS_OFFSET;
+      int aid_index = foreach_current_index(aidv_list_cell) + COUNT_DISTINCT_AIDS_OFFSET;
       if (!PG_ARGISNULL(aid_index))
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_hash_t aid_hash = get_aid_descriptor(aid_type).hash_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(lc); // pointer to the set of AID values
+        List **aidv = (List **)&lfirst(aidv_list_cell); // pointer to the set of AID values
         *aidv = add_aidv_to_set(*aidv, aid_hash);
       }
     }
@@ -189,36 +189,36 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-static uint64 seed_from_aidv(const List *aidv)
+static uint64 seed_from_aidv(const List *aidvs)
 {
   uint64 seed = 0;
-  ListCell *lc;
-  foreach (lc, aidv)
+  ListCell *aidv_cell;
+  foreach (aidv_cell, aidvs)
   {
-    aid_hash_t aid_hash = (aid_hash_t)lfirst(lc);
+    aid_hash_t aid_hash = (aid_hash_t)lfirst(aidv_cell);
     seed ^= aid_hash;
   }
   return make_seed(seed);
 }
 
-static bool aid_set_is_high_count(const List *aidv)
+static bool aid_set_is_high_count(const List *aidvs)
 {
-  if (list_length(aidv) < g_config.minimum_allowed_aid_values)
+  if (list_length(aidvs) < g_config.minimum_allowed_aid_values)
     return false; /* Less AID values than minimum threshold, value is low-count. */
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
-  if (list_length(aidv) == max_size)
+  if (list_length(aidvs) == max_size)
     return true; /* More AID values than maximum threshold, value is high-count. */
-  uint64 seed = seed_from_aidv(aidv);
+  uint64 seed = seed_from_aidv(aidvs);
   int threshold = generate_lcf_threshold(&seed);
-  return list_length(aidv) >= threshold;
+  return list_length(aidvs) >= threshold;
 }
 
 static bool aid_sets_are_high_count(const List *aidvs)
 {
-  ListCell *lc;
-  foreach (lc, aidvs)
+  ListCell *aidv_cell;
+  foreach (aidv_cell, aidvs)
   {
-    const List *aidv = (const List *)lfirst(lc);
+    const List *aidv = (const List *)lfirst(aidv_cell);
     if (!aid_set_is_high_count(aidv))
       return false;
   }
@@ -362,10 +362,10 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
 
 static void delete_value(List *per_aid_values, Datum value)
 {
-  ListCell *lc;
-  foreach (lc, per_aid_values)
+  ListCell *per_aid_value_cell;
+  foreach (per_aid_value_cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
     /* Since values are unique at this point, we can use simple pointer equality even for reference types. */
     entry->values = list_delete_ptr(entry->values, (void *)value);
   }
@@ -382,10 +382,10 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 
   while (values_count > 0)
   {
-    ListCell *lc;
-    foreach (lc, per_aid_values)
+    ListCell *per_aid_value_cell;
+    foreach (per_aid_value_cell, per_aid_values)
     {
-      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
       if (entry->values != NIL)
       {
         values_count--;
@@ -404,10 +404,10 @@ static void process_lc_values_contributions(
   *contributors_count = 0;
   *seed = 0;
 
-  ListCell *lc;
-  foreach (lc, per_aid_values)
+  ListCell *per_aid_value_cell;
+  foreach (per_aid_value_cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
     *seed ^= entry->aid_hash;
     if (entry->contributions > 0)
     {
