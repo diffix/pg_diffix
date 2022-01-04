@@ -68,7 +68,7 @@ typedef struct DistinctTrackerData
 
 static const int STATE_INDEX = 0;
 static const int VALUE_INDEX = 1;
-static const int AIDS_INDEX = 2;
+static const int COUNT_DISTINCT_AIDS_OFFSET = 2;
 
 static DistinctTracker_hash *get_distinct_tracker(PG_FUNCTION_ARGS)
 {
@@ -120,16 +120,16 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 
   if (!PG_ARGISNULL(VALUE_INDEX))
   {
-    Assert(PG_NARGS() > AIDS_INDEX);
+    Assert(PG_NARGS() > COUNT_DISTINCT_AIDS_OFFSET);
 
     Datum value = PG_GETARG_DATUM(VALUE_INDEX);
-    int aidvs_count = PG_NARGS() - AIDS_INDEX;
+    int aidvs_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
     DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aidvs_count);
 
     ListCell *lc;
     foreach (lc, entry->aidvs)
     {
-      int aid_index = foreach_current_index(lc) + AIDS_INDEX;
+      int aid_index = foreach_current_index(lc) + COUNT_DISTINCT_AIDS_OFFSET;
       if (!PG_ARGISNULL(aid_index))
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
@@ -160,7 +160,7 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_INDEX);
+  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
 
@@ -176,7 +176,7 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_INDEX);
+  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
 

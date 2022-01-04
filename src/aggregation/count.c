@@ -38,6 +38,7 @@ const ContributionDescriptor count_descriptor = {
 
 static const int COUNT_AIDS_OFFSET = 1;
 static const int COUNT_ANY_AIDS_OFFSET = 2;
+static const int ANY_INDEX = 1;
 
 PG_FUNCTION_INFO_V1(anon_count_transfn);
 PG_FUNCTION_INFO_V1(anon_count_finalfn);
@@ -82,7 +83,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
     {
       ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
       aid_hash_t aid_hash = tracker->aid_descriptor.hash_aid(PG_GETARG_DATUM(aid_index));
-      if (PG_ARGISNULL(1))
+      if (PG_ARGISNULL(ANY_INDEX))
         contribution_tracker_update_aid(tracker, aid_hash);
       else
         contribution_tracker_update_contribution(tracker, aid_hash, one_contribution);
