@@ -314,7 +314,7 @@ static List *associate_value_with_aid(List *per_aid_values, aid_hash_t aid_hash,
 }
 
 /* Maps values per-AID given the list of low-count tracker entries and an AID values set index. */
-static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint32 *lc_values_true_count)
+static List *transpose_lc_values_per_aid(List *lc_entries, int aid_index, uint32 *lc_values_true_count)
 {
   List *per_aid_values = NIL;
   *lc_values_true_count = 0;
@@ -323,15 +323,15 @@ static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint
   foreach (lc_entry_cell, lc_entries)
   {
     const DistinctTrackerHashEntry *entry = (const DistinctTrackerHashEntry *)lfirst(lc_entry_cell);
-    const List *aids = (const List *)list_nth(entry->aidvs, aidvs_index);
+    const List *aidvs = (const List *)list_nth(entry->aidvs, aid_index);
 
-    if (aids != NIL) /* Count unique value only if it has at least one associated AID value. */
+    if (aidvs != NIL) /* Count unique value only if it has at least one associated AID value. */
       (*lc_values_true_count)++;
 
-    ListCell *aid_cell;
-    foreach (aid_cell, aids)
+    ListCell *aidv_cell;
+    foreach (aidv_cell, aidvs)
     {
-      aid_hash_t aid_hash = (aid_hash_t)lfirst(aid_cell);
+      aid_hash_t aid_hash = (aid_hash_t)lfirst(aidv_cell);
       per_aid_values = associate_value_with_aid(per_aid_values, aid_hash, entry->value);
     }
   }
@@ -436,10 +436,10 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
-  for (int aidvs_index = 0; aidvs_index < aids_count; aidvs_index++)
+  for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
     uint32 lc_values_true_count = 0;
-    List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aidvs_index, &lc_values_true_count);
+    List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
