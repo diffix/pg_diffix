@@ -40,7 +40,7 @@ static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 typedef struct DistinctTrackerHashEntry
 {
   Datum value; /* Unique value */
-  List *aidvs; /* AID value sets for the unique value */
+  List *aidvs; /* List of (hashes of) AID value lists, one for each AID instance */
   char status; /* Required for hash table */
 } DistinctTrackerHashEntry;
 
@@ -83,7 +83,7 @@ static DistinctTracker_hash *get_distinct_tracker(PG_FUNCTION_ARGS)
 }
 
 static DistinctTrackerHashEntry *
-get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs_count)
+get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
   bool found = false;
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
@@ -91,7 +91,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs
   {
     entry->aidvs = NIL;
     entry->value = value;
-    for (int i = 0; i < aidvs_count; i++)
+    for (int i = 0; i < aids_count; i++)
     {
       entry->aidvs = lappend(entry->aidvs, NIL);
     }
@@ -99,7 +99,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs
   return entry;
 }
 
-static List *add_aid_to_set(List *aidv, aid_hash_t aid_hash)
+static List *add_aidv_to_set(List *aidv, aid_hash_t aid_hash)
 {
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
   if (list_length(aidv) == max_size) // set is full, value is not low-count
@@ -123,8 +123,8 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
     Assert(PG_NARGS() > COUNT_DISTINCT_AIDS_OFFSET);
 
     Datum value = PG_GETARG_DATUM(VALUE_INDEX);
-    int aidvs_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
-    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aidvs_count);
+    int aids_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
+    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aids_count);
 
     ListCell *lc;
     foreach (lc, entry->aidvs)
@@ -135,7 +135,7 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_hash_t aid_hash = get_aid_descriptor(aid_type).hash_aid(PG_GETARG_DATUM(aid_index));
         List **aidv = (List **)&lfirst(lc); // pointer to the set of AID values
-        *aidv = add_aid_to_set(*aidv, aid_hash);
+        *aidv = add_aidv_to_set(*aidv, aid_hash);
       }
     }
   }
@@ -152,7 +152,7 @@ typedef struct CountDistinctResult
   int64 noisy_count;
 } CountDistinctResult;
 
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *state, int aidvs_count);
+static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *state, int aids_count);
 
 Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 {
@@ -422,7 +422,7 @@ static void process_lc_values_contributions(
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aidvs_count)
+static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
 {
   List *lc_entries = filter_lc_entries(tracker);
   sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
@@ -436,7 +436,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
-  for (int aidvs_index = 0; aidvs_index < aidvs_count; aidvs_index++)
+  for (int aidvs_index = 0; aidvs_index < aids_count; aidvs_index++)
   {
     uint32 lc_values_true_count = 0;
     List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aidvs_index, &lc_values_true_count);
