@@ -11,10 +11,10 @@ typedef struct Oids
   Oid count;               /* count(*) */
   Oid count_any;           /* count(any) */
   Oid lcf;                 /* lcf(aid) */
-  Oid anon_count_distinct; /* anon_count_distinct(aid) */
+  Oid anon_count_distinct; /* anon_count_distinct(value, aid) */
   Oid anon_count;          /* anon_count(aid) */
-  Oid anon_count_any;      /* anon_count(aid, any) */
-  Oid generate_series;     /* generate_series(aid, any) */
+  Oid anon_count_any;      /* anon_count_any(any, aid) */
+  Oid generate_series;     /* generate_series(start, stop) */
 } Oids;
 
 /*
