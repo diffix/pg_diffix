@@ -11,11 +11,11 @@
  * ----------------------------------------------------------------
  */
 
-static inline uint32 find_aid_index(const Contributors *top_contributors, aid_t aid)
+static inline uint32 find_aid_index(const Contributors *top_contributors, aid_hash_t aid_hash)
 {
   for (uint32 i = 0; i < top_contributors->length; i++)
   {
-    if (aid == top_contributors->members[i].aid)
+    if (aid_hash == top_contributors->members[i].aid_hash)
       return i;
   }
 
@@ -83,7 +83,7 @@ void update_or_add_top_contributor(
 {
   Assert(top_contributors->capacity >= top_contributors->length);
 
-  uint32 aid_index = find_aid_index(top_contributors, contributor.aid);
+  uint32 aid_index = find_aid_index(top_contributors, contributor.aid_hash);
   if (aid_index == top_contributors->length)
   {
     /* Not an existing top contributor, try to add it as a new entry and return. */
@@ -108,12 +108,12 @@ void update_or_add_top_contributor(
  */
 
 /*
- * Definitions for HashTable<aid_t, ContributionTrackerHashEntry>
+ * Definitions for HashTable<aid_hash_t, ContributionTrackerHashEntry>
  */
 #define SH_PREFIX ContributionTracker
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
-#define SH_KEY contributor.aid
-#define SH_KEY_TYPE aid_t
+#define SH_KEY contributor.aid_hash
+#define SH_KEY_TYPE aid_hash_t
 #define SH_EQUAL(tb, a, b) a == b
 #define SH_HASH_KEY(tb, key) HASH_AID_32(key)
 #define SH_SCOPE inline
@@ -140,20 +140,20 @@ static ContributionTrackerState *contribution_tracker_new(
   return state;
 }
 
-void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
+void contribution_tracker_update_aid(ContributionTrackerState *state, aid_hash_t aid_hash)
 {
   bool found;
-  ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
+  ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid_hash, &found);
   if (!found)
   {
-    state->aid_seed ^= aid;
+    state->aid_seed ^= aid_hash;
     entry->has_contribution = false;
   }
 }
 
 void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
-    aid_t aid,
+    aid_hash_t aid_hash,
     contribution_t contribution)
 {
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
@@ -161,14 +161,14 @@ void contribution_tracker_update_contribution(
   state->overall_contribution = descriptor->contribution_combine(state->overall_contribution, contribution);
 
   bool found;
-  ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
+  ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid_hash, &found);
   if (!found)
   {
     /* AID does not exist in table. */
     entry->has_contribution = true;
     entry->contributor.contribution = contribution;
     state->distinct_contributors++;
-    state->aid_seed ^= aid;
+    state->aid_seed ^= aid_hash;
 
     add_top_contributor(&state->contribution_descriptor,
                         &state->top_contributors,

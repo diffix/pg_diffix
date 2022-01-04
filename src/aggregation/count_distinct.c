@@ -99,12 +99,12 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs
   return entry;
 }
 
-static List *add_aid_to_set(List *aidv, aid_t aid)
+static List *add_aid_to_set(List *aidv, aid_hash_t aid_hash)
 {
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
   if (list_length(aidv) == max_size) // set is full, value is not low-count
     return aidv;
-  return list_append_unique_ptr(aidv, (void *)aid);
+  return list_append_unique_ptr(aidv, (void *)aid_hash);
 }
 
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
@@ -133,9 +133,9 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
       if (!PG_ARGISNULL(aid_index))
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
-        aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
+        aid_hash_t aid_hash = get_aid_descriptor(aid_type).hash_aid(PG_GETARG_DATUM(aid_index));
         List **aidv = (List **)&lfirst(lc); // pointer to the set of AID values
-        *aidv = add_aid_to_set(*aidv, aid);
+        *aidv = add_aid_to_set(*aidv, aid_hash);
       }
     }
   }
@@ -195,8 +195,8 @@ static uint64 seed_from_aidv(const List *aidv)
   ListCell *lc;
   foreach (lc, aidv)
   {
-    aid_t aid = (aid_t)lfirst(lc);
-    seed ^= aid;
+    aid_hash_t aid_hash = (aid_hash_t)lfirst(lc);
+    seed ^= aid_hash;
   }
   return make_seed(seed);
 }
@@ -274,12 +274,12 @@ static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctT
 /* Holds the low-count values contributed by an AID value. */
 typedef struct PerAidValuesEntry
 {
-  aid_t aid;
+  aid_hash_t aid_hash;
   List *values;
   uint32 contributions;
 } PerAidValuesEntry;
 
-static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum value)
+static List *associate_value_with_aid(List *per_aid_values, aid_hash_t aid_hash, Datum value)
 {
   /*
    * Do a binary search for an existing entry or for the insertion location of a new entry.
@@ -291,11 +291,11 @@ static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum val
   {
     int middle = start + (end - start) / 2;
     PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(list_nth_cell(per_aid_values, middle));
-    if (entry->aid < aid)
+    if (entry->aid_hash < aid_hash)
     {
       start = middle + 1;
     }
-    else if (entry->aid > aid)
+    else if (entry->aid_hash > aid_hash)
     {
       end = middle - 1;
     }
@@ -308,7 +308,7 @@ static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum val
 
   /* No entry found, we insert a new one in the correct position to keep the list ordered. */
   PerAidValuesEntry *entry = palloc0(sizeof(PerAidValuesEntry));
-  entry->aid = aid;
+  entry->aid_hash = aid_hash;
   entry->values = list_make1((void *)value);
   return list_insert_nth(per_aid_values, start, entry);
 }
@@ -331,8 +331,8 @@ static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint
     ListCell *aid_cell;
     foreach (aid_cell, aids)
     {
-      aid_t aid = (aid_t)lfirst(aid_cell);
-      per_aid_values = associate_value_with_aid(per_aid_values, aid, entry->value);
+      aid_hash_t aid_hash = (aid_hash_t)lfirst(aid_cell);
+      per_aid_values = associate_value_with_aid(per_aid_values, aid_hash, entry->value);
     }
   }
 
@@ -351,9 +351,9 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
   else
   {
     /* To ensure determinism, order entries with identical counts by AID value. */
-    if (entry_a->aid > entry_b->aid)
+    if (entry_a->aid_hash > entry_b->aid_hash)
       return 1;
-    else if (entry_a->aid < entry_b->aid)
+    else if (entry_a->aid_hash < entry_b->aid_hash)
       return -1;
     else
       return 0;
@@ -408,10 +408,10 @@ static void process_lc_values_contributions(
   foreach (lc, per_aid_values)
   {
     PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
-    *seed ^= entry->aid;
+    *seed ^= entry->aid_hash;
     if (entry->contributions > 0)
     {
-      Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
+      Contributor contributor = {.aid_hash = entry->aid_hash, .contribution = {.integer = entry->contributions}};
       add_top_contributor(&count_descriptor, top_contributors, contributor);
       (*contributors_count)++;
     }

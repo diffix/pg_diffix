@@ -36,8 +36,8 @@ Datum lcf_transfn(PG_FUNCTION_ARGS)
     if (!PG_ARGISNULL(aid_index))
     {
       AidTrackerState *tracker = (AidTrackerState *)lfirst(lc);
-      aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
-      aid_tracker_update(tracker, aid);
+      aid_hash_t aid_hash = tracker->aid_descriptor.hash_aid(PG_GETARG_DATUM(aid_index));
+      aid_tracker_update(tracker, aid_hash);
     }
   }
 

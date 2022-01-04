@@ -5,12 +5,12 @@
 #include "pg_diffix/aggregation/aid_tracker.h"
 
 /*
- * Definitions for HashTable<aid_t, AidTrackerHashEntry>
+ * Definitions for HashTable<aid_hash_t, AidTrackerHashEntry>
  */
 #define SH_PREFIX AidTracker
 #define SH_ELEMENT_TYPE AidTrackerHashEntry
-#define SH_KEY aid
-#define SH_KEY_TYPE aid_t
+#define SH_KEY aid_hash
+#define SH_KEY_TYPE aid_hash_t
 #define SH_EQUAL(tb, a, b) a == b
 #define SH_HASH_KEY(tb, key) HASH_AID_32(key)
 #define SH_SCOPE inline
@@ -30,13 +30,13 @@ static AidTrackerState *aid_tracker_new(
   return state;
 }
 
-void aid_tracker_update(AidTrackerState *state, aid_t aid)
+void aid_tracker_update(AidTrackerState *state, aid_hash_t aid_hash)
 {
   bool found;
-  AidTracker_insert(state->aid_set, aid, &found);
+  AidTracker_insert(state->aid_set, aid_hash, &found);
   if (!found)
   {
-    state->aid_seed ^= aid;
+    state->aid_seed ^= aid_hash;
   }
 }
 

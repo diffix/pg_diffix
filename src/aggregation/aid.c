@@ -6,25 +6,25 @@
 
 #include "pg_diffix/aggregation/aid.h"
 
-static aid_t make_int4_aid(Datum datum)
+static aid_hash_t hash_int4_aid(Datum datum)
 {
-  aid_t aid = DatumGetUInt32(datum);
+  aid_hash_t aid_hash = DatumGetUInt32(datum);
 #ifndef DEBUG
-  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+  aid_hash = HASH_AID_64(aid_hash); /* We keep integer values untouched on DEBUG builds. */
 #endif
-  return aid;
+  return aid_hash;
 }
 
-static aid_t make_int8_aid(Datum datum)
+static aid_hash_t hash_int8_aid(Datum datum)
 {
-  aid_t aid = DatumGetUInt64(datum);
+  aid_hash_t aid_hash = DatumGetUInt64(datum);
 #ifndef DEBUG
-  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+  aid_hash = HASH_AID_64(aid_hash); /* We keep integer values untouched on DEBUG builds. */
 #endif
-  return aid;
+  return aid_hash;
 }
 
-static aid_t make_text_aid(Datum datum)
+static aid_hash_t hash_text_aid(Datum datum)
 {
   char *str = TextDatumGetCString(datum);
   return hash_bytes((unsigned char *)str, strlen(str));
@@ -37,14 +37,14 @@ AidDescriptor get_aid_descriptor(Oid aid_type)
   switch (aid_type)
   {
   case INT4OID:
-    descriptor.make_aid = make_int4_aid;
+    descriptor.hash_aid = hash_int4_aid;
     break;
   case INT8OID:
-    descriptor.make_aid = make_int8_aid;
+    descriptor.hash_aid = hash_int8_aid;
     break;
   case TEXTOID:
   case VARCHAROID:
-    descriptor.make_aid = make_text_aid;
+    descriptor.hash_aid = hash_text_aid;
     break;
   default:
     ereport(ERROR, (errmsg("Unsupported AID type (OID %u)", aid_type)));

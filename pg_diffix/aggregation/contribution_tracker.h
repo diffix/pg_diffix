@@ -37,7 +37,7 @@ typedef struct ContributionDescriptor
 
 typedef struct Contributor
 {
-  aid_t aid;
+  aid_hash_t aid_hash;
   contribution_t contribution;
 } Contributor;
 
@@ -56,11 +56,11 @@ typedef struct ContributionTrackerHashEntry
 } ContributionTrackerHashEntry;
 
 /*
- * Declarations for HashTable<aid_t, ContributionTrackerHashEntry>
+ * Declarations for HashTable<aid_hash_t, ContributionTrackerHashEntry>
  */
 #define SH_PREFIX ContributionTracker
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
-#define SH_KEY_TYPE aid_t
+#define SH_KEY_TYPE aid_hash_t
 #define SH_SCOPE extern
 #define SH_DECLARE
 #include "lib/simplehash.h"
@@ -79,14 +79,14 @@ typedef struct ContributionTrackerState
 /*
  * Updates state with an AID without contribution.
  */
-extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid);
+extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid_hash_t aid_hash);
 
 /*
  * Updates state with a contribution from an AID.
  */
 extern void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
-    aid_t aid,
+    aid_hash_t aid_hash,
     contribution_t contribution);
 
 /*
