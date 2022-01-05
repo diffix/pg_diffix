@@ -38,6 +38,7 @@ const ContributionDescriptor count_descriptor = {
 
 static const int COUNT_AIDS_OFFSET = 1;
 static const int COUNT_ANY_AIDS_OFFSET = 2;
+static const int VALUE_INDEX = 1;
 
 PG_FUNCTION_INFO_V1(anon_count_transfn);
 PG_FUNCTION_INFO_V1(anon_count_finalfn);
@@ -53,13 +54,13 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    int aid_index = foreach_current_index(lc) + COUNT_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_AIDS_OFFSET;
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
@@ -74,15 +75,16 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_ANY_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    int aid_index = foreach_current_index(lc) + COUNT_ANY_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_ANY_AIDS_OFFSET;
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
-      if (PG_ARGISNULL(1))
+      if (PG_ARGISNULL(VALUE_INDEX))
+        /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid);
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);
@@ -148,13 +150,13 @@ static Datum explain_count_trackers(List *trackers)
   StringInfoData string;
   initStringInfo(&string);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    if (foreach_current_index(lc) > 0)
+    if (foreach_current_index(cell) > 0)
       appendStringInfo(&string, " \n");
 
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     append_tracker_info(&string, tracker);
   }
 
@@ -240,8 +242,8 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
   if (flattening >= accumulator->max_flattening)
   {
     accumulator->max_flattening = flattening;
-    /* Get the largest flattened count from the ones with the maximum flattening. */
-    accumulator->max_flattened_count = Max(accumulator->max_flattened_count, result->flattened_count);
+    accumulator->max_flattened_count_with_max_flattening = Max(accumulator->max_flattened_count_with_max_flattening,
+                                                               result->flattened_count);
   }
 
   if (result->noise_sigma > accumulator->max_noise_sigma)
@@ -253,17 +255,17 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  return Max(accumulator->max_flattened_count + accumulator->noise_with_max_sigma, 0);
+  return Max(accumulator->max_flattened_count_with_max_flattening + accumulator->noise_with_max_sigma, 0);
 }
 
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
   CountResultAccumulator result_accumulator = {0};
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     CountResult result = count_calculate_aid_result(tracker);
 
     if (result.low_count)
