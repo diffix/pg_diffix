@@ -38,7 +38,7 @@ const ContributionDescriptor count_descriptor = {
 
 static const int COUNT_AIDS_OFFSET = 1;
 static const int COUNT_ANY_AIDS_OFFSET = 2;
-static const int ANY_INDEX = 1;
+static const int VALUE_INDEX = 1;
 
 PG_FUNCTION_INFO_V1(anon_count_transfn);
 PG_FUNCTION_INFO_V1(anon_count_finalfn);
@@ -83,7 +83,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
     {
       ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
-      if (PG_ARGISNULL(ANY_INDEX))
+      if (PG_ARGISNULL(VALUE_INDEX))
         /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid);
       else
