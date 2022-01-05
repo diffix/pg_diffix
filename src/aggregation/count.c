@@ -61,8 +61,8 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
     if (!PG_ARGISNULL(aid_index))
     {
       ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
-      aid_hash_t aid_hash = tracker->aid_descriptor.hash_aid(PG_GETARG_DATUM(aid_index));
-      contribution_tracker_update_contribution(tracker, aid_hash, one_contribution);
+      aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
+      contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
   }
 
@@ -82,12 +82,12 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
     if (!PG_ARGISNULL(aid_index))
     {
       ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
-      aid_hash_t aid_hash = tracker->aid_descriptor.hash_aid(PG_GETARG_DATUM(aid_index));
+      aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(ANY_INDEX))
         /* count argument is NULL, so no contribution, only keep track of the AID value */
-        contribution_tracker_update_aid(tracker, aid_hash);
+        contribution_tracker_update_aid(tracker, aid);
       else
-        contribution_tracker_update_contribution(tracker, aid_hash, one_contribution);
+        contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
   }
 
@@ -120,7 +120,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
   {
     const Contributor *contributor = &tracker->top_contributors.members[i];
     appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" AID_FMT,
-                     contributor->contribution.integer, contributor->aid_hash);
+                     contributor->contribution.integer, contributor->aid);
 
     if (i == result.noisy_outlier_count - 1)
       appendStringInfo(string, " | ");

@@ -9,16 +9,16 @@
 
 typedef struct AidTrackerHashEntry
 {
-  aid_hash_t aid_hash;   /* Entry key */
+  aid_t aid;   /* Entry key */
   char status; /* Required for hash table */
 } AidTrackerHashEntry;
 
 /*
- * Declarations for HashTable<aid_hash_t, AidTrackerHashEntry>
+ * Declarations for HashTable<aid_t, AidTrackerHashEntry>
  */
 #define SH_PREFIX AidTracker
 #define SH_ELEMENT_TYPE AidTrackerHashEntry
-#define SH_KEY_TYPE aid_hash_t
+#define SH_KEY_TYPE aid_t
 #define SH_SCOPE extern
 #define SH_DECLARE
 #include "lib/simplehash.h"
@@ -33,7 +33,7 @@ typedef struct AidTrackerState
 /*
  * Updates state with an AID.
  */
-extern void aid_tracker_update(AidTrackerState *state, aid_hash_t aid_hash);
+extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
 
 /*
  * Gets or creates the multi-AID aggregation state from the function arguments.
