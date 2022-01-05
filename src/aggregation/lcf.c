@@ -29,13 +29,13 @@ Datum lcf_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + LCF_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    int aid_index = foreach_current_index(lc) + LCF_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + LCF_AIDS_OFFSET;
     if (!PG_ARGISNULL(aid_index))
     {
-      AidTrackerState *tracker = (AidTrackerState *)lfirst(lc);
+      AidTrackerState *tracker = (AidTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       aid_tracker_update(tracker, aid);
     }
@@ -49,10 +49,10 @@ Datum lcf_finalfn(PG_FUNCTION_ARGS)
   bool passes_lcf = true;
   List *trackers = get_aggregate_aid_trackers(fcinfo, LCF_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    AidTrackerState *tracker = (AidTrackerState *)lfirst(lc);
+    AidTrackerState *tracker = (AidTrackerState *)lfirst(cell);
     LcfResult result = lcf_calculate_final(tracker);
     passes_lcf = passes_lcf && result.passes_lcf;
   }
@@ -84,13 +84,13 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
 
   List *trackers = get_aggregate_aid_trackers(fcinfo, LCF_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    if (foreach_current_index(lc) > 0)
+    if (foreach_current_index(cell) > 0)
       appendStringInfo(&string, " \n");
 
-    AidTrackerState *tracker = (AidTrackerState *)lfirst(lc);
+    AidTrackerState *tracker = (AidTrackerState *)lfirst(cell);
     append_tracker_info(&string, tracker);
   }
 

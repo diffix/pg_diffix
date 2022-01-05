@@ -40,7 +40,7 @@ static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 typedef struct DistinctTrackerHashEntry
 {
   Datum value; /* Unique value */
-  List *aidvs; /* AID value sets for the unique value */
+  List *aidvs; /* List of (hashes of) AID value lists, one for each AID instance */
   char status; /* Required for hash table */
 } DistinctTrackerHashEntry;
 
@@ -68,7 +68,7 @@ typedef struct DistinctTrackerData
 
 static const int STATE_INDEX = 0;
 static const int VALUE_INDEX = 1;
-static const int AIDS_INDEX = 2;
+static const int COUNT_DISTINCT_AIDS_OFFSET = 2;
 
 static DistinctTracker_hash *get_distinct_tracker(PG_FUNCTION_ARGS)
 {
@@ -83,7 +83,7 @@ static DistinctTracker_hash *get_distinct_tracker(PG_FUNCTION_ARGS)
 }
 
 static DistinctTrackerHashEntry *
-get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs_count)
+get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
   bool found = false;
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
@@ -91,7 +91,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs
   {
     entry->aidvs = NIL;
     entry->value = value;
-    for (int i = 0; i < aidvs_count; i++)
+    for (int i = 0; i < aids_count; i++)
     {
       entry->aidvs = lappend(entry->aidvs, NIL);
     }
@@ -99,7 +99,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aidvs
   return entry;
 }
 
-static List *add_aid_to_set(List *aidv, aid_t aid)
+static List *add_aidv_to_set(List *aidv, aid_t aid)
 {
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
   if (list_length(aidv) == max_size) // set is full, value is not low-count
@@ -120,22 +120,22 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 
   if (!PG_ARGISNULL(VALUE_INDEX))
   {
-    Assert(PG_NARGS() > AIDS_INDEX);
+    Assert(PG_NARGS() > COUNT_DISTINCT_AIDS_OFFSET);
 
     Datum value = PG_GETARG_DATUM(VALUE_INDEX);
-    int aidvs_count = PG_NARGS() - AIDS_INDEX;
-    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aidvs_count);
+    int aids_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
+    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aids_count);
 
-    ListCell *lc;
-    foreach (lc, entry->aidvs)
+    ListCell *cell;
+    foreach (cell, entry->aidvs)
     {
-      int aid_index = foreach_current_index(lc) + AIDS_INDEX;
+      int aid_index = foreach_current_index(cell) + COUNT_DISTINCT_AIDS_OFFSET;
       if (!PG_ARGISNULL(aid_index))
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(lc); // pointer to the set of AID values
-        *aidv = add_aid_to_set(*aidv, aid);
+        List **aidv = (List **)&lfirst(cell); // pointer to the set of AID values
+        *aidv = add_aidv_to_set(*aidv, aid);
       }
     }
   }
@@ -152,7 +152,7 @@ typedef struct CountDistinctResult
   int64 noisy_count;
 } CountDistinctResult;
 
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *state, int aidvs_count);
+static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *state, int aids_count);
 
 Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 {
@@ -160,7 +160,7 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_INDEX);
+  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
 
@@ -176,7 +176,7 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_INDEX);
+  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
 
@@ -189,36 +189,36 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-static uint64 seed_from_aidv(const List *aidv)
+static uint64 seed_from_aidv(const List *aidvs)
 {
   uint64 seed = 0;
-  ListCell *lc;
-  foreach (lc, aidv)
+  ListCell *cell;
+  foreach (cell, aidvs)
   {
-    aid_t aid = (aid_t)lfirst(lc);
+    aid_t aid = (aid_t)lfirst(cell);
     seed ^= aid;
   }
   return make_seed(seed);
 }
 
-static bool aid_set_is_high_count(const List *aidv)
+static bool aid_set_is_high_count(const List *aidvs)
 {
-  if (list_length(aidv) < g_config.minimum_allowed_aid_values)
+  if (list_length(aidvs) < g_config.minimum_allowed_aid_values)
     return false; /* Less AID values than minimum threshold, value is low-count. */
   int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
-  if (list_length(aidv) == max_size)
+  if (list_length(aidvs) == max_size)
     return true; /* More AID values than maximum threshold, value is high-count. */
-  uint64 seed = seed_from_aidv(aidv);
+  uint64 seed = seed_from_aidv(aidvs);
   int threshold = generate_lcf_threshold(&seed);
-  return list_length(aidv) >= threshold;
+  return list_length(aidvs) >= threshold;
 }
 
 static bool aid_sets_are_high_count(const List *aidvs)
 {
-  ListCell *lc;
-  foreach (lc, aidvs)
+  ListCell *cell;
+  foreach (cell, aidvs)
   {
-    const List *aidv = (const List *)lfirst(lc);
+    const List *aidv = (const List *)lfirst(cell);
     if (!aid_set_is_high_count(aidv))
       return false;
   }
@@ -314,7 +314,7 @@ static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum val
 }
 
 /* Maps values per-AID given the list of low-count tracker entries and an AID values set index. */
-static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint32 *lc_values_true_count)
+static List *transpose_lc_values_per_aid(List *lc_entries, int aid_index, uint32 *lc_values_true_count)
 {
   List *per_aid_values = NIL;
   *lc_values_true_count = 0;
@@ -323,15 +323,15 @@ static List *transpose_lc_values_per_aid(List *lc_entries, int aidvs_index, uint
   foreach (lc_entry_cell, lc_entries)
   {
     const DistinctTrackerHashEntry *entry = (const DistinctTrackerHashEntry *)lfirst(lc_entry_cell);
-    const List *aids = (const List *)list_nth(entry->aidvs, aidvs_index);
+    const List *aidvs = (const List *)list_nth(entry->aidvs, aid_index);
 
-    if (aids != NIL) /* Count unique value only if it has at least one associated AID value. */
+    if (aidvs != NIL) /* Count unique value only if it has at least one associated AID value. */
       (*lc_values_true_count)++;
 
-    ListCell *aid_cell;
-    foreach (aid_cell, aids)
+    ListCell *aidv_cell;
+    foreach (aidv_cell, aidvs)
     {
-      aid_t aid = (aid_t)lfirst(aid_cell);
+      aid_t aid = (aid_t)lfirst(aidv_cell);
       per_aid_values = associate_value_with_aid(per_aid_values, aid, entry->value);
     }
   }
@@ -362,10 +362,10 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
 
 static void delete_value(List *per_aid_values, Datum value)
 {
-  ListCell *lc;
-  foreach (lc, per_aid_values)
+  ListCell *cell;
+  foreach (cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
     /* Since values are unique at this point, we can use simple pointer equality even for reference types. */
     entry->values = list_delete_ptr(entry->values, (void *)value);
   }
@@ -382,10 +382,10 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 
   while (values_count > 0)
   {
-    ListCell *lc;
-    foreach (lc, per_aid_values)
+    ListCell *cell;
+    foreach (cell, per_aid_values)
     {
-      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
       if (entry->values != NIL)
       {
         values_count--;
@@ -404,10 +404,10 @@ static void process_lc_values_contributions(
   *contributors_count = 0;
   *seed = 0;
 
-  ListCell *lc;
-  foreach (lc, per_aid_values)
+  ListCell *cell;
+  foreach (cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(lc);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
     *seed ^= entry->aid;
     if (entry->contributions > 0)
     {
@@ -422,7 +422,7 @@ static void process_lc_values_contributions(
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aidvs_count)
+static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
 {
   List *lc_entries = filter_lc_entries(tracker);
   sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
@@ -436,10 +436,10 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
-  for (int aidvs_index = 0; aidvs_index < aidvs_count; aidvs_index++)
+  for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
     uint32 lc_values_true_count = 0;
-    List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aidvs_index, &lc_values_true_count);
+    List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
     distribute_lc_values(per_aid_values, lc_values_true_count);
 

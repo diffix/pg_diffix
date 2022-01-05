@@ -44,10 +44,10 @@ static void verify_subquery(Query *query)
 
 static void verify_rtable(Query *query)
 {
-  ListCell *lc = NULL;
-  foreach (lc, query->rtable)
+  ListCell *cell = NULL;
+  foreach (cell, query->rtable)
   {
-    RangeTblEntry *range_table = lfirst_node(RangeTblEntry, lc);
+    RangeTblEntry *range_table = lfirst_node(RangeTblEntry, cell);
     if (range_table->rtekind == RTE_SUBQUERY)
       verify_subquery(range_table->subquery);
     else if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
