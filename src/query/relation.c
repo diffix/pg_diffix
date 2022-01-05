@@ -43,10 +43,10 @@ static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_o
 
 static bool has_relation(List *relations, Oid rel_oid)
 {
-  ListCell *lc;
-  foreach (lc, relations)
+  ListCell *cell;
+  foreach (cell, relations)
   {
-    SensitiveRelation *rel = (SensitiveRelation *)lfirst(lc);
+    SensitiveRelation *rel = (SensitiveRelation *)lfirst(cell);
     if (rel->oid == rel_oid)
       return true;
   }

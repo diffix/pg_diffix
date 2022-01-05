@@ -63,10 +63,10 @@ void rewrite_query(Query *query, List *sensitive_relations)
 
 static void group_implicit_buckets(Query *query)
 {
-  ListCell *lc = NULL;
-  foreach (lc, query->targetList)
+  ListCell *cell = NULL;
+  foreach (cell, query->targetList)
   {
-    TargetEntry *tle = lfirst_node(TargetEntry, lc);
+    TargetEntry *tle = lfirst_node(TargetEntry, cell);
 
     Oid type = exprType((const Node *)tle->expr);
     Assert(type != UNKNOWNOID);
@@ -251,10 +251,10 @@ static TargetEntry *make_aid_target(AidReference *ref, AttrNumber resno, bool re
 
 static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
 {
-  ListCell *lc;
-  foreach (lc, relations)
+  ListCell *cell;
+  foreach (cell, relations)
   {
-    SensitiveRelation *relation = (SensitiveRelation *)lfirst(lc);
+    SensitiveRelation *relation = (SensitiveRelation *)lfirst(cell);
     if (relation->oid == rel_oid)
       return relation;
   }
@@ -271,10 +271,10 @@ static void gather_relation_aids(
     RangeTblEntry *rte,
     List **aid_references)
 {
-  ListCell *lc;
-  foreach (lc, relation->aid_columns)
+  ListCell *cell;
+  foreach (cell, relation->aid_columns)
   {
-    AidColumn *aid_col = (AidColumn *)lfirst(lc);
+    AidColumn *aid_col = (AidColumn *)lfirst(cell);
 
     AidReference *aid_ref = palloc(sizeof(AidReference));
     aid_ref->relation = relation;
@@ -302,10 +302,10 @@ static void gather_subquery_aids(
   Query *subquery = child_context->query;
   AttrNumber next_attnum = list_length(subquery->targetList) + 1;
 
-  ListCell *lc;
-  foreach (lc, child_context->aid_references)
+  ListCell *cell;
+  foreach (cell, child_context->aid_references)
   {
-    AidReference *child_aid_ref = (AidReference *)lfirst(lc);
+    AidReference *child_aid_ref = (AidReference *)lfirst(cell);
 
     /* Export AID from subquery */
     AttrNumber attnum = next_attnum++;
@@ -333,11 +333,11 @@ static QueryContext *build_context(Query *query, List *relations)
   List *aid_references = NIL;
   List *child_contexts = NIL;
 
-  ListCell *lc;
-  foreach (lc, query->rtable)
+  ListCell *cell;
+  foreach (cell, query->rtable)
   {
-    RangeTblEntry *rte = (RangeTblEntry *)lfirst(lc);
-    Index rte_index = foreach_current_index(lc) + 1;
+    RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
+    Index rte_index = foreach_current_index(cell) + 1;
 
     if (rte->rtekind == RTE_RELATION)
     {
@@ -364,10 +364,10 @@ static void append_aid_args(Aggref *aggref, QueryContext *context)
 {
   bool found_any = false;
 
-  ListCell *lc;
-  foreach (lc, context->aid_references)
+  ListCell *cell;
+  foreach (cell, context->aid_references)
   {
-    AidReference *aid_ref = (AidReference *)lfirst(lc);
+    AidReference *aid_ref = (AidReference *)lfirst(cell);
     TargetEntry *aid_entry = make_aid_target(aid_ref, list_length(aggref->args) + 1, false);
 
     /* Append the AID argument to function's arguments. */

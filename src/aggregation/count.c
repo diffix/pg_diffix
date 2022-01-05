@@ -54,13 +54,13 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    int aid_index = foreach_current_index(lc) + COUNT_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_AIDS_OFFSET;
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
@@ -75,13 +75,13 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_ANY_AIDS_OFFSET);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    int aid_index = foreach_current_index(lc) + COUNT_ANY_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_ANY_AIDS_OFFSET;
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(VALUE_INDEX))
         /* count argument is NULL, so no contribution, only keep track of the AID value */
@@ -150,13 +150,13 @@ static Datum explain_count_trackers(List *trackers)
   StringInfoData string;
   initStringInfo(&string);
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    if (foreach_current_index(lc) > 0)
+    if (foreach_current_index(cell) > 0)
       appendStringInfo(&string, " \n");
 
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     append_tracker_info(&string, tracker);
   }
 
@@ -262,10 +262,10 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
   CountResultAccumulator result_accumulator = {0};
 
-  ListCell *lc;
-  foreach (lc, trackers)
+  ListCell *cell;
+  foreach (cell, trackers)
   {
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(lc);
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     CountResult result = count_calculate_aid_result(tracker);
 
     if (result.low_count)

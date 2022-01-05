@@ -126,15 +126,15 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
     int aids_count = PG_NARGS() - COUNT_DISTINCT_AIDS_OFFSET;
     DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aids_count);
 
-    ListCell *aidv_list_cell;
-    foreach (aidv_list_cell, entry->aidvs)
+    ListCell *cell;
+    foreach (cell, entry->aidvs)
     {
-      int aid_index = foreach_current_index(aidv_list_cell) + COUNT_DISTINCT_AIDS_OFFSET;
+      int aid_index = foreach_current_index(cell) + COUNT_DISTINCT_AIDS_OFFSET;
       if (!PG_ARGISNULL(aid_index))
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(aidv_list_cell); // pointer to the set of AID values
+        List **aidv = (List **)&lfirst(cell); // pointer to the set of AID values
         *aidv = add_aidv_to_set(*aidv, aid);
       }
     }
@@ -192,10 +192,10 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 static uint64 seed_from_aidv(const List *aidvs)
 {
   uint64 seed = 0;
-  ListCell *aidv_cell;
-  foreach (aidv_cell, aidvs)
+  ListCell *cell;
+  foreach (cell, aidvs)
   {
-    aid_t aid = (aid_t)lfirst(aidv_cell);
+    aid_t aid = (aid_t)lfirst(cell);
     seed ^= aid;
   }
   return make_seed(seed);
@@ -215,10 +215,10 @@ static bool aid_set_is_high_count(const List *aidvs)
 
 static bool aid_sets_are_high_count(const List *aidvs)
 {
-  ListCell *aidv_cell;
-  foreach (aidv_cell, aidvs)
+  ListCell *cell;
+  foreach (cell, aidvs)
   {
-    const List *aidv = (const List *)lfirst(aidv_cell);
+    const List *aidv = (const List *)lfirst(cell);
     if (!aid_set_is_high_count(aidv))
       return false;
   }
@@ -362,10 +362,10 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
 
 static void delete_value(List *per_aid_values, Datum value)
 {
-  ListCell *per_aid_value_cell;
-  foreach (per_aid_value_cell, per_aid_values)
+  ListCell *cell;
+  foreach (cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
     /* Since values are unique at this point, we can use simple pointer equality even for reference types. */
     entry->values = list_delete_ptr(entry->values, (void *)value);
   }
@@ -382,10 +382,10 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 
   while (values_count > 0)
   {
-    ListCell *per_aid_value_cell;
-    foreach (per_aid_value_cell, per_aid_values)
+    ListCell *cell;
+    foreach (cell, per_aid_values)
     {
-      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
+      PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
       if (entry->values != NIL)
       {
         values_count--;
@@ -404,10 +404,10 @@ static void process_lc_values_contributions(
   *contributors_count = 0;
   *seed = 0;
 
-  ListCell *per_aid_value_cell;
-  foreach (per_aid_value_cell, per_aid_values)
+  ListCell *cell;
+  foreach (cell, per_aid_values)
   {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(per_aid_value_cell);
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
     *seed ^= entry->aid;
     if (entry->contributions > 0)
     {
