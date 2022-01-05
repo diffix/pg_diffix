@@ -69,7 +69,7 @@ CREATE AGGREGATE diffix.explain_lcf(variadic aids "any") (
 );
 
 /* ----------------------------------------------------------------
- * anon_count_distinct(value, aids...)
+ * anon_count_distinct(any, aids...)
  * ----------------------------------------------------------------
  */
 
@@ -137,7 +137,7 @@ CREATE AGGREGATE diffix.explain_anon_count(variadic aids "any") (
 );
 
 /* ----------------------------------------------------------------
- * anon_count_any(value, aids...)
+ * anon_count_any(any, aids...)
  * ----------------------------------------------------------------
  */
 
