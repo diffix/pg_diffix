@@ -32,7 +32,7 @@ extern CountResult aggregate_count_contributions(
 typedef struct CountResultAccumulator
 {
   int64 max_flattening;
-  int64 max_flattened_count_with_max_flattening;
+  int64 count_for_flattening;
   double max_noise_sigma;
   int64 noise_with_max_sigma;
 } CountResultAccumulator;

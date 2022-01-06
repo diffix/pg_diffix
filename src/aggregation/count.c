@@ -245,11 +245,17 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
   int64 flattening = result->true_count - result->flattened_count;
   Assert(flattening >= 0);
-  if (flattening >= accumulator->max_flattening)
+
+  if (flattening > accumulator->max_flattening)
   {
+    /* Get the flattened count for the AID with the maximum flattening... */
     accumulator->max_flattening = flattening;
-    accumulator->max_flattened_count_with_max_flattening = Max(accumulator->max_flattened_count_with_max_flattening,
-                                                               result->flattened_count);
+    accumulator->count_for_flattening = result->flattened_count;
+  }
+  else if (flattening == accumulator->max_flattening)
+  {
+    /* ...and resolve draws using the largest flattened count. */
+    accumulator->count_for_flattening = Max(accumulator->count_for_flattening, result->flattened_count);
   }
 
   if (result->noise_sigma > accumulator->max_noise_sigma)
@@ -261,7 +267,7 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  return Max(accumulator->max_flattened_count_with_max_flattening + accumulator->noise_with_max_sigma, 0);
+  return Max(accumulator->count_for_flattening + accumulator->noise_with_max_sigma, 0);
 }
 
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
