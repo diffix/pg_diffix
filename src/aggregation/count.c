@@ -13,6 +13,7 @@
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
+static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -54,6 +55,9 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_AIDS_OFFSET);
 
+  if (all_aids_null(fcinfo, COUNT_AIDS_OFFSET, list_length(trackers)))
+    PG_RETURN_POINTER(trackers);
+
   ListCell *cell;
   foreach (cell, trackers)
   {
@@ -78,6 +82,9 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
   List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_ANY_AIDS_OFFSET);
+
+  if (all_aids_null(fcinfo, COUNT_ANY_AIDS_OFFSET, list_length(trackers)))
+    PG_RETURN_POINTER(trackers);
 
   ListCell *cell;
   foreach (cell, trackers)
@@ -302,4 +309,13 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
   }
 
   PG_RETURN_INT64(finalize_count_result(&result_accumulator));
+}
+
+bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers)
+{
+  for(uint32 aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
+  {
+    if (!PG_ARGISNULL(aid_index)) return false;
+  }
+  return true;
 }
