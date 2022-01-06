@@ -455,8 +455,9 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
         &seed, &contributors_count,
         top_contributors);
 
+    // NOTE: 0 is the unaccounted_for
     CountResult inner_count_result = aggregate_count_contributions(
-        seed, lc_values_true_count, contributors_count, top_contributors);
+        seed, lc_values_true_count, contributors_count, 0, top_contributors);
 
     list_free_deep(per_aid_values);
 

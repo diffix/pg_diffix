@@ -133,6 +133,7 @@ static ContributionTrackerState *contribution_tracker_new(
   state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 128, NULL);
   state->aid_seed = 0;
   state->distinct_contributors = 0;
+  state->unaccounted_for = 0;
   state->overall_contribution = contribution_descriptor->contribution_initial;
   state->top_contributors.length = 0;
   state->top_contributors.capacity = top_capacity;
@@ -197,6 +198,11 @@ void contribution_tracker_update_contribution(
       &state->contribution_descriptor,
       &state->top_contributors,
       entry->contributor);
+}
+
+void contribution_tracker_inc_unaccounted_for(ContributionTrackerState *state)
+{
+  state->unaccounted_for++;
 }
 
 static const int STATE_INDEX = 0;

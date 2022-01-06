@@ -12,6 +12,7 @@ typedef struct CountResult
 {
   uint64 random_seed;
   int64 true_count;
+  double flattening;
   int64 flattened_count;
   uint32 noisy_outlier_count;
   uint32 noisy_top_count;
@@ -22,7 +23,7 @@ typedef struct CountResult
 } CountResult;
 
 extern CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint64 distinct_contributors,
+    uint64 seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors);
 
 /*

@@ -58,11 +58,15 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
   foreach (cell, trackers)
   {
     int aid_index = foreach_current_index(cell) + COUNT_AIDS_OFFSET;
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
+    else
+    {
+      contribution_tracker_inc_unaccounted_for(tracker);
     }
   }
 
@@ -79,15 +83,19 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
   foreach (cell, trackers)
   {
     int aid_index = foreach_current_index(cell) + COUNT_ANY_AIDS_OFFSET;
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(VALUE_INDEX))
         /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid);
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
+    else
+    {
+      contribution_tracker_inc_unaccounted_for(tracker);
     }
   }
 
@@ -176,7 +184,7 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 }
 
 CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint64 distinct_contributors,
+    uint64 seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors)
 {
   seed = make_seed(seed);
@@ -210,9 +218,8 @@ CountResult aggregate_count_contributions(
     return result;
 
   /* Remove outliers from overall count. */
-  result.flattened_count = result.true_count;
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
-    result.flattened_count -= top_contributors->members[i].contribution.integer;
+    result.flattening += (double)top_contributors->members[i].contribution.integer;
 
   /* Compute average of top values. */
   uint64 top_contribution = 0;
@@ -221,10 +228,16 @@ CountResult aggregate_count_contributions(
   double top_average = top_contribution / (double)result.noisy_top_count;
 
   /* Compensate for dropped outliers. */
-  result.flattened_count += (int64)round(top_average * result.noisy_outlier_count);
+  result.flattening -= top_average * result.noisy_outlier_count;
+
+  /* Compensate for the unaccounted for NULL-value AIDs. */
+  double flattened_unaccounted_for = Max(unacounted_for - result.flattening, 0.0);
+
+  result.flattened_count = (int64)round(result.true_count - result.flattening + flattened_unaccounted_for);
 
   double average = result.flattened_count / (double)distinct_contributors;
-  result.noise_sigma = g_config.noise_sigma * Max(average, 0.5 * top_average);
+  double noise_scale = Max(average, 0.5 * top_average);
+  result.noise_sigma = g_config.noise_sigma * noise_scale;
   result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
 
   return result;
@@ -236,23 +249,22 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       tracker->aid_seed,
       tracker->overall_contribution.integer,
       tracker->distinct_contributors,
+      tracker->unaccounted_for,
       &tracker->top_contributors);
 }
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
 {
   Assert(result->low_count == false);
+  Assert(result->flattening >= 0);
 
-  int64 flattening = result->true_count - result->flattened_count;
-  Assert(flattening >= 0);
-
-  if (flattening > accumulator->max_flattening)
+  if (result->flattening > accumulator->max_flattening)
   {
     /* Get the flattened count for the AID with the maximum flattening... */
-    accumulator->max_flattening = flattening;
+    accumulator->max_flattening = result->flattening;
     accumulator->count_for_flattening = result->flattened_count;
   }
-  else if (flattening == accumulator->max_flattening)
+  else if (result->flattening == accumulator->max_flattening)
   {
     /* ...and resolve draws using the largest flattened count. */
     accumulator->count_for_flattening = Max(accumulator->count_for_flattening, result->flattened_count);
