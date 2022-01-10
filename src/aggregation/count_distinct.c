@@ -101,7 +101,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
 
 static List *add_aidv_to_set(List *aidv, aid_t aid)
 {
-  int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
+  int max_size = g_config.minimum_allowed_aid_values + g_config.lcf_range + 1;
   if (list_length(aidv) == max_size) // set is full, value is not low-count
     return aidv;
   return list_append_unique_ptr(aidv, (void *)aid);
@@ -205,7 +205,7 @@ static bool aid_set_is_high_count(const List *aidvs)
 {
   if (list_length(aidvs) < g_config.minimum_allowed_aid_values)
     return false; /* Less AID values than minimum threshold, value is low-count. */
-  int max_size = g_config.minimum_allowed_aid_values + LCF_RANGE + 1;
+  int max_size = g_config.minimum_allowed_aid_values + g_config.lcf_range + 1;
   if (list_length(aidvs) == max_size)
     return true; /* More AID values than maximum threshold, value is high-count. */
   uint64 seed = seed_from_aidv(aidvs);
