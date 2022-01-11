@@ -461,14 +461,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
 
     list_free_deep(per_aid_values);
 
-    if (inner_count_result.not_enough_aidvs)
-    {
-      result.noisy_count += g_config.minimum_allowed_aid_values;
-      insufficient_data = true;
-      break;
-    }
-
-    if (inner_count_result.low_count)
+    if (inner_count_result.not_enough_aidvs || inner_count_result.low_count)
     {
       insufficient_data = true;
       break;
@@ -478,8 +471,11 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
 
   pfree(top_contributors);
 
-  if (!insufficient_data)
+  if (!insufficient_data) {
     result.noisy_count += finalize_count_result(&result_accumulator);
+  }
+
+  result.noisy_count = Max(result.noisy_count, g_config.minimum_allowed_aid_values);
 
   return result;
 }
