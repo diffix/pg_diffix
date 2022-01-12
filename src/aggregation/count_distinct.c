@@ -461,7 +461,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
 
     list_free_deep(per_aid_values);
 
-    if (inner_count_result.not_enough_aidvs || inner_count_result.low_count)
+    if (inner_count_result.not_enough_aidvs)
     {
       insufficient_data = true;
       break;

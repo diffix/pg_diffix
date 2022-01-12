@@ -14,6 +14,7 @@
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
 static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers);
+static void compact_flattening_intervals(uint64 total_count, int* compact_outlier_count_max, int* compact_top_count_max);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -147,7 +148,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
 
   appendStringInfo(string, ", true=%" PRIi64, result.true_count);
 
-  if (result.low_count)
+  if (result.not_enough_aidvs)
     appendStringInfo(string, ", insufficient AIDs");
   else
     appendStringInfo(string, ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
@@ -207,22 +208,22 @@ CountResult aggregate_count_contributions(
     return result;
   }
 
+  int compact_outlier_count_max;
+  int compact_top_count_max;
+  compact_flattening_intervals(distinct_contributors, &compact_outlier_count_max, &compact_top_count_max);
+
   /* Determine outlier/top counts. */
   result.noisy_outlier_count = next_uniform_int(
       &seed,
       g_config.outlier_count_min,
-      g_config.outlier_count_max + 1);
+      compact_outlier_count_max + 1);
 
   result.noisy_top_count = next_uniform_int(
       &seed,
       g_config.top_count_min,
-      g_config.top_count_max + 1);
+      compact_top_count_max + 1);
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
-
-  result.low_count = top_end_index > top_contributors->length;
-  if (result.low_count)
-    return result;
 
   /* Remove outliers from overall count. */
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
@@ -262,7 +263,7 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
 {
-  Assert(result->low_count == false);
+  Assert(result->not_enough_aidvs == false);
   Assert(result->flattening >= 0);
 
   if (result->flattening > accumulator->max_flattening)
@@ -299,10 +300,7 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
     ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     CountResult result = count_calculate_aid_result(tracker);
 
-    if (result.low_count)
-      PG_RETURN_NULL();
-
-    if (result.not_enough_aidvs) 
+    if (result.not_enough_aidvs)
       PG_RETURN_INT64(g_config.minimum_allowed_aid_values);
 
     accumulate_count_result(&result_accumulator, &result);
@@ -311,11 +309,39 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
   PG_RETURN_INT64(Max(finalize_count_result(&result_accumulator), g_config.minimum_allowed_aid_values));
 }
 
-bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers)
+static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers)
 {
   for(uint32 aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
   {
     if (!PG_ARGISNULL(aid_index)) return false;
   }
   return true;
+}
+
+static void compact_flattening_intervals(uint64 total_count, int* compact_outlier_count_max, int* compact_top_count_max)
+{
+  int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
+  *compact_outlier_count_max = g_config.outlier_count_max;
+  *compact_top_count_max = g_config.top_count_max;
+
+  if (total_adjustment > 0)
+  {
+    int outlier_range = g_config.outlier_count_max - g_config.outlier_count_min;
+
+    if (outlier_range > g_config.top_count_max - g_config.top_count_min)
+    {
+      FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) larger than (top_count_min, top_count_max)");
+    }
+    
+    if (outlier_range < total_adjustment / 2)
+    {
+      *compact_outlier_count_max -= outlier_range;
+      *compact_top_count_max -= total_adjustment - outlier_range;
+    }
+    else
+    {
+      *compact_outlier_count_max -= total_adjustment / 2;
+      *compact_top_count_max -= total_adjustment - total_adjustment / 2;
+    }
+  }
 }

@@ -18,7 +18,6 @@ typedef struct CountResult
   uint32 noisy_top_count;
   double noise_sigma;
   int64 noise;
-  bool low_count;
   bool not_enough_aidvs;
 } CountResult;
 
