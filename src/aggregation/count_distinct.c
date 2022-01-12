@@ -90,7 +90,7 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
   if (!found)
   {
     entry->aidvs = NIL;
-    entry->value = value;
+    entry->value = datumCopy(value, DATA(tracker)->typbyval, DATA(tracker)->typlen);
     for (int i = 0; i < aids_count; i++)
     {
       entry->aidvs = lappend(entry->aidvs, NIL);
