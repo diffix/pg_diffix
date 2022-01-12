@@ -149,6 +149,7 @@ void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
   {
     state->aid_seed ^= aid;
     entry->has_contribution = false;
+    state->distinct_contributors++;
   }
 }
 
