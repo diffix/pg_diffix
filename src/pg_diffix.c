@@ -7,6 +7,11 @@
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
 
+#include <limits.h>
+#if __WORDSIZE != 64
+#error "This module requires a 64-bit target architecture!"
+#endif
+
 PG_MODULE_MAGIC;
 
 void _PG_init(void);
