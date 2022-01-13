@@ -471,7 +471,8 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
 
   pfree(top_contributors);
 
-  if (!insufficient_data) {
+  if (!insufficient_data)
+  {
     result.noisy_count += finalize_count_result(&result_accumulator);
   }
 
