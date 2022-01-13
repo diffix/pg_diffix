@@ -14,7 +14,7 @@
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
 static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers);
-static void compact_flattening_intervals(uint64 total_count, int* compact_outlier_count_max, int* compact_top_count_max);
+static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -208,20 +208,7 @@ CountResult aggregate_count_contributions(
     return result;
   }
 
-  int compact_outlier_count_max;
-  int compact_top_count_max;
-  compact_flattening_intervals(distinct_contributors, &compact_outlier_count_max, &compact_top_count_max);
-
-  /* Determine outlier/top counts. */
-  result.noisy_outlier_count = next_uniform_int(
-      &seed,
-      g_config.outlier_count_min,
-      compact_outlier_count_max + 1);
-
-  result.noisy_top_count = next_uniform_int(
-      &seed,
-      g_config.top_count_min,
-      compact_top_count_max + 1);
+  determine_outlier_top_counts(distinct_contributors, &seed, &result);
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
@@ -318,11 +305,12 @@ static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntr
   return true;
 }
 
-static void compact_flattening_intervals(uint64 total_count, int* compact_outlier_count_max, int* compact_top_count_max)
+static void determine_outlier_top_counts(uint64 total_count, uint64* seed, CountResult* result)
 {
+  /* Compact flattening intervals */
   int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
-  *compact_outlier_count_max = g_config.outlier_count_max;
-  *compact_top_count_max = g_config.top_count_max;
+  int compact_outlier_count_max = g_config.outlier_count_max;
+  int compact_top_count_max = g_config.top_count_max;
 
   if (total_adjustment > 0)
   {
@@ -335,13 +323,24 @@ static void compact_flattening_intervals(uint64 total_count, int* compact_outlie
     
     if (outlier_range < total_adjustment / 2)
     {
-      *compact_outlier_count_max -= outlier_range;
-      *compact_top_count_max -= total_adjustment - outlier_range;
+      compact_outlier_count_max -= outlier_range;
+      compact_top_count_max -= total_adjustment - outlier_range;
     }
     else
     {
-      *compact_outlier_count_max -= total_adjustment / 2;
-      *compact_top_count_max -= total_adjustment - total_adjustment / 2;
+      compact_outlier_count_max -= total_adjustment / 2;
+      compact_top_count_max -= total_adjustment - total_adjustment / 2;
     }
   }
+
+  /* Determine noisy outlier/top counts. */
+  result->noisy_outlier_count = next_uniform_int(
+      seed,
+      g_config.outlier_count_min,
+      compact_outlier_count_max + 1);
+
+  result->noisy_top_count = next_uniform_int(
+      seed,
+      g_config.top_count_min,
+      compact_top_count_max + 1);
 }
