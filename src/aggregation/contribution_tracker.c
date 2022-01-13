@@ -201,11 +201,6 @@ void contribution_tracker_update_contribution(
       entry->contributor);
 }
 
-void contribution_tracker_inc_unaccounted_for(ContributionTrackerState *state)
-{
-  state->unaccounted_for++;
-}
-
 static const int STATE_INDEX = 0;
 
 List *get_aggregate_contribution_trackers(

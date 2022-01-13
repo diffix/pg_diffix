@@ -92,11 +92,6 @@ extern void contribution_tracker_update_contribution(
     contribution_t contribution);
 
 /*
- * Updates state with a contribution from an AID.
- */
-extern void contribution_tracker_inc_unaccounted_for(ContributionTrackerState *state);
-
-/*
  * Gets or creates the multi-AID aggregation state from the function arguments.
  */
 extern List *get_aggregate_contribution_trackers(

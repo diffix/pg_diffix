@@ -71,7 +71,7 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
     }
     else
     {
-      contribution_tracker_inc_unaccounted_for(tracker);
+      tracker->unaccounted_for++;
     }
   }
 
@@ -103,7 +103,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
     }
     else
     {
-      contribution_tracker_inc_unaccounted_for(tracker);
+      tracker->unaccounted_for++;
     }
   }
 
