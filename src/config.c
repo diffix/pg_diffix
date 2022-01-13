@@ -32,6 +32,7 @@ static char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
   appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);
   appendStringInfo(&string, " :minimum_allowed_aid_values %i", config->minimum_allowed_aid_values);
+  appendStringInfo(&string, " :lcf_range %i", config->lcf_range);
   appendStringInfo(&string, " :outlier_count_min %i", config->outlier_count_min);
   appendStringInfo(&string, " :outlier_count_max %i", config->outlier_count_max);
   appendStringInfo(&string, " :top_count_min %i", config->top_count_min);
@@ -139,6 +140,20 @@ void config_init(void)
       &g_config.minimum_allowed_aid_values,                                          /* valueAddr */
       2,                                                                             /* bootValue */
       2,                                                                             /* minValue */
+      MAX_NUMERIC_CONFIG,                                                            /* maxValue */
+      PGC_SUSET,                                                                     /* context */
+      0,                                                                             /* flags */
+      NULL,                                                                          /* check_hook */
+      NULL,                                                                          /* assign_hook */
+      NULL);                                                                         /* show_hook */
+
+  DefineCustomIntVariable(
+      "pg_diffix.lcf_range",                                                         /* name */
+      "The range of the noisy low count filtering threshold.",                       /* short_desc */
+      NULL,                                                                          /* long_desc */
+      &g_config.lcf_range,                                                           /* valueAddr */
+      2,                                                                             /* bootValue */
+      0,                                                                             /* minValue */
       MAX_NUMERIC_CONFIG,                                                            /* maxValue */
       PGC_SUSET,                                                                     /* context */
       0,                                                                             /* flags */

@@ -16,6 +16,7 @@ typedef struct DiffixConfig
   double noise_cutoff;
 
   int minimum_allowed_aid_values;
+  int lcf_range;
 
   int outlier_count_min;
   int outlier_count_max;
@@ -23,8 +24,6 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 } DiffixConfig;
-
-static const int LCF_RANGE = 2;
 
 /*
  * Global instance of root configuration.

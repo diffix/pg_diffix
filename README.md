@@ -196,6 +196,9 @@ the configuration file; can't be read by regular users.
 `pg_diffix.minimum_allowed_aid_values` - The minimum number of distinct AID values that can be in a reported bucket.
 Default value is 2.
 
+`pg_diffix.lcf_range` - (**NOTE** temporarily introduced, until low count filtering is updated) The range of the noisy low count filtering threshold.
+Default value is 2.
+
 #### Aggregation settings
 
 `pg_diffix.outlier_count_min` - Default value is 1.
