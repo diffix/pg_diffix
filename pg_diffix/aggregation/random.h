@@ -20,7 +20,7 @@ extern double next_gaussian_double(uint64 *seed, double sigma);
 extern int next_uniform_int(uint64 *seed, int min, int max);
 
 /*
- * Generates gaussian noise with the specified standard deviation, clamped to `noise_cutoff`.
+ * Generates gaussian noise with the specified standard deviation.
  */
 extern double generate_noise(uint64 *seed, double sigma);
 
