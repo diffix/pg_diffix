@@ -30,7 +30,6 @@ static char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
   appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
   appendStringInfo(&string, " :noise_sigma %f", config->noise_sigma);
-  appendStringInfo(&string, " :noise_cutoff %f", config->noise_cutoff);
   appendStringInfo(&string, " :minimum_allowed_aid_values %i", config->minimum_allowed_aid_values);
   appendStringInfo(&string, " :lcf_range %i", config->lcf_range);
   appendStringInfo(&string, " :outlier_count_min %i", config->outlier_count_min);
@@ -118,20 +117,6 @@ void config_init(void)
       NULL,                                               /* check_hook */
       NULL,                                               /* assign_hook */
       NULL);                                              /* show_hook */
-
-  DefineCustomRealVariable(
-      "pg_diffix.noise_cutoff",                                  /* name */
-      "Factor for noise SD used to limit absolute noise value.", /* short_desc */
-      NULL,                                                      /* long_desc */
-      &g_config.noise_cutoff,                                    /* valueAddr */
-      3.0,                                                       /* bootValue */
-      0,                                                         /* minValue */
-      100,                                                       /* maxValue */
-      PGC_SUSET,                                                 /* context */
-      0,                                                         /* flags */
-      NULL,                                                      /* check_hook */
-      NULL,                                                      /* assign_hook */
-      NULL);                                                     /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.minimum_allowed_aid_values",                                        /* name */

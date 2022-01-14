@@ -8,12 +8,6 @@
 
 extern double pg_erand48(unsigned short xseed[3]);
 
-static inline double clamp_noise(double noise, double sigma)
-{
-  double absolute_cutoff = sigma * g_config.noise_cutoff;
-  return fmin(fmax(noise, -absolute_cutoff), absolute_cutoff);
-}
-
 uint64 make_seed(uint64 aid_seed)
 {
   uint64 base_seed = hash_bytes_extended(
@@ -55,7 +49,7 @@ int next_uniform_int(uint64 *seed, int min, int max)
 
 double generate_noise(uint64 *seed, double sigma)
 {
-  return clamp_noise(next_gaussian_double(seed, sigma), sigma);
+  return next_gaussian_double(seed, sigma);
 }
 
 int generate_lcf_threshold(uint64 *seed)

@@ -13,7 +13,6 @@ typedef struct DiffixConfig
 
   char *noise_seed;
   double noise_sigma;
-  double noise_cutoff;
 
   int minimum_allowed_aid_values;
   int lcf_range;
