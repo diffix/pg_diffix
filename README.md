@@ -209,4 +209,4 @@ Default value is 2.
 
 `pg_diffix.top_count_max` - Default value is 6.
 
-**NOTE** The outlier interval `(outlier_count_min, outlier_count_max)` must not be larger than the `(top_count_min, top_count_max)` interval.
+**NOTE** The outlier interval `(outlier_count_min, outlier_count_max)` must not be wider than the `(top_count_min, top_count_max)` interval.

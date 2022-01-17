@@ -319,7 +319,7 @@ static void determine_outlier_top_counts(uint64 total_count, uint64* seed, Count
 
     if (outlier_range > g_config.top_count_max - g_config.top_count_min)
     {
-      FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) larger than (top_count_min, top_count_max)");
+      FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) wider than (top_count_min, top_count_max)");
     }
     
     if (outlier_range < total_adjustment / 2)
