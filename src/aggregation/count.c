@@ -13,7 +13,7 @@
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
-static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers);
+static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers);
 static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
@@ -297,9 +297,9 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
   PG_RETURN_INT64(Max(finalized_count_result, g_config.minimum_allowed_aid_values));
 }
 
-static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers)
+static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)
 {
-  for (uint32 aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
+  for (int aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
   {
     if (!PG_ARGISNULL(aid_index))
       return false;
