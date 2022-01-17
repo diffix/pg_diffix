@@ -75,7 +75,7 @@ typedef struct ContributionTrackerState
   contribution_t overall_contribution;            /* Combined contribution from all contributors */
   uint64 unaccounted_for;                         /* Count of NULL contributions unaccounted for */
   /* NOTE: Variable size field, has to be last in the list! */
-  Contributors top_contributors;                  /* AIDs with largest contributions */
+  Contributors top_contributors; /* AIDs with largest contributions */
 } ContributionTrackerState;
 
 /*

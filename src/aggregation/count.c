@@ -299,14 +299,15 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 
 static bool all_aids_null(PG_FUNCTION_ARGS, const int aids_offset, const int ntrackers)
 {
-  for(uint32 aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
+  for (uint32 aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
   {
-    if (!PG_ARGISNULL(aid_index)) return false;
+    if (!PG_ARGISNULL(aid_index))
+      return false;
   }
   return true;
 }
 
-static void determine_outlier_top_counts(uint64 total_count, uint64* seed, CountResult* result)
+static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result)
 {
   /* Compact flattening intervals */
   int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
@@ -321,7 +322,7 @@ static void determine_outlier_top_counts(uint64 total_count, uint64* seed, Count
     {
       FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) wider than (top_count_min, top_count_max)");
     }
-    
+
     if (outlier_range < total_adjustment / 2)
     {
       compact_outlier_count_max -= outlier_range;
