@@ -148,18 +148,18 @@ void config_init(void)
       NULL);                                                                         /* show_hook */
 
   DefineCustomIntVariable(
-      "pg_diffix.lcf_range",                                                         /* name */
-      "The range of the noisy low count filtering threshold.",                       /* short_desc */
-      NULL,                                                                          /* long_desc */
-      &g_config.lcf_range,                                                           /* valueAddr */
-      2,                                                                             /* bootValue */
-      0,                                                                             /* minValue */
-      MAX_NUMERIC_CONFIG,                                                            /* maxValue */
-      PGC_SUSET,                                                                     /* context */
-      0,                                                                             /* flags */
-      NULL,                                                                          /* check_hook */
-      NULL,                                                                          /* assign_hook */
-      NULL);                                                                         /* show_hook */
+      "pg_diffix.lcf_range",                                   /* name */
+      "The range of the noisy low count filtering threshold.", /* short_desc */
+      NULL,                                                    /* long_desc */
+      &g_config.lcf_range,                                     /* valueAddr */
+      2,                                                       /* bootValue */
+      0,                                                       /* minValue */
+      MAX_NUMERIC_CONFIG,                                      /* maxValue */
+      PGC_SUSET,                                               /* context */
+      0,                                                       /* flags */
+      NULL,                                                    /* check_hook */
+      NULL,                                                    /* assign_hook */
+      NULL);                                                   /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.outlier_count_min",        /* name */
