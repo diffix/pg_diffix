@@ -77,6 +77,12 @@ static inline List *scan_table_by_name(
 /*
  * Switches to the aggregation memory context.
  */
-MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
+extern MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
+
+/*
+ * Checks if the current aggregation group has no grouping columns.
+ * Also detects the case with multiple grouping sets where one is global (empty grouping set).
+ */
+extern bool is_global_aggregation(PG_FUNCTION_ARGS);
 
 #endif /* PG_DIFFIX_UTILS_H */

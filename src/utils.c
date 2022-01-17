@@ -2,6 +2,7 @@
 #include "access/genam.h"
 #include "access/table.h"
 #include "catalog/namespace.h"
+#include "nodes/execnodes.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
@@ -54,4 +55,15 @@ MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS)
     FAILWITH("Aggregate called in non-aggregate context");
 
   return MemoryContextSwitchTo(agg_context);
+}
+
+bool is_global_aggregation(PG_FUNCTION_ARGS)
+{
+  if (fcinfo->context && IsA(fcinfo->context, AggState))
+  {
+    AggState *aggstate = (AggState *)fcinfo->context;
+    return bms_is_empty(aggstate->grouped_cols);
+  }
+
+  return false;
 }
