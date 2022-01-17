@@ -13,9 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     container: pgxn/pgxn-tools
     steps:
-      - name: Start PostgreSQL ${{ matrix.pg }}
-        run: pg-start ${{ matrix.pg }}
       - name: Check out the repo
         uses: actions/checkout@v2
+      - name: Check format
+        uses: DoozyX/clang-format-lint-action@v0.13
+        with:
+          source: '.'
+          exclude: './docker ./docs ./pg_node_formatter ./test'
+          extensions: 'h,cpp,c'
+          clangFormatVersion: 10
+          style: '{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 2, TabWidth: 2, BreakBeforeBraces: Allman, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 0, AccessModifierOffset: -2, NamespaceIndentation: All, FixNamespaceComments: false, SortIncludes: false }'
+      - name: Start PostgreSQL ${{ matrix.pg }}
+        run: pg-start ${{ matrix.pg }}
       - name: Test on PostgreSQL ${{ matrix.pg }}
         run: pg-build-test
