@@ -13,6 +13,8 @@
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
+static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers);
+static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -54,15 +56,22 @@ Datum anon_count_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_AIDS_OFFSET);
 
+  if (all_aids_null(fcinfo, COUNT_AIDS_OFFSET, list_length(trackers)))
+    PG_RETURN_POINTER(trackers);
+
   ListCell *cell;
   foreach (cell, trackers)
   {
     int aid_index = foreach_current_index(cell) + COUNT_AIDS_OFFSET;
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
+    else
+    {
+      tracker->unaccounted_for++;
     }
   }
 
@@ -75,19 +84,26 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
 
   Assert(PG_NARGS() == list_length(trackers) + COUNT_ANY_AIDS_OFFSET);
 
+  if (all_aids_null(fcinfo, COUNT_ANY_AIDS_OFFSET, list_length(trackers)))
+    PG_RETURN_POINTER(trackers);
+
   ListCell *cell;
   foreach (cell, trackers)
   {
     int aid_index = foreach_current_index(cell) + COUNT_ANY_AIDS_OFFSET;
+    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
-      ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(VALUE_INDEX))
         /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid);
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);
+    }
+    else
+    {
+      tracker->unaccounted_for++;
     }
   }
 
@@ -132,7 +148,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
 
   appendStringInfo(string, ", true=%" PRIi64, result.true_count);
 
-  if (result.low_count)
+  if (result.not_enough_aidvs)
     appendStringInfo(string, ", insufficient AIDs");
   else
     appendStringInfo(string, ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
@@ -176,7 +192,7 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 }
 
 CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint64 distinct_contributors,
+    uint64 seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors)
 {
   seed = make_seed(seed);
@@ -186,27 +202,19 @@ CountResult aggregate_count_contributions(
   result.random_seed = seed;
   result.true_count = true_count;
 
-  /* Determine outlier/top counts. */
-  result.noisy_outlier_count = next_uniform_int(
-      &seed,
-      g_config.outlier_count_min,
-      g_config.outlier_count_max + 1);
+  if (distinct_contributors < g_config.outlier_count_min + g_config.top_count_min)
+  {
+    result.not_enough_aidvs = true;
+    return result;
+  }
 
-  result.noisy_top_count = next_uniform_int(
-      &seed,
-      g_config.top_count_min,
-      g_config.top_count_max + 1);
+  determine_outlier_top_counts(distinct_contributors, &seed, &result);
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
-  result.low_count = top_end_index > top_contributors->length;
-  if (result.low_count)
-    return result;
-
   /* Remove outliers from overall count. */
-  result.flattened_count = result.true_count;
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
-    result.flattened_count -= top_contributors->members[i].contribution.integer;
+    result.flattening += (double)top_contributors->members[i].contribution.integer;
 
   /* Compute average of top values. */
   uint64 top_contribution = 0;
@@ -215,10 +223,16 @@ CountResult aggregate_count_contributions(
   double top_average = top_contribution / (double)result.noisy_top_count;
 
   /* Compensate for dropped outliers. */
-  result.flattened_count += (int64)round(top_average * result.noisy_outlier_count);
+  result.flattening -= top_average * result.noisy_outlier_count;
+
+  /* Compensate for the unaccounted for NULL-value AIDs. */
+  double flattened_unaccounted_for = Max(unacounted_for - result.flattening, 0.0);
+
+  result.flattened_count = (int64)round(result.true_count - result.flattening + flattened_unaccounted_for);
 
   double average = result.flattened_count / (double)distinct_contributors;
-  result.noise_sigma = g_config.noise_sigma * Max(average, 0.5 * top_average);
+  double noise_scale = Max(average, 0.5 * top_average);
+  result.noise_sigma = g_config.noise_sigma * noise_scale;
   result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
 
   return result;
@@ -230,20 +244,25 @@ static CountResult count_calculate_aid_result(const ContributionTrackerState *tr
       tracker->aid_seed,
       tracker->overall_contribution.integer,
       tracker->distinct_contributors,
+      tracker->unaccounted_for,
       &tracker->top_contributors);
 }
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
 {
-  Assert(result->low_count == false);
+  Assert(result->not_enough_aidvs == false);
+  Assert(result->flattening >= 0);
 
-  int64 flattening = result->true_count - result->flattened_count;
-  Assert(flattening >= 0);
-  if (flattening >= accumulator->max_flattening)
+  if (result->flattening > accumulator->max_flattening)
   {
-    accumulator->max_flattening = flattening;
-    accumulator->max_flattened_count_with_max_flattening = Max(accumulator->max_flattened_count_with_max_flattening,
-                                                               result->flattened_count);
+    /* Get the flattened count for the AID with the maximum flattening... */
+    accumulator->max_flattening = result->flattening;
+    accumulator->count_for_flattening = result->flattened_count;
+  }
+  else if (result->flattening == accumulator->max_flattening)
+  {
+    /* ...and resolve draws using the largest flattened count. */
+    accumulator->count_for_flattening = Max(accumulator->count_for_flattening, result->flattened_count);
   }
 
   if (result->noise_sigma > accumulator->max_noise_sigma)
@@ -255,7 +274,7 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  return Max(accumulator->max_flattened_count_with_max_flattening + accumulator->noise_with_max_sigma, 0);
+  return Max(accumulator->count_for_flattening + accumulator->noise_with_max_sigma, 0);
 }
 
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
@@ -268,11 +287,62 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
     ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
     CountResult result = count_calculate_aid_result(tracker);
 
-    if (result.low_count)
-      PG_RETURN_NULL();
+    if (result.not_enough_aidvs)
+      PG_RETURN_INT64(g_config.minimum_allowed_aid_values);
 
     accumulate_count_result(&result_accumulator, &result);
   }
 
-  PG_RETURN_INT64(finalize_count_result(&result_accumulator));
+  int64 finalized_count_result = finalize_count_result(&result_accumulator);
+  PG_RETURN_INT64(Max(finalized_count_result, g_config.minimum_allowed_aid_values));
+}
+
+static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)
+{
+  for (int aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
+  {
+    if (!PG_ARGISNULL(aid_index))
+      return false;
+  }
+  return true;
+}
+
+static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result)
+{
+  /* Compact flattening intervals */
+  int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
+  int compact_outlier_count_max = g_config.outlier_count_max;
+  int compact_top_count_max = g_config.top_count_max;
+
+  if (total_adjustment > 0)
+  {
+    int outlier_range = g_config.outlier_count_max - g_config.outlier_count_min;
+
+    if (outlier_range > g_config.top_count_max - g_config.top_count_min)
+    {
+      FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) wider than (top_count_min, top_count_max)");
+    }
+
+    if (outlier_range < total_adjustment / 2)
+    {
+      compact_outlier_count_max -= outlier_range;
+      compact_top_count_max -= total_adjustment - outlier_range;
+    }
+    else
+    {
+      compact_outlier_count_max -= total_adjustment / 2;
+      compact_top_count_max -= total_adjustment - total_adjustment / 2;
+    }
+  }
+
+  /* Determine noisy outlier/top counts. */
+  result->noisy_outlier_count = next_uniform_int(
+      seed,
+      g_config.outlier_count_min,
+      compact_outlier_count_max + 1);
+
+  result->noisy_top_count = next_uniform_int(
+      seed,
+      g_config.top_count_min,
+      compact_top_count_max + 1);
 }

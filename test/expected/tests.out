@@ -83,7 +83,7 @@ SELECT city FROM test_patients GROUP BY 1;
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
  count | count | count 
 -------+-------+-------
-    14 |    14 |     1
+    11 |    11 |     2
 (1 row)
 
 ----------------------------------------------------------------
@@ -101,21 +101,21 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
  count | count 
 -------+-------
-    34 |    29
+    34 |    31
 (1 row)
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    28
- Berlin |    25
+ Berlin |    26
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    28
- Berlin |    25
+ Berlin |    26
 (2 rows)
 
 ----------------------------------------------------------------
@@ -148,7 +148,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
  count 
 -------
-      
+     2
 (1 row)
 
 ----------------------------------------------------------------
@@ -189,7 +189,7 @@ FROM (
 GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
- City: Berlin |       |       |      
+ City: Berlin |    15 |     5 |     5
  City: Rome   |    13 |     7 |     7
 (2 rows)
 
