@@ -182,7 +182,6 @@ void contribution_tracker_update_contribution(
     /* AID exists but hasn't contributed yet. */
     entry->has_contribution = true;
     entry->contributor.contribution = contribution;
-    state->distinct_contributors++;
 
     add_top_contributor(
         &state->contribution_descriptor,
