@@ -260,6 +260,15 @@ static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctT
   list_sort(tracker_entries, &compare_tracker_entries_by_value);
 }
 
+static Contributors *palloc_initialize_top_contributors(uint32 capacity)
+{
+  Contributors *top_contributors = palloc(sizeof(Contributors) + capacity * sizeof(Contributor));
+  top_contributors->length = 0;
+  top_contributors->capacity = capacity;
+
+  return top_contributors;
+}
+
 /* Holds the low-count values contributed by an AID value. */
 typedef struct PerAidValuesEntry
 {
@@ -422,16 +431,14 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   result.noisy_count = result.hc_values_count;
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
-  Contributors *top_contributors =
-      palloc(sizeof(Contributors) + top_contributors_capacity * sizeof(Contributor));
-  top_contributors->length = 0;
-  top_contributors->capacity = top_contributors_capacity;
 
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
+    Contributors *top_contributors = palloc_initialize_top_contributors(top_contributors_capacity);
+
     uint32 lc_values_true_count = 0;
     List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
@@ -449,6 +456,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
         seed, lc_values_true_count, contributors_count, 0, top_contributors);
 
     list_free_deep(per_aid_values);
+    pfree(top_contributors);
 
     if (inner_count_result.not_enough_aidvs)
     {
@@ -457,8 +465,6 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     }
     accumulate_count_result(&result_accumulator, &inner_count_result);
   }
-
-  pfree(top_contributors);
 
   if (!insufficient_data)
   {
