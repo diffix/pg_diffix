@@ -62,6 +62,7 @@ static PlannedStmt *pg_diffix_planner(
     int cursorOptions,
     ParamListInfo boundParams)
 {
+  DEBUG_LOG("STATEMENT: %s", query_string);
   prepare_query(parse);
 
   PlannedStmt *plan;
