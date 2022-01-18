@@ -108,14 +108,14 @@ SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    28
- Berlin |    26
+ Berlin |    25
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
  Rome   |    28
- Berlin |    26
+ Berlin |    25
 (2 rows)
 
 ----------------------------------------------------------------
