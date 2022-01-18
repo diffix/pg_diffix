@@ -61,7 +61,12 @@ function visitNode(tokens, state) {
     }
 
     state.writeNew(token.value + ' ')
-    visitValue(tokens, state)
+    const nextToken = tokens.peek()
+    // An AttrNumber array may have no tokens.
+    if (nextToken.type !== 'key' && nextToken.type !== 'nodeEnd') {
+      visitValue(tokens, state)
+    }
+
     props++
     token = tokens.next()
   }
