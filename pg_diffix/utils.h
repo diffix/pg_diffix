@@ -59,8 +59,19 @@ static inline List *scan_table_by_name(
 
 #ifdef DEBUG
 
-#define DEBUG_LOG(...) ereport(LOG, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
-#define DEBUG_DUMP_NODE(label, node) ereport(LOG, (errmsg("[PG_DIFFIX] %s %s", label, nodeToString(node))))
+#define DEBUG_LOG(...) ereport(LOG,                                \
+                               errmsg("[PG_DIFFIX] " __VA_ARGS__), \
+                               errhidestmt(true))
+
+#define DEBUG_DUMP_NODE(label, node)                      \
+  do                                                      \
+  {                                                       \
+    char *node_str = nodeToString(node);                  \
+    ereport(LOG,                                          \
+            errmsg("[PG_DIFFIX] %s %s", label, node_str), \
+            errhidestmt(true));                           \
+    pfree(node_str);                                      \
+  } while (0)
 
 #else
 
