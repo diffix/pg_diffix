@@ -13,11 +13,11 @@ typedef struct CountResult
   uint64 random_seed;
   int64 true_count;
   double flattening;
-  int64 flattened_count;
+  double flattened_count;
   uint32 noisy_outlier_count;
   uint32 noisy_top_count;
   double noise_sigma;
-  int64 noise;
+  double noise;
   bool not_enough_aidvs;
 } CountResult;
 
@@ -31,10 +31,10 @@ extern CountResult aggregate_count_contributions(
 
 typedef struct CountResultAccumulator
 {
-  int64 max_flattening;
-  int64 count_for_flattening;
+  double max_flattening;
+  double count_for_flattening;
   double max_noise_sigma;
-  int64 noise_with_max_sigma;
+  double noise_with_max_sigma;
 } CountResultAccumulator;
 
 extern void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result);
