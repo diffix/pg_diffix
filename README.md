@@ -191,11 +191,14 @@ the configuration file; can't be read by regular users.
 
 #### Low count filter settings
 
-`pg_diffix.minimum_allowed_aid_values` - The minimum number of distinct AID values that can be in a reported bucket.
-Default value is 2.
+`pg_diffix.low_count_min_threshold` - The lower bound for the number of distinct AID values that must be present in a
+bucket for it to pass the low count filter. Default value is 2.
 
-`pg_diffix.lcf_range` - (**NOTE** temporarily introduced, until low count filtering is updated) The range of the noisy low count filtering threshold.
-Default value is 2.
+`pg_diffix.low_count_mean_gap` - The number of standard deviations between the lower bound and the mean of the
+low count filter threshold. Default value is 2.0.
+
+`pg_diffix.low_count_sigma` - The standard deviation for the noise used when calculating the low count filter threshold.
+Default value is 1.0.
 
 #### Aggregation settings
 

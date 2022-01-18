@@ -288,13 +288,13 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
     CountResult result = count_calculate_aid_result(tracker);
 
     if (result.not_enough_aidvs)
-      PG_RETURN_INT64(g_config.minimum_allowed_aid_values);
+      PG_RETURN_INT64(g_config.low_count_min_threshold);
 
     accumulate_count_result(&result_accumulator, &result);
   }
 
   int64 finalized_count_result = finalize_count_result(&result_accumulator);
-  PG_RETURN_INT64(Max(finalized_count_result, g_config.minimum_allowed_aid_values));
+  PG_RETURN_INT64(Max(finalized_count_result, g_config.low_count_min_threshold));
 }
 
 static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)

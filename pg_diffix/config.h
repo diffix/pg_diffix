@@ -14,8 +14,9 @@ typedef struct DiffixConfig
   char *noise_seed;
   double noise_sigma;
 
-  int minimum_allowed_aid_values;
-  int lcf_range;
+  int low_count_min_threshold;
+  double low_count_mean_gap;
+  double low_count_sigma;
 
   int outlier_count_min;
   int outlier_count_max;
