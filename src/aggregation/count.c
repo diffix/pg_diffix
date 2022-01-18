@@ -101,7 +101,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
-    else
+    else if (!PG_ARGISNULL(VALUE_INDEX))
     {
       tracker->unaccounted_for++;
     }
