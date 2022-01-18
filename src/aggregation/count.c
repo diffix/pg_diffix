@@ -226,7 +226,7 @@ CountResult aggregate_count_contributions(
   result.flattening -= top_average * result.noisy_outlier_count;
 
   /* Compensate for the unaccounted for NULL-value AIDs. */
-  double flattened_unaccounted_for = Max(unacounted_for - result.flattening, 0.0);
+  double flattened_unaccounted_for = Max((double)unacounted_for - result.flattening, 0.0);
 
   result.flattened_count = result.true_count - result.flattening + flattened_unaccounted_for;
 
