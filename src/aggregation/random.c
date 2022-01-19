@@ -54,9 +54,7 @@ double generate_noise(uint64 *seed, double sigma)
 
 int generate_lcf_threshold(uint64 *seed)
 {
-  /* Pick an integer in interval [min, min + lcf_range]. */
-  return next_uniform_int(
-      seed,
-      g_config.minimum_allowed_aid_values,
-      g_config.minimum_allowed_aid_values + g_config.lcf_range + 1); /* +1 because max is exclusive. */
+  double threshold_mean = (double)g_config.low_count_min_threshold +
+                          g_config.low_count_mean_gap * g_config.low_count_layer_sd;
+  return (int)(threshold_mean + next_gaussian_double(seed, g_config.low_count_layer_sd));
 }

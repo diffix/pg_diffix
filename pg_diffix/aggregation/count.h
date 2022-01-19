@@ -16,7 +16,7 @@ typedef struct CountResult
   double flattened_count;
   uint32 noisy_outlier_count;
   uint32 noisy_top_count;
-  double noise_sigma;
+  double noise_sd;
   double noise;
   bool not_enough_aidvs;
 } CountResult;
@@ -33,8 +33,8 @@ typedef struct CountResultAccumulator
 {
   double max_flattening;
   double count_for_flattening;
-  double max_noise_sigma;
-  double noise_with_max_sigma;
+  double max_noise_sd;
+  double noise_with_max_sd;
 } CountResultAccumulator;
 
 extern void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result);

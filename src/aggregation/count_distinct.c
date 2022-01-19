@@ -99,14 +99,6 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
   return entry;
 }
 
-static List *add_aidv_to_set(List *aidv, aid_t aid)
-{
-  int max_size = g_config.minimum_allowed_aid_values + g_config.lcf_range + 1;
-  if (list_length(aidv) == max_size) // set is full, value is not low-count
-    return aidv;
-  return list_append_unique_ptr(aidv, (void *)aid);
-}
-
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
@@ -134,8 +126,8 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(cell); // pointer to the set of AID values
-        *aidv = add_aidv_to_set(*aidv, aid);
+        List **aidv = (List **)&lfirst(cell);               // pointer to the set of AID values
+        *aidv = list_append_unique_ptr(*aidv, (void *)aid); // add current AID value to the set
       }
     }
   }
@@ -203,11 +195,8 @@ static uint64 seed_from_aidv(const List *aidvs)
 
 static bool aid_set_is_high_count(const List *aidvs)
 {
-  if (list_length(aidvs) < g_config.minimum_allowed_aid_values)
+  if (list_length(aidvs) < g_config.low_count_min_threshold)
     return false; /* Less AID values than minimum threshold, value is low-count. */
-  int max_size = g_config.minimum_allowed_aid_values + g_config.lcf_range + 1;
-  if (list_length(aidvs) == max_size)
-    return true; /* More AID values than maximum threshold, value is high-count. */
   uint64 seed = seed_from_aidv(aidvs);
   int threshold = generate_lcf_threshold(&seed);
   return list_length(aidvs) >= threshold;
@@ -476,7 +465,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     result.noisy_count += finalize_count_result(&result_accumulator);
   }
 
-  result.noisy_count = Max(result.noisy_count, g_config.minimum_allowed_aid_values);
+  result.noisy_count = Max(result.noisy_count, g_config.low_count_min_threshold);
 
   return result;
 }
