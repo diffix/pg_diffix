@@ -55,6 +55,6 @@ double generate_noise(uint64 *seed, double sigma)
 int generate_lcf_threshold(uint64 *seed)
 {
   double threshold_mean = (double)g_config.low_count_min_threshold +
-                          g_config.low_count_mean_gap * g_config.low_count_sigma;
-  return (int)(threshold_mean + next_gaussian_double(seed, g_config.low_count_sigma));
+                          g_config.low_count_mean_gap * g_config.low_count_layer_sd;
+  return (int)(threshold_mean + next_gaussian_double(seed, g_config.low_count_layer_sd));
 }

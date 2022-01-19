@@ -12,11 +12,11 @@ typedef struct DiffixConfig
   int session_access_level;
 
   char *noise_seed;
-  double noise_sigma;
+  double noise_layer_sd;
 
   int low_count_min_threshold;
   double low_count_mean_gap;
-  double low_count_sigma;
+  double low_count_layer_sd;
 
   int outlier_count_min;
   int outlier_count_max;

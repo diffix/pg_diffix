@@ -152,7 +152,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
     appendStringInfo(string, ", insufficient AIDs");
   else
     appendStringInfo(string, ", flat=%" PRIi64 ", noise=%" PRIi64 ", SD=%.3f",
-                     result.flattened_count, result.noise, result.noise_sigma);
+                     result.flattened_count, result.noise, result.noise_sd);
 
   /* Print only effective part of the seed. */
   const uint16 *random_seed = (const uint16 *)(&result.random_seed);
@@ -232,8 +232,8 @@ CountResult aggregate_count_contributions(
 
   double average = result.flattened_count / (double)distinct_contributors;
   double noise_scale = Max(average, 0.5 * top_average);
-  result.noise_sigma = g_config.noise_sigma * noise_scale;
-  result.noise = (int64)round(generate_noise(&seed, result.noise_sigma));
+  result.noise_sd = g_config.noise_layer_sd * noise_scale;
+  result.noise = (int64)round(generate_noise(&seed, result.noise_sd));
 
   return result;
 }
@@ -265,16 +265,16 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
     accumulator->count_for_flattening = Max(accumulator->count_for_flattening, result->flattened_count);
   }
 
-  if (result->noise_sigma > accumulator->max_noise_sigma)
+  if (result->noise_sd > accumulator->max_noise_sd)
   {
-    accumulator->max_noise_sigma = result->noise_sigma;
-    accumulator->noise_with_max_sigma = result->noise;
+    accumulator->max_noise_sd = result->noise_sd;
+    accumulator->noise_with_max_sd = result->noise;
   }
 }
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  return Max(accumulator->count_for_flattening + accumulator->noise_with_max_sigma, 0);
+  return Max(accumulator->count_for_flattening + accumulator->noise_with_max_sd, 0);
 }
 
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)

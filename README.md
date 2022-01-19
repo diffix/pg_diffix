@@ -187,7 +187,7 @@ level for the current user; can be changed by all users; defaults to maximum acc
 `pg_diffix.noise_seed` - Secret seed that influences noise generation; needs to be set by the system administrator in
 the configuration file; can't be read by regular users.
 
-`pg_diffix.noise_sigma` - Standard deviation of noise added to aggregates. Default value is 1.0.
+`pg_diffix.noise_layer_sd` - Standard deviation for each noise layer added to aggregates. Default value is 1.0.
 
 #### Low count filter settings
 
@@ -197,8 +197,8 @@ bucket for it to pass the low count filter. Default value is 2.
 `pg_diffix.low_count_mean_gap` - The number of standard deviations between the lower bound and the mean of the
 low count filter threshold. Default value is 2.0.
 
-`pg_diffix.low_count_sigma` - The standard deviation for the noise used when calculating the low count filter threshold.
-Default value is 1.0.
+`pg_diffix.low_count_layer_sd` - The standard deviation for each noise layer used when calculating the low count filter
+threshold. Default value is 1.0.
 
 #### Aggregation settings
 
