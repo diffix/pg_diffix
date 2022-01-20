@@ -1,12 +1,10 @@
 #ifndef PG_DIFFIX_UTILS_H
 #define PG_DIFFIX_UTILS_H
 
-#include "c.h"
 #include "fmgr.h"
 #include "access/htup.h"
 #include "access/htup_details.h" /* Convenience import for `heap_getattr`. */
 #include "access/tupdesc.h"
-#include "utils/elog.h"
 
 /*-------------------------------------------------------------------------
  * Compatibility shims
