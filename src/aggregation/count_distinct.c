@@ -237,11 +237,8 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
  */
 static const DistinctTrackerData *g_compare_values_data;
 
-static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b)
+static int compare_datums(const Datum value_a, const Datum value_b)
 {
-  Datum value_a = ((const DistinctTrackerHashEntry *)lfirst(a))->value;
-  Datum value_b = ((const DistinctTrackerHashEntry *)lfirst(b))->value;
-
   if (g_compare_values_data->typbyval)
   {
     return memcmp(&value_a, &value_b, sizeof(Datum));
@@ -252,6 +249,22 @@ static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b
     Size size_b = datumGetSize(value_b, TYPE_BY_REF, g_compare_values_data->typlen);
     return memcmp(DatumGetPointer(value_a), DatumGetPointer(value_b), Min(size_a, size_b));
   }
+}
+
+static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b)
+{
+  Datum value_a = ((const DistinctTrackerHashEntry *)lfirst(a))->value;
+  Datum value_b = ((const DistinctTrackerHashEntry *)lfirst(b))->value;
+
+  return compare_datums(value_a, value_b);
+}
+
+static int compare_values(const ListCell *a, const ListCell *b)
+{
+  Datum value_a = (Datum)lfirst(a);
+  Datum value_b = (Datum)lfirst(b);
+
+  return compare_datums(value_a, value_b);
 }
 
 static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctTrackerData *tracker_data)
@@ -348,6 +361,13 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
   }
   else
   {
+    ListCell *cell_a;
+    foreach (cell_a, entry_a->values)
+    {
+      int value_idx = foreach_current_index(cell_a);
+      return compare_values(cell_a, list_nth_cell(entry_b->values, value_idx));
+    }
+
     /* To ensure determinism, order entries with identical counts by AID value. */
     if (entry_a->aid > entry_b->aid)
       return 1;
@@ -369,6 +389,12 @@ static void delete_value(List *per_aid_values, Datum value)
   }
 }
 
+static void sort_per_aid_values(List *per_aid_values, const DistinctTrackerData *tracker_data)
+{
+  g_compare_values_data = tracker_data; /* Set value comparison context. */
+  list_sort(per_aid_values, &compare_per_aid_values_entries);
+}
+
 /*
  * Builds the top contributors array from the list of per-AID low-count values.
  * From each AID value in turn, in increasing order of contributions amount, a unique value
@@ -376,8 +402,6 @@ static void delete_value(List *per_aid_values, Datum value)
  */
 static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 {
-  list_sort(per_aid_values, &compare_per_aid_values_entries);
-
   while (values_count > 0)
   {
     ListCell *cell;
@@ -442,6 +466,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     uint32 lc_values_true_count = 0;
     List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
+    sort_per_aid_values(per_aid_values, DATA(tracker));
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
     uint64 seed = 0;
