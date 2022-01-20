@@ -2,7 +2,6 @@
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
 #include "utils/builtins.h"
-#include "utils/elog.h"
 
 #include "pg_diffix/aggregation/aid.h"
 
