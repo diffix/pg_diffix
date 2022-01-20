@@ -1,6 +1,5 @@
 #include "postgres.h"
 #include "common/hashfn.h"
-#include "utils/elog.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"

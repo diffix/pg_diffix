@@ -1,8 +1,6 @@
 #ifndef PG_DIFFIX_CONFIG_H
 #define PG_DIFFIX_CONFIG_H
 
-#include "c.h"
-
 /*
  * Root configuration object.
  */

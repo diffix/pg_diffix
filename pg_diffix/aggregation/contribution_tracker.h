@@ -1,7 +1,6 @@
 #ifndef PG_DIFFIX_CONTRIBUTION_TRACKER_H
 #define PG_DIFFIX_CONTRIBUTION_TRACKER_H
 
-#include "c.h"
 #include "fmgr.h"
 #include "nodes/pg_list.h"
 

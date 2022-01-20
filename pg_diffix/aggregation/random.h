@@ -1,8 +1,6 @@
 #ifndef PG_DIFFIX_RANDOM_H
 #define PG_DIFFIX_RANDOM_H
 
-#include "c.h"
-
 /*
  * Combines the given 64-bit AID seed with
  * the seed from config and produces a 64-bit output.

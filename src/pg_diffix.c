@@ -2,8 +2,8 @@
 #include "fmgr.h"
 
 #include "pg_diffix/auth.h"
-#include "pg_diffix/hooks.h"
 #include "pg_diffix/config.h"
+#include "pg_diffix/hooks.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/oid_cache.h"
 

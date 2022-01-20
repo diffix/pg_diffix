@@ -8,8 +8,8 @@
 #include <math.h>
 #include <inttypes.h>
 
-#include "pg_diffix/utils.h"
 #include "pg_diffix/config.h"
+#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/random.h"
 #include "pg_diffix/aggregation/count.h"
