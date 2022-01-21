@@ -1,26 +1,27 @@
 #include "postgres.h"
 #include "catalog/pg_type.h"
-#include "common/hashfn.h"
 #include "utils/builtins.h"
 
 #include "pg_diffix/aggregation/aid.h"
 
 static aid_t make_int4_aid(Datum datum)
 {
-  aid_t aid = DatumGetUInt32(datum);
-#ifndef DEBUG
-  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+  uint32 aid = DatumGetUInt32(datum);
+#ifdef DEBUG
+  return aid; /* We keep integer values untouched on DEBUG builds. */
+#else
+  return hash_bytes(aid, sizeof(aid));
 #endif
-  return aid;
 }
 
 static aid_t make_int8_aid(Datum datum)
 {
-  aid_t aid = DatumGetUInt64(datum);
-#ifndef DEBUG
-  aid = HASH_AID_64(aid); /* We keep integer values untouched on DEBUG builds. */
+  uint64 aid = DatumGetUInt64(datum);
+#ifdef DEBUG
+  return aid; /* We keep integer values untouched on DEBUG builds. */
+#else
+  return hash_bytes(aid, sizeof(aid));
 #endif
-  return aid;
 }
 
 static aid_t make_text_aid(Datum datum)

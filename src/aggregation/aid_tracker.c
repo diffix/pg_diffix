@@ -1,5 +1,4 @@
 #include "postgres.h"
-#include "common/hashfn.h"
 
 #include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid_tracker.h"
@@ -12,7 +11,7 @@
 #define SH_KEY aid
 #define SH_KEY_TYPE aid_t
 #define SH_EQUAL(tb, a, b) a == b
-#define SH_HASH_KEY(tb, key) HASH_AID_32(key)
+#define SH_HASH_KEY(tb, key) (uint32) key /* `key` is already a hash */
 #define SH_SCOPE inline
 #define SH_DEFINE
 #include "lib/simplehash.h"

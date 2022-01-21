@@ -7,6 +7,31 @@
 #include "access/tupdesc.h"
 
 /*-------------------------------------------------------------------------
+ * General utils
+ *-------------------------------------------------------------------------
+ */
+
+typedef uint64 hash_t;
+
+static inline hash_t hash_bytes(const void *bytes, size_t size)
+{
+  /* Implementation of FNV-1a hash algorithm: http://www.isthe.com/chongo/tech/comp/fnv/index.html */
+  const uint64 FNV_PRIME = 1099511628211UL;
+  const uint64 OFFSET_BASIS = 14695981039346656037UL;
+
+  hash_t hash = OFFSET_BASIS;
+  for (size_t i = 0; i < size; i++)
+  {
+    uint8 octet = ((const uint8 *)bytes)[i];
+    hash = (hash ^ octet) * FNV_PRIME;
+  }
+
+  return hash;
+}
+
+static inline hash_t hash_combine(hash_t h1, hash_t h2) { return h1 ^ h2; }
+
+/*-------------------------------------------------------------------------
  * Compatibility shims
  *-------------------------------------------------------------------------
  */

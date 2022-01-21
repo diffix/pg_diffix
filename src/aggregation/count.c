@@ -135,7 +135,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
   for (uint32 i = 0; i < top_length; i++)
   {
     const Contributor *contributor = &tracker->top_contributors.members[i];
-    appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" AID_FMT,
+    appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" PRIu64,
                      contributor->contribution.integer, contributor->aid);
 
     if (i == result.noisy_outlier_count - 1)

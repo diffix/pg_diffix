@@ -1,5 +1,4 @@
 #include "postgres.h"
-#include "common/hashfn.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
@@ -114,7 +113,7 @@ void update_or_add_top_contributor(
 #define SH_KEY contributor.aid
 #define SH_KEY_TYPE aid_t
 #define SH_EQUAL(tb, a, b) a == b
-#define SH_HASH_KEY(tb, key) HASH_AID_32(key)
+#define SH_HASH_KEY(tb, key) (uint32) key /* `key` is already a hash */
 #define SH_SCOPE inline
 #define SH_DEFINE
 #include "lib/simplehash.h"
