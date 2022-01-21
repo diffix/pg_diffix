@@ -1,21 +1,17 @@
 #include "postgres.h"
-#include "common/hashfn.h"
 
 #include <math.h>
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/aggregation/random.h"
+#include "pg_diffix/utils.h"
 
 extern double pg_erand48(unsigned short xseed[3]);
 
 uint64 make_seed(uint64 aid_seed)
 {
-  uint64 base_seed = hash_bytes_extended(
-      (unsigned char *)g_config.salt,
-      strlen(g_config.salt),
-      0);
-
-  return hash_combine64(base_seed, aid_seed);
+  uint64 salt_hash = hash_bytes(g_config.salt, strlen(g_config.salt));
+  return hash_combine(salt_hash, aid_seed);
 }
 
 double next_gaussian_double(uint64 *seed, double sigma)
