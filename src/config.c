@@ -28,7 +28,7 @@ static char *config_to_string(DiffixConfig *config)
 
   appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
   appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
-  appendStringInfo(&string, " :noise_seed \"%s\"", config->noise_seed);
+  appendStringInfo(&string, " :salt \"%s\"", config->salt);
   appendStringInfo(&string, " :noise_layer_sd %f", config->noise_layer_sd);
   appendStringInfo(&string, " :low_count_min_threshold %i", config->low_count_min_threshold);
   appendStringInfo(&string, " :low_count_mean_gap %f", config->low_count_mean_gap);
@@ -94,16 +94,16 @@ void config_init(void)
       NULL);                               /* show_hook */
 
   DefineCustomStringVariable(
-      "pg_diffix.noise_seed",                     /* name */
-      "Seed used for initializing noise layers.", /* short_desc */
-      NULL,                                       /* long_desc */
-      &g_config.noise_seed,                       /* valueAddr */
-      "diffix",                                   /* bootValue */
-      PGC_SUSET,                                  /* context */
-      GUC_SUPERUSER_ONLY,                         /* flags */
-      NULL,                                       /* check_hook */
-      NULL,                                       /* assign_hook */
-      NULL);                                      /* show_hook */
+      "pg_diffix.salt",                              /* name */
+      "Secret value used for seeding noise layers.", /* short_desc */
+      NULL,                                          /* long_desc */
+      &g_config.salt,                                /* valueAddr */
+      "diffix",                                      /* bootValue */
+      PGC_SUSET,                                     /* context */
+      GUC_SUPERUSER_ONLY,                            /* flags */
+      NULL,                                          /* check_hook */
+      NULL,                                          /* assign_hook */
+      NULL);                                         /* show_hook */
 
   DefineCustomRealVariable(
       "pg_diffix.noise_layer_sd",                                     /* name */

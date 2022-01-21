@@ -11,8 +11,8 @@ extern double pg_erand48(unsigned short xseed[3]);
 uint64 make_seed(uint64 aid_seed)
 {
   uint64 base_seed = hash_bytes_extended(
-      (unsigned char *)g_config.noise_seed,
-      strlen(g_config.noise_seed),
+      (unsigned char *)g_config.salt,
+      strlen(g_config.salt),
       0);
 
   return hash_combine64(base_seed, aid_seed);

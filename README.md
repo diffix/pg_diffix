@@ -184,7 +184,7 @@ level for the current user; can be changed by all users; defaults to maximum acc
 
 #### Noise settings
 
-`pg_diffix.noise_seed` - Secret seed that influences noise generation; needs to be set by the system administrator in
+`pg_diffix.salt` - Secret value that influences noise generation; needs to be set by the system administrator in
 the configuration file; can't be read by regular users.
 
 `pg_diffix.noise_layer_sd` - Standard deviation for each noise layer added to aggregates. Default value is 1.0.
