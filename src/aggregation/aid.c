@@ -7,21 +7,13 @@
 static aid_t make_int4_aid(Datum datum)
 {
   uint32 aid = DatumGetUInt32(datum);
-#ifdef DEBUG
-  return aid; /* We keep integer values untouched on DEBUG builds. */
-#else
   return hash_bytes(&aid, sizeof(aid));
-#endif
 }
 
 static aid_t make_int8_aid(Datum datum)
 {
   uint64 aid = DatumGetUInt64(datum);
-#ifdef DEBUG
-  return aid; /* We keep integer values untouched on DEBUG builds. */
-#else
   return hash_bytes(&aid, sizeof(aid));
-#endif
 }
 
 static aid_t make_text_aid(Datum datum)
