@@ -264,14 +264,6 @@ static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b
   return compare_datums(value_a, value_b);
 }
 
-static int compare_values(const ListCell *a, const ListCell *b)
-{
-  Datum value_a = (Datum)lfirst(a);
-  Datum value_b = (Datum)lfirst(b);
-
-  return compare_datums(value_a, value_b);
-}
-
 static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctTrackerData *tracker_data)
 {
   list_sort(tracker_entries, &compare_tracker_entries_by_value);
@@ -365,13 +357,6 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
   }
   else
   {
-    ListCell *cell_a;
-    foreach (cell_a, entry_a->values)
-    {
-      int value_idx = foreach_current_index(cell_a);
-      return compare_values(cell_a, list_nth_cell(entry_b->values, value_idx));
-    }
-
     /* To ensure determinism, order entries with identical counts by AID value. */
     if (entry_a->aid > entry_b->aid)
       return 1;
