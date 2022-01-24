@@ -10,7 +10,7 @@ static aid_t make_int4_aid(Datum datum)
 #ifdef DEBUG
   return aid; /* We keep integer values untouched on DEBUG builds. */
 #else
-  return hash_bytes(aid, sizeof(aid));
+  return hash_bytes(&aid, sizeof(aid));
 #endif
 }
 
@@ -20,7 +20,7 @@ static aid_t make_int8_aid(Datum datum)
 #ifdef DEBUG
   return aid; /* We keep integer values untouched on DEBUG builds. */
 #else
-  return hash_bytes(aid, sizeof(aid));
+  return hash_bytes(&aid, sizeof(aid));
 #endif
 }
 
