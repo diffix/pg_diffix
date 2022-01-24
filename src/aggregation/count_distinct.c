@@ -4,6 +4,7 @@
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
+#include "utils/typcache.h"
 
 #include <math.h>
 #include <inttypes.h>
@@ -99,6 +100,26 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
   return entry;
 }
 
+/*
+ * We need additional meta-data to compare values, but we can't pass a comparison context to
+ * the sorting function, so we make it a global instead.
+ */
+FmgrInfo *g_compare_values_func;
+TypeCacheEntry *g_compare_values_typentry;
+
+static int compare_datums(const Datum value_a, const Datum value_b)
+{
+  Datum c = FunctionCall2Coll(g_compare_values_func, g_compare_values_typentry->typcollation, value_a, value_b);
+  return DatumGetInt32(c);
+}
+
+static void set_value_sorting_globals(PG_FUNCTION_ARGS)
+{
+  Oid element_type = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
+  g_compare_values_typentry = lookup_type_cache(element_type, TYPECACHE_CMP_PROC_FINFO);
+  g_compare_values_func = &g_compare_values_typentry->cmp_proc_finfo;
+}
+
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
@@ -151,6 +172,8 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   /* We want all memory allocations to be done per aggregation node. */
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
+  set_value_sorting_globals(fcinfo);
+
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
 
@@ -166,6 +189,8 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 {
   /* We want all memory allocations to be done per aggregation node. */
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
+
+  set_value_sorting_globals(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
@@ -231,26 +256,6 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
   return lc_entries;
 }
 
-/*
- * We need additional meta-data to compare values, but we can't pass a comparison context to
- * the sorting function, so we make it a global instead.
- */
-static const DistinctTrackerData *g_compare_values_data;
-
-static int compare_datums(const Datum value_a, const Datum value_b)
-{
-  if (g_compare_values_data->typbyval)
-  {
-    return memcmp(&value_a, &value_b, sizeof(Datum));
-  }
-  else
-  {
-    Size size_a = datumGetSize(value_a, TYPE_BY_REF, g_compare_values_data->typlen);
-    Size size_b = datumGetSize(value_b, TYPE_BY_REF, g_compare_values_data->typlen);
-    return memcmp(DatumGetPointer(value_a), DatumGetPointer(value_b), Min(size_a, size_b));
-  }
-}
-
 static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b)
 {
   Datum value_a = ((const DistinctTrackerHashEntry *)lfirst(a))->value;
@@ -269,7 +274,6 @@ static int compare_values(const ListCell *a, const ListCell *b)
 
 static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctTrackerData *tracker_data)
 {
-  g_compare_values_data = tracker_data; /* Set value comparison context. */
   list_sort(tracker_entries, &compare_tracker_entries_by_value);
 }
 
@@ -391,7 +395,6 @@ static void delete_value(List *per_aid_values, Datum value)
 
 static void sort_per_aid_values(List *per_aid_values, const DistinctTrackerData *tracker_data)
 {
-  g_compare_values_data = tracker_data; /* Set value comparison context. */
   list_sort(per_aid_values, &compare_per_aid_values_entries);
 }
 
