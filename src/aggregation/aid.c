@@ -6,7 +6,8 @@
 
 static aid_t make_int4_aid(Datum datum)
 {
-  uint32 aid = DatumGetUInt32(datum);
+  // NOTE: the cast to `uint64` is intentional; this matches with `reference` implementation
+  uint64 aid = DatumGetUInt32(datum);
   return hash_bytes(&aid, sizeof(aid));
 }
 

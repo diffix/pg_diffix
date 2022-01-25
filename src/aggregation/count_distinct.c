@@ -4,6 +4,7 @@
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
+#include "utils/typcache.h"
 
 #include <math.h>
 #include <inttypes.h>
@@ -99,6 +100,26 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
   return entry;
 }
 
+/*
+ * We need additional meta-data to compare values, but we can't pass a comparison context to
+ * the sorting function, so we make it a global instead.
+ */
+FmgrInfo *g_compare_values_func;
+TypeCacheEntry *g_compare_values_typentry;
+
+static int compare_datums(const Datum value_a, const Datum value_b)
+{
+  Datum c = FunctionCall2Coll(g_compare_values_func, g_compare_values_typentry->typcollation, value_a, value_b);
+  return DatumGetInt32(c);
+}
+
+static void set_value_sorting_globals(PG_FUNCTION_ARGS)
+{
+  Oid element_type = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
+  g_compare_values_typentry = lookup_type_cache(element_type, TYPECACHE_CMP_PROC_FINFO);
+  g_compare_values_func = &g_compare_values_typentry->cmp_proc_finfo;
+}
+
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
@@ -151,6 +172,8 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   /* We want all memory allocations to be done per aggregation node. */
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
+  set_value_sorting_globals(fcinfo);
+
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
 
@@ -166,6 +189,8 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 {
   /* We want all memory allocations to be done per aggregation node. */
   MemoryContext old_context = switch_to_aggregation_context(fcinfo);
+
+  set_value_sorting_globals(fcinfo);
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
   CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
@@ -231,33 +256,21 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
   return lc_entries;
 }
 
-/*
- * We need additional meta-data to compare values, but we can't pass a comparison context to
- * the sorting function, so we make it a global instead.
- */
-static const DistinctTrackerData *g_compare_values_data;
-
 static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b)
 {
   Datum value_a = ((const DistinctTrackerHashEntry *)lfirst(a))->value;
   Datum value_b = ((const DistinctTrackerHashEntry *)lfirst(b))->value;
 
-  if (g_compare_values_data->typbyval)
-  {
-    return memcmp(&value_a, &value_b, sizeof(Datum));
-  }
-  else
-  {
-    Size size_a = datumGetSize(value_a, TYPE_BY_REF, g_compare_values_data->typlen);
-    Size size_b = datumGetSize(value_b, TYPE_BY_REF, g_compare_values_data->typlen);
-    return memcmp(DatumGetPointer(value_a), DatumGetPointer(value_b), Min(size_a, size_b));
-  }
+  return compare_datums(value_a, value_b);
 }
 
-static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctTrackerData *tracker_data)
+static Contributors *create_contributors(uint32 capacity)
 {
-  g_compare_values_data = tracker_data; /* Set value comparison context. */
-  list_sort(tracker_entries, &compare_tracker_entries_by_value);
+  Contributors *contributors = palloc(sizeof(Contributors) + capacity * sizeof(Contributor));
+  contributors->length = 0;
+  contributors->capacity = capacity;
+
+  return contributors;
 }
 
 /* Holds the low-count values contributed by an AID value. */
@@ -367,8 +380,6 @@ static void delete_value(List *per_aid_values, Datum value)
  */
 static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 {
-  list_sort(per_aid_values, &compare_per_aid_values_entries);
-
   while (values_count > 0)
   {
     ListCell *cell;
@@ -414,7 +425,7 @@ static void process_lc_values_contributions(
 static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
 {
   List *lc_entries = filter_lc_entries(tracker);
-  sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
+  list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
 
   CountDistinctResult result = {0};
   result.lc_values_count = list_length(lc_entries);
@@ -422,19 +433,18 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
   result.noisy_count = result.hc_values_count;
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
-  Contributors *top_contributors =
-      palloc(sizeof(Contributors) + top_contributors_capacity * sizeof(Contributor));
-  top_contributors->length = 0;
-  top_contributors->capacity = top_contributors_capacity;
 
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
+    Contributors *top_contributors = create_contributors(top_contributors_capacity);
+
     uint32 lc_values_true_count = 0;
     List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
+    list_sort(per_aid_values, &compare_per_aid_values_entries);
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
     uint64 seed = 0;
@@ -449,6 +459,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
         seed, lc_values_true_count, contributors_count, 0, top_contributors);
 
     list_free_deep(per_aid_values);
+    pfree(top_contributors);
 
     if (inner_count_result.not_enough_aidvs)
     {
@@ -457,8 +468,6 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     }
     accumulate_count_result(&result_accumulator, &inner_count_result);
   }
-
-  pfree(top_contributors);
 
   if (!insufficient_data)
   {

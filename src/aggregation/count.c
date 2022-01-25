@@ -101,7 +101,7 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);
     }
-    else
+    else if (!PG_ARGISNULL(VALUE_INDEX))
     {
       tracker->unaccounted_for++;
     }
@@ -226,7 +226,7 @@ CountResult aggregate_count_contributions(
   result.flattening -= top_average * result.noisy_outlier_count;
 
   /* Compensate for the unaccounted for NULL-value AIDs. */
-  double flattened_unaccounted_for = Max(unacounted_for - result.flattening, 0.0);
+  double flattened_unaccounted_for = Max((double)unacounted_for - result.flattening, 0.0);
 
   result.flattened_count = result.true_count - result.flattening + flattened_unaccounted_for;
 
