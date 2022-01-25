@@ -81,6 +81,8 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 -- LCF & Filtering
 ----------------------------------------------------------------
 
+SELECT id FROM test_customers;
+
 SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
