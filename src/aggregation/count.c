@@ -276,6 +276,7 @@ int64 finalize_count_result(const CountResultAccumulator *accumulator)
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
   CountResultAccumulator result_accumulator = {0};
+  int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
 
   ListCell *cell;
   foreach (cell, trackers)
@@ -284,13 +285,13 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
     CountResult result = count_calculate_aid_result(tracker);
 
     if (result.not_enough_aidvs)
-      PG_RETURN_INT64(g_config.low_count_min_threshold);
+      PG_RETURN_INT64(min_count);
 
     accumulate_count_result(&result_accumulator, &result);
   }
 
   int64 finalized_count_result = finalize_count_result(&result_accumulator);
-  PG_RETURN_INT64(Max(finalized_count_result, g_config.low_count_min_threshold));
+  PG_RETURN_INT64(Max(finalized_count_result, min_count));
 }
 
 static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)
