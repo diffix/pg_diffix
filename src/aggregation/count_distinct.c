@@ -165,7 +165,7 @@ typedef struct CountDistinctResult
   int64 noisy_count;
 } CountDistinctResult;
 
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *state, int aids_count);
+static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS);
 
 Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 {
@@ -174,15 +174,11 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 
   set_value_sorting_globals(fcinfo);
 
-  DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
+  CountDistinctResult result = count_distinct_calculate_final(fcinfo);
 
   MemoryContextSwitchTo(old_context);
 
-  if (result.noisy_count == 0)
-    PG_RETURN_NULL();
-  else
-    PG_RETURN_INT64(result.noisy_count);
+  PG_RETURN_INT64(result.noisy_count);
 }
 
 Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
@@ -192,8 +188,7 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
 
   set_value_sorting_globals(fcinfo);
 
-  DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-  CountDistinctResult result = count_distinct_calculate_final(tracker, PG_NARGS() - AIDS_OFFSET);
+  CountDistinctResult result = count_distinct_calculate_final(fcinfo);
 
   MemoryContextSwitchTo(old_context);
 
@@ -422,8 +417,13 @@ static void process_lc_values_contributions(
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
+static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
 {
+  int aids_count = PG_NARGS() - AIDS_OFFSET;
+  int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
+
+  DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
+
   List *lc_entries = filter_lc_entries(tracker);
   list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
 
@@ -474,7 +474,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     result.noisy_count += finalize_count_result(&result_accumulator);
   }
 
-  result.noisy_count = Max(result.noisy_count, g_config.low_count_min_threshold);
+  result.noisy_count = Max(result.noisy_count, min_count);
 
   return result;
 }

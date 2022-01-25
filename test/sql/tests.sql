@@ -26,6 +26,8 @@ INSERT INTO test_patients VALUES
   (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 
+CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -34,6 +36,8 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
 
 ----------------------------------------------------------------
 -- Utilities
@@ -87,7 +91,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
 
 ----------------------------------------------------------------
 -- Non-aggregating subqueries
@@ -116,6 +120,12 @@ FROM (
 GROUP BY 1;
 
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+
+----------------------------------------------------------------
+-- Empty tables
+----------------------------------------------------------------
+
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
 
 ----------------------------------------------------------------
 -- Unsupported queries
