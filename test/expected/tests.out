@@ -121,6 +121,11 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 ----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
+SELECT id FROM test_customers;
+ id 
+----
+(0 rows)
+
 SELECT city FROM test_customers;
   city  
 --------
