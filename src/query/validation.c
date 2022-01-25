@@ -2,9 +2,9 @@
 #include "nodes/nodeFuncs.h"
 
 #include "pg_diffix/config.h"
+#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/validation.h"
-#include "pg_diffix/query/oid_cache.h"
 
 #define NOT_SUPPORTED(cond, feature) \
   if (cond)                          \
