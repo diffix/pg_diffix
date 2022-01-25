@@ -264,18 +264,13 @@ static int compare_tracker_entries_by_value(const ListCell *a, const ListCell *b
   return compare_datums(value_a, value_b);
 }
 
-static void sort_tracker_entries_by_value(List *tracker_entries, const DistinctTrackerData *tracker_data)
+static Contributors *create_contributors(uint32 capacity)
 {
-  list_sort(tracker_entries, &compare_tracker_entries_by_value);
-}
+  Contributors *contributors = palloc(sizeof(Contributors) + capacity * sizeof(Contributor));
+  contributors->length = 0;
+  contributors->capacity = capacity;
 
-static Contributors *palloc_initialize_top_contributors(uint32 capacity)
-{
-  Contributors *top_contributors = palloc(sizeof(Contributors) + capacity * sizeof(Contributor));
-  top_contributors->length = 0;
-  top_contributors->capacity = capacity;
-
-  return top_contributors;
+  return contributors;
 }
 
 /* Holds the low-count values contributed by an AID value. */
@@ -378,11 +373,6 @@ static void delete_value(List *per_aid_values, Datum value)
   }
 }
 
-static void sort_per_aid_values(List *per_aid_values, const DistinctTrackerData *tracker_data)
-{
-  list_sort(per_aid_values, &compare_per_aid_values_entries);
-}
-
 /*
  * Builds the top contributors array from the list of per-AID low-count values.
  * From each AID value in turn, in increasing order of contributions amount, a unique value
@@ -435,7 +425,7 @@ static void process_lc_values_contributions(
 static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
 {
   List *lc_entries = filter_lc_entries(tracker);
-  sort_tracker_entries_by_value(lc_entries, DATA(tracker)); /* Needed to ensure determinism. */
+  list_sort(lc_entries, &compare_tracker_entries_by_value);
 
   CountDistinctResult result = {0};
   result.lc_values_count = list_length(lc_entries);
@@ -449,12 +439,12 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
-    Contributors *top_contributors = palloc_initialize_top_contributors(top_contributors_capacity);
+    Contributors *top_contributors = create_contributors(top_contributors_capacity);
 
     uint32 lc_values_true_count = 0;
     List *per_aid_values = transpose_lc_values_per_aid(lc_entries, aid_index, &lc_values_true_count);
 
-    sort_per_aid_values(per_aid_values, DATA(tracker));
+    list_sort(per_aid_values, &compare_per_aid_values_entries);
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
     uint64 seed = 0;
