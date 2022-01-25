@@ -425,7 +425,7 @@ static void process_lc_values_contributions(
 static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *tracker, int aids_count)
 {
   List *lc_entries = filter_lc_entries(tracker);
-  list_sort(lc_entries, &compare_tracker_entries_by_value);
+  list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
 
   CountDistinctResult result = {0};
   result.lc_values_count = list_length(lc_entries);
