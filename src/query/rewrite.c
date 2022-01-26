@@ -5,8 +5,8 @@
 #include "catalog/pg_type.h"
 #include "catalog/pg_aggregate.h"
 
+#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/query/oid_cache.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/rewrite.h"
 
