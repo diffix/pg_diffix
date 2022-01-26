@@ -113,7 +113,7 @@ extern MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
 
 /*
  * Checks if the current aggregation group has no grouping columns.
- * Also detects the case with multiple grouping sets where one is global (empty grouping set).
+ * Will not detect an empty grouping when there are multiple grouping sets.
  */
 extern bool is_global_aggregation(PG_FUNCTION_ARGS);
 
