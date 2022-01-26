@@ -9,12 +9,13 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/count.h"
-#include "pg_diffix/aggregation/random.h"
+#include "pg_diffix/aggregation/noise.h"
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
 static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers);
-static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result);
+static void determine_outlier_top_counts(
+    uint64 total_count, const Contributors *top_contributors, CountResult *result);
 
 static bool contribution_greater(contribution_t x, contribution_t y)
 {
@@ -154,11 +155,7 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
     appendStringInfo(string, ", flat=%.3f, noise=%.3f, SD=%.3f",
                      result.flattened_count, result.noise, result.noise_sd);
 
-  /* Print only effective part of the seed. */
-  const uint16 *random_seed = (const uint16 *)(&result.random_seed);
-  appendStringInfo(string,
-                   ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
-                   random_seed[0], random_seed[1], random_seed[2]);
+  appendStringInfo(string, ", aid_seed=%016" PRIx64, result.aid_seed);
 }
 
 static Datum explain_count_trackers(List *trackers)
@@ -192,14 +189,12 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 }
 
 CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
+    seed_t aid_seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors)
 {
-  seed = make_seed(seed);
-
   CountResult result = {0};
 
-  result.random_seed = seed;
+  result.aid_seed = aid_seed;
   result.true_count = true_count;
 
   if (distinct_contributors < g_config.outlier_count_min + g_config.top_count_min)
@@ -208,7 +203,7 @@ CountResult aggregate_count_contributions(
     return result;
   }
 
-  determine_outlier_top_counts(distinct_contributors, &seed, &result);
+  determine_outlier_top_counts(distinct_contributors, top_contributors, &result);
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
@@ -233,7 +228,7 @@ CountResult aggregate_count_contributions(
   double average = result.flattened_count / (double)distinct_contributors;
   double noise_scale = Max(average, 0.5 * top_average);
   result.noise_sd = g_config.noise_layer_sd * noise_scale;
-  result.noise = generate_noise(&seed, result.noise_sd);
+  result.noise = generate_normal_noise(aid_seed, "noise", result.noise_sd);
 
   return result;
 }
@@ -308,7 +303,18 @@ static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)
   return true;
 }
 
-static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, CountResult *result)
+static seed_t contributors_seed(const Contributor *contributors, int count)
+{
+  seed_t seed = 0;
+  for (int i = 0; i < count; i++)
+    seed ^= contributors[i].aid;
+  return seed;
+}
+
+static void determine_outlier_top_counts(
+    uint64 total_count,
+    const Contributors *top_contributors,
+    CountResult *result)
 {
   /* Compact flattening intervals */
   int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
@@ -337,13 +343,11 @@ static void determine_outlier_top_counts(uint64 total_count, uint64 *seed, Count
   }
 
   /* Determine noisy outlier/top counts. */
-  result->noisy_outlier_count = next_uniform_int(
-      seed,
-      g_config.outlier_count_min,
-      compact_outlier_count_max + 1);
+  seed_t flattening_seed = contributors_seed(
+      top_contributors->members, compact_outlier_count_max + compact_top_count_max);
 
-  result->noisy_top_count = next_uniform_int(
-      seed,
-      g_config.top_count_min,
-      compact_top_count_max + 1);
+  result->noisy_outlier_count = generate_uniform_noise(
+      flattening_seed, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
+  result->noisy_top_count = generate_uniform_noise(
+      flattening_seed, "top", g_config.top_count_min, compact_top_count_max);
 }

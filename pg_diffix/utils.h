@@ -29,8 +29,6 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
   return hash;
 }
 
-static inline hash_t hash_combine(hash_t h1, hash_t h2) { return h1 ^ h2; }
-
 /*-------------------------------------------------------------------------
  * Compatibility shims
  *-------------------------------------------------------------------------

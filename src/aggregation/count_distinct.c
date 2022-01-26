@@ -12,7 +12,7 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid.h"
-#include "pg_diffix/aggregation/random.h"
+#include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/aggregation/count.h"
 
 static const bool TYPE_BY_REF = false;
@@ -206,24 +206,24 @@ Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-static uint64 seed_from_aidv(const List *aidvs)
+static seed_t seed_from_aidv(const List *aidvs)
 {
-  uint64 seed = 0;
+  seed_t seed = 0;
   ListCell *cell;
   foreach (cell, aidvs)
   {
     aid_t aid = (aid_t)lfirst(cell);
     seed ^= aid;
   }
-  return make_seed(seed);
+  return seed;
 }
 
 static bool aid_set_is_high_count(const List *aidvs)
 {
   if (list_length(aidvs) < g_config.low_count_min_threshold)
     return false; /* Less AID values than minimum threshold, value is low-count. */
-  uint64 seed = seed_from_aidv(aidvs);
-  int threshold = generate_lcf_threshold(&seed);
+  seed_t seed = seed_from_aidv(aidvs);
+  int threshold = generate_lcf_threshold(seed);
   return list_length(aidvs) >= threshold;
 }
 
@@ -398,7 +398,7 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 
 /* Computes the aggregation seed, total count of contributors and fills the top contributors array. */
 static void process_lc_values_contributions(
-    List *per_aid_values, uint64 *seed, uint64 *contributors_count,
+    List *per_aid_values, seed_t *seed, uint64 *contributors_count,
     Contributors *top_contributors)
 {
   *contributors_count = 0;
@@ -447,7 +447,7 @@ static CountDistinctResult count_distinct_calculate_final(DistinctTracker_hash *
     list_sort(per_aid_values, &compare_per_aid_values_entries);
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
-    uint64 seed = 0;
+    seed_t seed = 0;
     uint64 contributors_count = 0;
     process_lc_values_contributions(
         per_aid_values,

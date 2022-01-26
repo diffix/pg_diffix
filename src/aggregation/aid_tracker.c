@@ -16,15 +16,13 @@
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-static AidTrackerState *aid_tracker_new(
-    AidDescriptor aid_descriptor,
-    uint64 initial_seed)
+static AidTrackerState *aid_tracker_new(AidDescriptor aid_descriptor)
 {
   AidTrackerState *state = (AidTrackerState *)palloc0(sizeof(AidTrackerState));
 
   state->aid_descriptor = aid_descriptor;
   state->aid_set = AidTracker_create(CurrentMemoryContext, 128, NULL);
-  state->aid_seed = initial_seed;
+  state->aid_seed = 0;
 
   return state;
 }
@@ -55,7 +53,7 @@ List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
   for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
   {
     Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, arg_index);
-    AidTrackerState *tracker = aid_tracker_new(get_aid_descriptor(aid_type), 0);
+    AidTrackerState *tracker = aid_tracker_new(get_aid_descriptor(aid_type));
     trackers = lappend(trackers, tracker);
   }
 

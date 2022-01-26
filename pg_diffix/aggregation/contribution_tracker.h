@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include "pg_diffix/aggregation/aid.h"
+#include "pg_diffix/aggregation/noise.h"
 
 #define CONTRIBUTION_INT_FMT PRIi64
 #define CONTRIBUTION_REAL_FMT "f"
@@ -69,7 +70,7 @@ typedef struct ContributionTrackerState
   AidDescriptor aid_descriptor;                   /* Behavior for AIDs */
   ContributionDescriptor contribution_descriptor; /* Behavior for contributions */
   ContributionTracker_hash *contribution_table;   /* Hash set of all AIDs */
-  uint64 aid_seed;                                /* Current AID seed */
+  seed_t aid_seed;                                /* Current AID seed */
   uint64 distinct_contributors;                   /* Count of distinct non-NULL contributors */
   contribution_t overall_contribution;            /* Combined contribution from all contributors */
   uint64 unaccounted_for;                         /* Count of NULL contributions unaccounted for */
