@@ -61,8 +61,9 @@ bool is_global_aggregation(PG_FUNCTION_ARGS)
 {
   if (fcinfo->context && IsA(fcinfo->context, AggState))
   {
-    AggState *aggstate = (AggState *)fcinfo->context;
-    return bms_is_empty(aggstate->grouped_cols);
+    AggState *agg_state = (AggState *)fcinfo->context;
+    Agg *agg_plan = (Agg *)agg_state->ss.ps.plan;
+    return agg_plan->numCols == 0;
   }
 
   return false;
