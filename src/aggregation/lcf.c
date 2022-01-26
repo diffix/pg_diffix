@@ -6,11 +6,11 @@
 #include <inttypes.h>
 
 #include "pg_diffix/aggregation/aid_tracker.h"
-#include "pg_diffix/aggregation/random.h"
+#include "pg_diffix/aggregation/noise.h"
 
 typedef struct LcfResult
 {
-  uint64 random_seed;
+  seed_t aid_seed;
   int threshold;
   bool passes_lcf;
 } LcfResult;
@@ -70,11 +70,7 @@ static void append_tracker_info(StringInfo string, const AidTrackerState *tracke
                    result.threshold,
                    result.passes_lcf ? "true" : "false");
 
-  /* Print only effective part of the seed. */
-  uint16 *random_seed = (uint16 *)(&result.random_seed);
-  appendStringInfo(string,
-                   ", seed=%04" PRIx16 "%04" PRIx16 "%04" PRIx16,
-                   random_seed[0], random_seed[1], random_seed[2]);
+  appendStringInfo(string, ", aid_seed=%016" PRIx64, result.aid_seed);
 }
 
 Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
@@ -100,10 +96,9 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
 static LcfResult lcf_calculate_final(const AidTrackerState *tracker)
 {
   LcfResult result = {0};
-  uint64 seed = make_seed(tracker->aid_seed);
 
-  result.random_seed = seed;
-  result.threshold = generate_lcf_threshold(&seed);
+  result.aid_seed = tracker->aid_seed;
+  result.threshold = generate_lcf_threshold(tracker->aid_seed);
   result.passes_lcf = tracker->aid_set->members >= result.threshold;
 
   return result;

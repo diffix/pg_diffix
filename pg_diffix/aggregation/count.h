@@ -2,6 +2,7 @@
 #define PG_DIFFIX_COUNT_H
 
 #include "pg_diffix/aggregation/contribution_tracker.h"
+#include "pg_diffix/aggregation/noise.h"
 
 extern const ContributionDescriptor count_descriptor;
 
@@ -10,7 +11,7 @@ static const contribution_t one_contribution = {.integer = 1};
 /* Describes the anonymized count aggregation for one AID instance. */
 typedef struct CountResult
 {
-  uint64 random_seed;
+  seed_t aid_seed;
   int64 true_count;
   double flattening;
   double flattened_count;
@@ -22,7 +23,7 @@ typedef struct CountResult
 } CountResult;
 
 extern CountResult aggregate_count_contributions(
-    uint64 seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
+    seed_t seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors);
 
 /*

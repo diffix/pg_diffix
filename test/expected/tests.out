@@ -43,19 +43,19 @@ SELECT diffix.access_level();
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
-    13
+    14
 (1 row)
 
 SELECT COUNT(*) FROM test_purchases;
  count 
 -------
-    35
+    32
 (1 row)
 
 SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
  count | count 
 -------+-------
-    12 |     2
+    13 |     2
 (1 row)
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
@@ -67,8 +67,8 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |     5
- Berlin |     7
+ Rome   |     7
+ Berlin |     5
 (2 rows)
 
 ----------------------------------------------------------------
@@ -83,7 +83,7 @@ SELECT city FROM test_patients GROUP BY 1;
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
  count | count | count 
 -------+-------+-------
-    10 |    10 |     2
+     9 |     9 |     2
 (1 row)
 
 ----------------------------------------------------------------
@@ -93,7 +93,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    35 |    13 |    13
+    32 |    13 |    13
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -101,21 +101,21 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
  count | count 
 -------+-------
-    33 |    28
+    32 |    27
 (1 row)
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    20
- Berlin |    30
+ Rome   |    28
+ Berlin |    21
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    20
- Berlin |    30
+ Rome   |    28
+ Berlin |    21
 (2 rows)
 
 ----------------------------------------------------------------
@@ -134,8 +134,8 @@ SELECT city FROM test_customers;
  Rome
  Rome
  Rome
- Berlin
- Berlin
+ Rome
+ Rome
  Berlin
  Berlin
  Berlin
@@ -162,7 +162,7 @@ SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
  count | count | count 
 -------+-------+-------
-    13 |    12 |    13
+    14 |    13 |    14
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
@@ -171,7 +171,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    13 |    12 |    13
+    14 |    13 |    14
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
@@ -181,7 +181,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    13 |    12 |    13
+    14 |    13 |    14
 (1 row)
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
@@ -193,14 +193,14 @@ FROM (
 GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
- City: Berlin |    16 |     6 |     6
- City: Rome   |    11 |     5 |     5
+ City: Berlin |     9 |     3 |     3
+ City: Rome   |    13 |     7 |     7
 (2 rows)
 
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
  count 
 -------
-    13
+    14
 (1 row)
 
 ----------------------------------------------------------------

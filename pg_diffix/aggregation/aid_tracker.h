@@ -5,6 +5,7 @@
 #include "nodes/pg_list.h"
 
 #include "pg_diffix/aggregation/aid.h"
+#include "pg_diffix/aggregation/noise.h"
 
 typedef struct AidTrackerHashEntry
 {
@@ -26,7 +27,7 @@ typedef struct AidTrackerState
 {
   AidDescriptor aid_descriptor; /* Behavior for AIDs */
   AidTracker_hash *aid_set;     /* Hash set of all AIDs */
-  uint64 aid_seed;              /* Current AID seed */
+  seed_t aid_seed;              /* Current AID seed */
 } AidTrackerState;
 
 /*
