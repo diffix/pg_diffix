@@ -347,7 +347,7 @@ static void determine_outlier_top_counts(
       top_contributors->members, compact_outlier_count_max + compact_top_count_max);
 
   result->noisy_outlier_count = generate_uniform_noise(
-      flattening_seed, "outlier", g_config.outlier_count_min, compact_outlier_count_max + 1);
+      flattening_seed, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
   result->noisy_top_count = generate_uniform_noise(
-      flattening_seed, "top", g_config.top_count_min, compact_top_count_max + 1);
+      flattening_seed, "top", g_config.top_count_min, compact_top_count_max);
 }

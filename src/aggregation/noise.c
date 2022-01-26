@@ -28,7 +28,7 @@ static seed_t prepare_seed(seed_t seed, const char *step_name)
 
 int generate_uniform_noise(seed_t seed, const char *step_name, int min, int max)
 {
-  Assert(max > min);
+  Assert(max >= min);
   Assert(min >= 0);
 
   seed = prepare_seed(seed, step_name);
@@ -40,7 +40,7 @@ int generate_uniform_noise(seed_t seed, const char *step_name, int min, int max)
    * While using modulo to bound values produces biased output, we are using very small ranges
    * (typically less than 10), for which the bias is insignificant.
    */
-  uint32 bounded_uniform = uniform % (uint32)(max - min);
+  uint32 bounded_uniform = uniform % (uint32)(max - min + 1);
 
   return min + (int)bounded_uniform;
 }
