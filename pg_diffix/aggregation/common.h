@@ -79,12 +79,8 @@ extern const AnonAggFuncs g_count_any_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_lcf_funcs;
 
-typedef struct Bucket
-{
-  int row_count;                                        /* Number of rows in the bucket. */
-  int grouping_labels_length;                           /* Number of grouping labels. */
-  NullableDatum grouping_labels[FLEXIBLE_ARRAY_MEMBER]; /* Values of grouping labels. */
-} Bucket;
+/* We don't want implementations to rely on it yet. */
+typedef void Bucket;
 
 struct AnonAggFuncs
 {
