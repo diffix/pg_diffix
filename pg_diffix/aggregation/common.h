@@ -10,13 +10,19 @@
 
 typedef struct AnonAggFuncs AnonAggFuncs;
 typedef struct AnonAggState AnonAggState;
-typedef struct Bucket Bucket;
 
 /* Known anonymizing aggregators. */
 extern const AnonAggFuncs g_count_funcs;
 extern const AnonAggFuncs g_count_any_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_lcf_funcs;
+
+typedef struct Bucket
+{
+  int row_count;                                        /* Number of rows in the bucket. */
+  int grouping_labels_length;                           /* Number of grouping labels. */
+  NullableDatum grouping_labels[FLEXIBLE_ARRAY_MEMBER]; /* Values of grouping labels. */
+} Bucket;
 
 struct AnonAggFuncs
 {
@@ -54,13 +60,6 @@ struct AnonAggState
 {
   const AnonAggFuncs *agg_funcs; /* Aggregator implementation. */
   MemoryContext memory_context;  /* Where this state lives. */
-};
-
-struct Bucket
-{
-  int row_count;                                        /* Number of rows in the bucket. */
-  int grouping_labels_length;                           /* Number of grouping labels. */
-  NullableDatum grouping_labels[FLEXIBLE_ARRAY_MEMBER]; /* Values of grouping labels. */
 };
 
 #endif /* PG_DIFFIX_COMMON_H */
