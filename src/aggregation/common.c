@@ -15,18 +15,18 @@
 /* TODO: Remove once bucket scan is implemented. */
 MemoryContext g_current_bucket_context = NULL;
 
-PG_FUNCTION_INFO_V1(agg_state_input);
-PG_FUNCTION_INFO_V1(agg_state_output);
-PG_FUNCTION_INFO_V1(agg_state_transfn);
-PG_FUNCTION_INFO_V1(agg_state_finalfn);
+PG_FUNCTION_INFO_V1(anon_agg_state_input);
+PG_FUNCTION_INFO_V1(anon_agg_state_output);
+PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
+PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
 
-Datum agg_state_input(PG_FUNCTION_ARGS)
+Datum anon_agg_state_input(PG_FUNCTION_ARGS)
 {
   FAILWITH("Cannot create aggregator state from string.");
   PG_RETURN_NULL();
 }
 
-Datum agg_state_output(PG_FUNCTION_ARGS)
+Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = PG_GET_AGG_STATE(0);
   const char *str = state->agg_funcs->explain(state);
@@ -72,7 +72,7 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   return state;
 }
 
-Datum agg_state_transfn(PG_FUNCTION_ARGS)
+Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
   state->agg_funcs->transition(state, fcinfo);
@@ -83,7 +83,7 @@ Datum agg_state_transfn(PG_FUNCTION_ARGS)
  * This finalfunc is a dummy version which does nothing.
  * It only ensures that state is not null for empty buckets.
  */
-Datum agg_state_finalfn(PG_FUNCTION_ARGS)
+Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
   PG_RETURN_AGG_STATE(state);
