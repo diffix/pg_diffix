@@ -35,6 +35,66 @@ AS $$
 $$;
 
 /* ----------------------------------------------------------------
+ * Common aggregation interface
+ * ----------------------------------------------------------------
+ */
+
+/*
+ * AnonAggState is a pointer in disguise. We want Postgres to pass it by value to avoid unintended data copying.
+ *
+ * The AnonAggState data is supposed to be finalized by the parent BucketScan.
+ * As a raw value, it cannot be used in expressions as it does not support any operators/functions.
+ * Projections of original aggregates are delayed until after finalization in the BucketScan node.
+ *
+ * However, an AnonAggState retrieved by a direct call to anonymizing aggregates may be inspected in the query output.
+ * Serialization is handled by `anon_agg_state_output`, which forwards it to the aggregate's explain implementation.
+ * The parse function `anon_agg_state_input` is a stub which will always throw an error.
+ *
+ * If anonymizing aggregates are invoked directly by SQL in a non-anonymizing query, then the AnonAggState
+ * will be allocated in the aggregation context of the current Agg node. Passing an AnonAggState up
+ * (for example from a subquery) outside of the intended scope may result in memory corruption.
+ *
+ * See `aggregation/common.h` for more info.
+ */
+CREATE TYPE AnonAggState;
+
+CREATE FUNCTION diffix.anon_agg_state_input(cstring)
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STRICT STABLE;
+
+CREATE FUNCTION diffix.anon_agg_state_output(AnonAggState)
+RETURNS cstring
+AS 'MODULE_PATHNAME'
+LANGUAGE C STRICT STABLE;
+
+CREATE TYPE AnonAggState (
+  INPUT = diffix.anon_agg_state_input,
+  OUTPUT = diffix.anon_agg_state_output,
+  LIKE = int8
+);
+
+CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, value "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, value "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE;
+
+/* ----------------------------------------------------------------
  * lcf(aids...)
  * ----------------------------------------------------------------
  */
