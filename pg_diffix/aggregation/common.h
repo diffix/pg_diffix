@@ -43,7 +43,7 @@ struct AnonAggFuncs
    * Returns a string representation of the aggregator state.
    * The string should be allocated in the current (not state's) memory context.
    */
-  char *(*explain)(const AnonAggState *state);
+  const char *(*explain)(const AnonAggState *state);
 };
 
 /*

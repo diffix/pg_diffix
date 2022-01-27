@@ -29,7 +29,7 @@ Datum agg_state_input(PG_FUNCTION_ARGS)
 Datum agg_state_output(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = PG_GET_AGG_STATE(0);
-  char *str = state->agg_funcs->explain(state);
+  const char *str = state->agg_funcs->explain(state);
   PG_RETURN_CSTRING(str);
 }
 
