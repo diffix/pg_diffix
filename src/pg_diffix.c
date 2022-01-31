@@ -5,6 +5,7 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/allowed_functions.h"
 #include "pg_diffix/utils.h"
 
 #include <limits.h>
@@ -30,6 +31,7 @@ void _PG_fini(void)
 {
   DEBUG_LOG("Deactivating Diffix extension...");
 
+  allowed_functions_cleanup();
   oid_cache_cleanup();
   hooks_cleanup();
 }

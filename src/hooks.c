@@ -5,6 +5,7 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/allowed_functions.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/rewrite.h"
@@ -46,6 +47,7 @@ static void prepare_query(Query *query)
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
+  allowed_functions_init();
 
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
