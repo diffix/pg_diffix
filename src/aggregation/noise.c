@@ -1,4 +1,5 @@
 #include "postgres.h"
+#include "common/sha2.h"
 
 #include <math.h>
 #include <limits.h>
@@ -6,16 +7,30 @@
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/config.h"
 
+static hash_t crypto_hash_salted_seed(seed_t seed)
+{
+  pg_sha256_ctx hash_ctx;
+  pg_sha256_init(&hash_ctx);
+
+  pg_sha256_update(&hash_ctx, (const uint8 *)g_config.salt, strlen(g_config.salt));
+  pg_sha256_update(&hash_ctx, (const uint8 *)&seed, sizeof(seed));
+
+  uint8 crypto_hash[PG_SHA256_DIGEST_LENGTH];
+  pg_sha256_final(&hash_ctx, crypto_hash);
+
+  Assert(sizeof(hash_t) < sizeof(crypto_hash));
+  return *(hash_t *)crypto_hash;
+}
+
 /*
  * Prepares a seed for generating a new noise value by mixing it with
  * the configured salt hash and the current step name hash.
  */
 static seed_t prepare_seed(seed_t seed, const char *step_name)
 {
-  hash_t salt_hash = hash_bytes(g_config.salt, strlen(g_config.salt));
+  hash_t salted_seed_hash = crypto_hash_salted_seed(seed);
   hash_t step_hash = hash_bytes(step_name, strlen(step_name));
-
-  return seed ^ salt_hash ^ step_hash;
+  return salted_seed_hash ^ step_hash;
 }
 
 /*
