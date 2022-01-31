@@ -47,7 +47,6 @@ static void prepare_query(Query *query)
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
-  allowed_functions_init();
 
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);

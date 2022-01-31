@@ -1,60 +1,35 @@
 #include "postgres.h"
-#include "utils/memutils.h"
+#include "utils/fmgroids.h"
 
 #include "pg_diffix/query/allowed_functions.h"
 
-static IntegerSet *g_allowed_functions = NULL;
+// The OIDs for builtin functions which we're using to define `g_allowed_functions` come from `fmgroids.h`. That list
+// misses some aliases which we define manually here:
+#define F_TEXT_SUBSTR_ALIAS 936
+#define F_TEXT_SUBSTR_NO_LEN_ALIAS 937
+#define F_BYTEA_SUBSTR_ALIAS 2085
+#define F_BYTEA_SUBSTR_NO_LEN_ALIAS 2086
+
+static const Oid g_allowed_functions[] = {
+    // casts
+    F_I2TOD, F_I2TOF, F_DTOI2, F_FTOI2, F_FTOD, F_DTOF, F_I2TOI4, F_I4TOI2, F_I4TOD, F_DTOI4,
+    F_I4TOF, F_FTOI4, F_I8TOD, F_DTOI8, F_I8TOF, F_FTOI8,
+    F_INT4_NUMERIC, F_FLOAT4_NUMERIC, F_FLOAT8_NUMERIC, F_NUMERIC_INT4, F_NUMERIC_FLOAT4, F_NUMERIC_FLOAT8,
+    // substring
+    F_TEXT_SUBSTR, F_TEXT_SUBSTR_NO_LEN, F_BYTEA_SUBSTR, F_BYTEA_SUBSTR_NO_LEN,
+    // substr (alias for substring)
+    F_TEXT_SUBSTR_ALIAS, F_TEXT_SUBSTR_NO_LEN_ALIAS, F_BYTEA_SUBSTR_ALIAS, F_BYTEA_SUBSTR_NO_LEN_ALIAS,
+    // width_bucket
+    F_WIDTH_BUCKET_FLOAT8, F_WIDTH_BUCKET_NUMERIC};
+
+static size_t g_allowed_functions_length = sizeof(g_allowed_functions) / sizeof(g_allowed_functions[0]);
 
 bool is_allowed_function(Oid funcoid)
 {
-  return intset_is_member(g_allowed_functions, funcoid);
-}
-
-void allowed_functions_init(void)
-{
-  if (g_allowed_functions != NULL)
-    return;
-
-  MemoryContext old_memory_context = MemoryContextSwitchTo(TopMemoryContext);
-
-  g_allowed_functions = intset_create();
-  // float<->int casts
-  intset_add_member(g_allowed_functions, 235);
-  intset_add_member(g_allowed_functions, 236);
-  intset_add_member(g_allowed_functions, 237);
-  intset_add_member(g_allowed_functions, 238);
-  intset_add_member(g_allowed_functions, 311);
-  intset_add_member(g_allowed_functions, 312);
-  intset_add_member(g_allowed_functions, 313);
-  intset_add_member(g_allowed_functions, 314);
-  intset_add_member(g_allowed_functions, 316);
-  intset_add_member(g_allowed_functions, 317);
-  intset_add_member(g_allowed_functions, 318);
-  intset_add_member(g_allowed_functions, 319);
-  // width_bucket
-  intset_add_member(g_allowed_functions, 320);
-  // more float<->int casts
-  intset_add_member(g_allowed_functions, 482);
-  intset_add_member(g_allowed_functions, 483);
-  intset_add_member(g_allowed_functions, 652);
-  intset_add_member(g_allowed_functions, 653);
-  // substring
-  intset_add_member(g_allowed_functions, 877);
-  intset_add_member(g_allowed_functions, 936);
-  // numeric casts
-  intset_add_member(g_allowed_functions, 1740);
-  intset_add_member(g_allowed_functions, 1742);
-  intset_add_member(g_allowed_functions, 1743);
-  intset_add_member(g_allowed_functions, 1744);
-  intset_add_member(g_allowed_functions, 1745);
-  intset_add_member(g_allowed_functions, 1746);
-
-  MemoryContextSwitchTo(old_memory_context);
-}
-
-void allowed_functions_cleanup()
-{
-  if (g_allowed_functions == NULL)
-    return;
-  pfree(g_allowed_functions);
+  for (int i = 0; i < g_allowed_functions_length; i++)
+  {
+    if (g_allowed_functions[i] == funcoid)
+      return true;
+  }
+  return false;
 }

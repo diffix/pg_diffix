@@ -31,7 +31,6 @@ void _PG_fini(void)
 {
   DEBUG_LOG("Deactivating Diffix extension...");
 
-  allowed_functions_cleanup();
   oid_cache_cleanup();
   hooks_cleanup();
 }
