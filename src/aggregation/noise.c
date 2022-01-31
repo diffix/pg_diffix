@@ -7,6 +7,8 @@
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/config.h"
 
+#if PG_MAJORVERSION_NUM == 13
+
 static hash_t crypto_hash_salted_seed(seed_t seed)
 {
   pg_sha256_ctx hash_ctx;
@@ -21,6 +23,33 @@ static hash_t crypto_hash_salted_seed(seed_t seed)
   Assert(sizeof(hash_t) < sizeof(crypto_hash));
   return *(hash_t *)crypto_hash;
 }
+
+#else
+
+#include "common/cryptohash.h"
+
+static hash_t crypto_hash_salted_seed(seed_t seed)
+{
+  pg_cryptohash_ctx *hash_ctx = pg_cryptohash_create(PG_SHA256);
+  if (hash_ctx == NULL)
+    FAILWITH_CODE(ERRCODE_OUT_OF_MEMORY, "Out of memory while salting seed.");
+
+  uint8 crypto_hash[PG_SHA256_DIGEST_LENGTH];
+  bool hash_error = pg_cryptohash_init(hash_ctx) < 0 ||
+                    pg_cryptohash_update(hash_ctx, (const uint8 *)g_config.salt, strlen(g_config.salt)) < 0 ||
+                    pg_cryptohash_update(hash_ctx, (const uint8 *)&seed, sizeof(seed)) < 0 ||
+                    pg_cryptohash_final(hash_ctx, crypto_hash, sizeof(crypto_hash)) < 0;
+
+  pg_cryptohash_free(hash_ctx);
+
+  if (hash_error)
+    FAILWITH_CODE(ERRCODE_INTERNAL_ERROR, "Internal error while salting seed.");
+
+  Assert(sizeof(hash_t) < sizeof(crypto_hash));
+  return *(hash_t *)crypto_hash;
+}
+
+#endif
 
 /*
  * Prepares a seed for generating a new noise value by mixing it with
