@@ -229,8 +229,8 @@ SELECT COUNT(*) FROM test_customers c
  count 
 -------
      2
-     3
-     7
+     5
+     4
      2
 (4 rows)
 
