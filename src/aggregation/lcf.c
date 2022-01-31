@@ -6,7 +6,11 @@
 #include <inttypes.h>
 
 #include "pg_diffix/aggregation/aid_tracker.h"
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
+
+/* TODO: Implement aggregator methods. */
+const AnonAggFuncs g_lcf_funcs = {0};
 
 typedef struct LcfResult
 {

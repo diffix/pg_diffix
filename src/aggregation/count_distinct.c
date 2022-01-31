@@ -12,8 +12,12 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid.h"
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/aggregation/count.h"
+
+/* TODO: Implement aggregator methods. */
+const AnonAggFuncs g_count_distinct_funcs = {0};
 
 static const bool TYPE_BY_REF = false;
 

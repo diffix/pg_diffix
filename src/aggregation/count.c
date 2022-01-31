@@ -8,8 +8,13 @@
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/count.h"
 #include "pg_diffix/aggregation/noise.h"
+
+/* TODO: Implement aggregator methods. */
+const AnonAggFuncs g_count_funcs = {0};
+const AnonAggFuncs g_count_any_funcs = {0};
 
 static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
