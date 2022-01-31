@@ -1,15 +1,18 @@
 #include "postgres.h"
 #include "utils/memutils.h"
 
-#include "pg_diffix/allowed_functions.h"
+#include "pg_diffix/query/allowed_functions.h"
 
-IntegerSet *g_allowed_functions = NULL;
+static IntegerSet *g_allowed_functions = NULL;
 
-static bool g_loaded = false;
+bool is_allowed_function(Oid funcoid)
+{
+  return intset_is_member(g_allowed_functions, funcoid);
+}
 
 void allowed_functions_init(void)
 {
-  if (g_loaded)
+  if (g_allowed_functions != NULL)
     return;
 
   MemoryContext old_memory_context = MemoryContextSwitchTo(TopMemoryContext);
@@ -47,14 +50,11 @@ void allowed_functions_init(void)
   intset_add_member(g_allowed_functions, 1746);
 
   MemoryContextSwitchTo(old_memory_context);
-
-  g_loaded = true;
 }
 
 void allowed_functions_cleanup()
 {
-  if (!g_loaded)
+  if (g_allowed_functions == NULL)
     return;
   pfree(g_allowed_functions);
-  g_loaded = false;
 }

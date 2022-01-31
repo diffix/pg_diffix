@@ -1,13 +1,12 @@
 #ifndef PG_DIFFIX_ALLOWED_FUNCTIONS_H
 #define PG_DIFFIX_ALLOWED_FUNCTIONS_H
 
-#include "postgres.h"
 #include "lib/integerset.h"
 
 /*
- * Global instance of a set of OIDs which are allowed.
+ * Returns whether the OID points to a function (or operator) allowed in defining buckets
  */
-extern IntegerSet *g_allowed_functions;
+extern bool is_allowed_function(Oid funcoid);
 
 /*
  * Populates the allowed set. Does nothing if already loaded.

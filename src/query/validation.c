@@ -4,8 +4,8 @@
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/allowed_functions.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/validation.h"
 
 #define NOT_SUPPORTED(cond, feature) \
@@ -91,7 +91,7 @@ static bool verify_bucket_function(Node *node, void *context)
     FuncExpr *funcref = (FuncExpr *)node;
     Oid funcoid = funcref->funcid;
 
-    if (!intset_is_member(g_allowed_functions, funcoid))
+    if (!is_allowed_function(funcoid))
       FAILWITH_LOCATION(funcref->location, "Unsupported function used to define buckets.");
   }
 
@@ -100,7 +100,7 @@ static bool verify_bucket_function(Node *node, void *context)
     OpExpr *funcref = (OpExpr *)node;
     Oid funcoid = funcref->opfuncid;
 
-    if (!intset_is_member(g_allowed_functions, funcoid))
+    if (!is_allowed_function(funcoid))
       FAILWITH_LOCATION(funcref->location, "Unsupported operator used to define buckets.");
   }
 

@@ -5,7 +5,7 @@
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/allowed_functions.h"
+#include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/utils.h"
 
 #include <limits.h>
