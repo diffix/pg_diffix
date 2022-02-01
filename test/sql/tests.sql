@@ -128,6 +128,24 @@ SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM te
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
 
 ----------------------------------------------------------------
+-- Supported functions for defining buckets
+----------------------------------------------------------------
+
+SELECT COUNT(*) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id
+  GROUP BY substring(city, 1, 1), width_bucket(c.id, 0, 1000, 10), width_bucket(price, 0.0, 1000.0, 10);
+
+----------------------------------------------------------------
+-- Supported functions for projection
+----------------------------------------------------------------
+
+SELECT COUNT(*), length(city), ceil(price), ceil(c.id) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id
+  GROUP BY city, price, c.id;
+
+----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
 
@@ -144,3 +162,13 @@ FROM (
   SELECT city FROM test_customers
   GROUP BY 1
 ) x;
+
+-- Get rejected because only a subset of functions is supported for defining buckets.
+SELECT COUNT(*) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id
+  GROUP BY length(city);
+SELECT COUNT(*) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id
+  GROUP BY city || name;

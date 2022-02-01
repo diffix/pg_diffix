@@ -1,9 +1,11 @@
 #include "postgres.h"
 #include "nodes/nodeFuncs.h"
+#include "optimizer/optimizer.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/validation.h"
 
 #define NOT_SUPPORTED(cond, feature) \
@@ -13,6 +15,7 @@
 static void verify_query(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
+static void verify_bucket_functions(Query *query);
 
 void verify_anonymization_requirements(Query *query)
 {
@@ -32,6 +35,7 @@ static void verify_query(Query *query)
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
   verify_aggregators(query);
+  verify_bucket_functions(query);
   verify_rtable(query);
 }
 
@@ -75,4 +79,41 @@ static bool verify_aggregator(Node *node, void *context)
 static void verify_aggregators(Query *query)
 {
   query_tree_walker(query, verify_aggregator, NULL, 0);
+}
+
+static bool verify_bucket_function(Node *node, void *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, FuncExpr))
+  {
+    FuncExpr *funcref = (FuncExpr *)node;
+    Oid funcoid = funcref->funcid;
+
+    if (!is_allowed_function(funcoid))
+      FAILWITH_LOCATION(funcref->location, "Unsupported function used to define buckets.");
+  }
+
+  if (IsA(node, OpExpr))
+  {
+    OpExpr *funcref = (OpExpr *)node;
+    Oid funcoid = funcref->opfuncid;
+
+    if (!is_allowed_function(funcoid))
+      FAILWITH_LOCATION(funcref->location, "Unsupported operator used to define buckets.");
+  }
+
+  return expression_tree_walker(node, verify_bucket_function, context);
+}
+
+static void verify_bucket_functions(Query *query)
+{
+  List *exprs_list = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  ListCell *cell;
+  foreach (cell, exprs_list)
+  {
+    Node *expr = (Node *)lfirst(cell);
+    verify_bucket_function(expr, NULL);
+  }
 }

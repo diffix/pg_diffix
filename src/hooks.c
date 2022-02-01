@@ -6,6 +6,7 @@
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
+#include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/rewrite.h"
 #include "pg_diffix/query/validation.h"
