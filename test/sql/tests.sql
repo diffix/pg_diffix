@@ -131,19 +131,26 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
 -- Supported functions for defining buckets
 ----------------------------------------------------------------
 
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY substring(city, 1, 1), width_bucket(c.id, 0, 1000, 10), width_bucket(price, 0.0, 1000.0, 10);
+SELECT COUNT(*) FROM test_customers
+  GROUP BY substring(city, 1, 1);
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY width_bucket(id, 0, 1000, 10), width_bucket(id::float, 0.0, 1000.0, 10);
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::float, -1), round(id::numeric, -1);
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::float), ceil(id::float), ceiling(id::float), floor(id::float);
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::numeric), ceil(id::numeric), ceiling(id::numeric), floor(id::numeric);
 
 ----------------------------------------------------------------
--- Supported functions for projection
+-- Allow all functions post-anonymization
 ----------------------------------------------------------------
 
-SELECT COUNT(*), length(city), ceil(price), ceil(c.id) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY city, price, c.id;
+SELECT 2 * length(city) FROM test_customers GROUP BY city;
 
 ----------------------------------------------------------------
 -- Unsupported queries
@@ -164,11 +171,5 @@ FROM (
 ) x;
 
 -- Get rejected because only a subset of functions is supported for defining buckets.
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY length(city);
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY city || name;
+SELECT COUNT(*) FROM test_customers GROUP BY length(city);
+SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';

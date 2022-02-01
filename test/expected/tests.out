@@ -222,28 +222,48 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
 ----------------------------------------------------------------
 -- Supported functions for defining buckets
 ----------------------------------------------------------------
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY substring(city, 1, 1), width_bucket(c.id, 0, 1000, 10), width_bucket(price, 0.0, 1000.0, 10);
+SELECT COUNT(*) FROM test_customers
+  GROUP BY substring(city, 1, 1);
  count 
 -------
-     2
-     5
-     4
-     2
-(4 rows)
+     8
+     8
+(2 rows)
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY width_bucket(id, 0, 1000, 10), width_bucket(id::float, 0.0, 1000.0, 10);
+ count 
+-------
+    17
+(1 row)
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::float, -1), round(id::numeric, -1);
+ERROR:  function round(double precision, integer) does not exist
+LINE 2:   GROUP BY round(id::float, -1), round(id::numeric, -1);
+                   ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::float), ceil(id::float), ceiling(id::float), floor(id::float);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM test_customers
+  GROUP BY round(id::numeric), ceil(id::numeric), ceiling(id::numeric), floor(id::numeric);
+ count 
+-------
+(0 rows)
 
 ----------------------------------------------------------------
--- Supported functions for projection
+-- Allow all functions post-anonymization
 ----------------------------------------------------------------
-SELECT COUNT(*), length(city), ceil(price), ceil(c.id) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY city, price, c.id;
- count | length | ceil | ceil 
--------+--------+------+------
-(0 rows)
+SELECT 2 * length(city) FROM test_customers GROUP BY city;
+ ?column? 
+----------
+        8
+       12
+(2 rows)
 
 ----------------------------------------------------------------
 -- Unsupported queries
@@ -271,17 +291,11 @@ FROM (
 ) x;
 ERROR:  [PG_DIFFIX] Feature 'grouping in subqueries' is not currently supported.
 -- Get rejected because only a subset of functions is supported for defining buckets.
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY length(city);
+SELECT COUNT(*) FROM test_customers GROUP BY length(city);
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
-LINE 4:   GROUP BY length(city);
-                   ^
-SELECT COUNT(*) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id
-  GROUP BY city || name;
+LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY length(city);
+                                                     ^
+SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
 ERROR:  [PG_DIFFIX] Unsupported operator used to define buckets.
-LINE 4:   GROUP BY city || name;
-                        ^
+LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
+                                                          ^

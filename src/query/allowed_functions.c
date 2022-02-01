@@ -13,6 +13,12 @@
 
 // the difference between 13 and 14 is only the names of the `#define`s which point to the same OIDs
 #if PG_MAJORVERSION_NUM == 13
+
+#define F_DROUND_INT 1342
+#define F_NUMERIC_ROUND_INT 1708
+#define F_NUMERIC_CEILING 2167
+#define F_DCEILING 2320
+
 static const Oid g_allowed_functions[] = {
     // casts
     F_I2TOD, F_I2TOF, F_DTOI2, F_FTOI2, F_FTOD, F_DTOF,
@@ -23,6 +29,10 @@ static const Oid g_allowed_functions[] = {
     F_TEXT_SUBSTR, F_TEXT_SUBSTR_NO_LEN, F_BYTEA_SUBSTR, F_BYTEA_SUBSTR_NO_LEN,
     // substr (alias for substring)
     F_TEXT_SUBSTR_ALIAS, F_TEXT_SUBSTR_NO_LEN_ALIAS, F_BYTEA_SUBSTR_ALIAS, F_BYTEA_SUBSTR_NO_LEN_ALIAS,
+    // numeric generalization
+    F_DROUND, F_DROUND_INT, F_NUMERIC_ROUND, F_NUMERIC_ROUND_INT,
+    F_DCEIL, F_DCEILING, F_NUMERIC_CEIL, F_NUMERIC_CEILING,
+    F_DFLOOR, F_NUMERIC_FLOOR,
     // width_bucket
     F_WIDTH_BUCKET_FLOAT8, F_WIDTH_BUCKET_NUMERIC};
 
@@ -37,6 +47,10 @@ static const Oid g_allowed_functions[] = {
     F_SUBSTR_TEXT_INT4_INT4, F_SUBSTR_TEXT_INT4, F_SUBSTRING_BYTEA_INT4_INT4, F_SUBSTRING_BYTEA_INT4,
     // substr (alias for substring)
     F_TEXT_SUBSTR_ALIAS, F_TEXT_SUBSTR_NO_LEN_ALIAS, F_BYTEA_SUBSTR_ALIAS, F_BYTEA_SUBSTR_NO_LEN_ALIAS,
+    // numeric generalization
+    F_DROUND, F_ROUND_NUMERIC, F_ROUND_NUMERIC_INT4, F_ROUND_FLOAT8,
+    F_CEIL_FLOAT8, F_CEILING_FLOAT8, F_CEIL_NUMERIC, F_CEILING_NUMERIC,
+    F_FLOOR_FLOAT8, F_FLOOR_NUMERIC,
     // width_bucket
     F_WIDTH_BUCKET_FLOAT8_FLOAT8_FLOAT8_INT4, F_WIDTH_BUCKET_NUMERIC_NUMERIC_NUMERIC_INT4};
 #endif
