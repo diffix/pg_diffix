@@ -146,6 +146,27 @@ SELECT COUNT(*) FROM test_customers
 SELECT COUNT(*) FROM test_customers
   GROUP BY round(id::numeric), ceil(id::numeric), ceiling(id::numeric), floor(id::numeric);
 
+SELECT 
+  diffix.round_by(id::numeric, 5),
+  diffix.round_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+
+SELECT 
+  diffix.ceil_by(id::numeric, 5),
+  diffix.ceil_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+
+SELECT 
+  diffix.floor_by(id::numeric, 5),
+  diffix.floor_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+
 ----------------------------------------------------------------
 -- Allow all functions post-anonymization
 ----------------------------------------------------------------

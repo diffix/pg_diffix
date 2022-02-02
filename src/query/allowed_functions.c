@@ -2,6 +2,8 @@
 #include "utils/fmgroids.h"
 
 #include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/utils.h"
+#include "pg_diffix/oid_cache.h"
 
 // The OIDs for builtin functions which we're using to define `g_allowed_functions` come from `fmgroids.h`. That list
 // misses some aliases which we define manually here:
@@ -19,7 +21,7 @@
 #define F_NUMERIC_CEILING 2167
 #define F_DCEILING 2320
 
-static const Oid g_allowed_functions[] = {
+static const Oid g_allowed_builtins[] = {
     // casts
     F_I2TOD, F_I2TOF, F_DTOI2, F_FTOI2, F_FTOD, F_DTOF,
     F_I2TOI4, F_I4TOI2, F_I4TOD, F_DTOI4,
@@ -37,7 +39,7 @@ static const Oid g_allowed_functions[] = {
     F_WIDTH_BUCKET_FLOAT8, F_WIDTH_BUCKET_NUMERIC};
 
 #elif PG_MAJORVERSION_NUM >= 14
-static const Oid g_allowed_functions[] = {
+static const Oid g_allowed_builtins[] = {
     // casts
     F_FLOAT8_INT2, F_FLOAT4_INT2, F_INT2_FLOAT8, F_INT2_FLOAT4, F_FLOAT8_FLOAT4, F_FLOAT4_FLOAT8,
     F_INT4_INT2, F_INT2_INT4, F_FLOAT8_INT4, F_INT4_FLOAT8,
@@ -55,14 +57,30 @@ static const Oid g_allowed_functions[] = {
     F_WIDTH_BUCKET_FLOAT8_FLOAT8_FLOAT8_INT4, F_WIDTH_BUCKET_NUMERIC_NUMERIC_NUMERIC_INT4};
 #endif
 
+/* These are filled at runtime. Array of const pointers to const values. */
+static const Oid *const g_allowed_udfs[] = {
+    &g_oid_cache.round_by_nn,
+    &g_oid_cache.round_by_dd,
+    &g_oid_cache.ceil_by_nn,
+    &g_oid_cache.ceil_by_dd,
+    &g_oid_cache.floor_by_nn,
+    &g_oid_cache.floor_by_dd,
+};
+
 bool is_allowed_function(Oid funcoid)
 {
-  const size_t allowed_functions_length = sizeof(g_allowed_functions) / sizeof(g_allowed_functions[0]);
-
-  for (int i = 0; i < allowed_functions_length; i++)
+  for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins); i++)
   {
-    if (g_allowed_functions[i] == funcoid)
+    if (g_allowed_builtins[i] == funcoid)
       return true;
   }
+
+  for (int i = 0; i < ARRAY_LENGTH(g_allowed_udfs); i++)
+  {
+    if (*g_allowed_udfs[i] == funcoid)
+      return true;
+  }
+
+  DEBUG_LOG("Rejecting usage of function %u.", funcoid);
   return false;
 }
