@@ -244,9 +244,7 @@ RETURNS numeric AS $$
 		RETURN round(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION diffix.round_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -257,9 +255,7 @@ RETURNS double precision AS $$
 		RETURN round(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION diffix.ceil_by(value numeric, amount numeric)
 RETURNS numeric AS $$
@@ -270,9 +266,7 @@ RETURNS numeric AS $$
 		RETURN ceil(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION diffix.ceil_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -283,9 +277,7 @@ RETURNS double precision AS $$
 		RETURN ceil(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION diffix.floor_by(value numeric, amount numeric)
 RETURNS numeric AS $$
@@ -296,9 +288,7 @@ RETURNS numeric AS $$
 		RETURN floor(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 CREATE OR REPLACE FUNCTION diffix.floor_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -309,6 +299,4 @@ RETURNS double precision AS $$
 		RETURN floor(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql
-IMMUTABLE
-RETURNS NULL ON NULL INPUT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
