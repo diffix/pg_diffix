@@ -255,6 +255,46 @@ SELECT COUNT(*) FROM test_customers
 -------
 (0 rows)
 
+SELECT 
+  diffix.round_by(id::numeric, 5),
+  diffix.round_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+ round_by | round_by | count 
+----------+----------+-------
+        0 |        0 |     2
+        5 |        5 |     4
+       10 |       10 |     4
+       15 |       15 |     2
+(4 rows)
+
+SELECT 
+  diffix.ceil_by(id::numeric, 5),
+  diffix.ceil_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+ ceil_by | ceil_by | count 
+---------+---------+-------
+       5 |       5 |     5
+      10 |      10 |     4
+      15 |      15 |     4
+(3 rows)
+
+SELECT 
+  diffix.floor_by(id::numeric, 5),
+  diffix.floor_by(id::double precision, 5),
+  COUNT(*)
+FROM test_customers
+GROUP BY 1, 2;
+ floor_by | floor_by | count 
+----------+----------+-------
+        0 |        0 |     6
+        5 |        5 |     4
+       10 |       10 |     5
+(3 rows)
+
 ----------------------------------------------------------------
 -- Allow all functions post-anonymization
 ----------------------------------------------------------------

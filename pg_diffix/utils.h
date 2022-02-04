@@ -29,6 +29,9 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
   return hash;
 }
 
+/* Calculates the length of an array. */
+#define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
+
 /*-------------------------------------------------------------------------
  * Compatibility shims
  *-------------------------------------------------------------------------
