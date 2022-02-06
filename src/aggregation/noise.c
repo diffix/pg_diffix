@@ -63,7 +63,7 @@ static seed_t prepare_seed(seed_t seed, const char *step_name)
 }
 
 /*
- * The noise seeds are hash values.
+ * The noise layers' seeds are hash values.
  * From each seed we generate a single noise value, with either a uniform or a normal distribution.
  * Any decent hash function should produce values that are uniformly distributed over the output space.
  * Hence, we only need to limit the seed to the requested interval to get a uniformly distributed integer.
@@ -89,7 +89,7 @@ int generate_uniform_noise(seed_t seed, const char *step_name, int min, int max)
   return min + (int)bounded_uniform;
 }
 
-double generate_normal_noise(seed_t seed, const char *step_name, double sd)
+static double generate_normal_noise(seed_t seed, const char *step_name, double sd)
 {
   seed = prepare_seed(seed, step_name);
 
@@ -102,11 +102,20 @@ double generate_normal_noise(seed_t seed, const char *step_name, double sd)
   return sd * normal;
 }
 
-int generate_lcf_threshold(seed_t seed)
+double generate_layered_noise(const seed_t *seeds, int seeds_count,
+                              const char *step_name, double layer_sd)
+{
+  double noise = 0;
+  for (int i = 0; i < seeds_count; i++)
+    noise += generate_normal_noise(seeds[i], step_name, layer_sd);
+  return noise;
+}
+
+int generate_lcf_threshold(const seed_t *seeds, int seeds_count)
 {
   double threshold_mean = (double)g_config.low_count_min_threshold +
                           g_config.low_count_mean_gap * g_config.low_count_layer_sd;
-  double noise = generate_normal_noise(seed, "suppress", g_config.low_count_layer_sd);
+  double noise = generate_layered_noise(seeds, seeds_count, "suppress", g_config.low_count_layer_sd);
   int noisy_threshold = (int)(threshold_mean + noise);
   return Max(noisy_threshold, g_config.low_count_min_threshold);
 }

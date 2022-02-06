@@ -46,47 +46,46 @@ SELECT diffix.access_level();
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
-    17
+    16
 (1 row)
 
 SELECT COUNT(*) FROM test_purchases;
  count 
 -------
-    36
+    34
 (1 row)
 
 SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
  count | count 
 -------+-------
-    16 |     2
+    15 |     2
 (1 row)
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
  count 
 -------
-    14
+    13
 (1 row)
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |     8
- Berlin |     8
+ Rome   |     7
+ Berlin |     7
 (2 rows)
 
 ----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
 SELECT city FROM test_patients GROUP BY 1;
-  city  
---------
- Berlin
-(1 row)
+ city 
+------
+(0 rows)
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
  count | count | count 
 -------+-------+-------
-    11 |    11 |     1
+    10 |    10 |     0
 (1 row)
 
 ----------------------------------------------------------------
@@ -96,7 +95,7 @@ SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
   INNER JOIN test_purchases tp ON id = cid;
  count | count | count 
 -------+-------+-------
-    36 |    14 |    14
+    34 |    13 |    13
 (1 row)
 
 SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
@@ -104,21 +103,21 @@ SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
   LEFT JOIN test_products p ON pid = p.id;
  count | count 
 -------+-------
-    35 |    30
+    33 |    28
 (1 row)
 
 SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    31
- Berlin |    32
+ Rome   |    28
+ Berlin |    29
 (2 rows)
 
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    31
- Berlin |    32
+ Rome   |    28
+ Berlin |    29
 (2 rows)
 
 ----------------------------------------------------------------
@@ -139,7 +138,6 @@ SELECT city FROM test_customers;
  Rome
  Rome
  Rome
- Rome
  Berlin
  Berlin
  Berlin
@@ -147,8 +145,7 @@ SELECT city FROM test_customers;
  Berlin
  Berlin
  Berlin
- Berlin
-(16 rows)
+(14 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  
@@ -169,7 +166,7 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE cit
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
  count | count | count 
 -------+-------+-------
-    17 |    16 |    17
+    16 |    15 |    16
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
@@ -178,7 +175,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    17 |    16 |    17
+    16 |    15 |    16
 (1 row)
 
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
@@ -188,7 +185,7 @@ FROM (
 ) x;
  count | count | count 
 -------+-------+-------
-    17 |    16 |    17
+    16 |    15 |    16
 (1 row)
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
@@ -200,14 +197,14 @@ FROM (
 GROUP BY 1;
   user_city   | count | count | count 
 --------------+-------+-------+-------
- City: Berlin |    14 |     5 |     5
- City: Rome   |    16 |     8 |     8
+ City: Berlin |    12 |     4 |     4
+ City: Rome   |    14 |     7 |     7
 (2 rows)
 
 SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
  count 
 -------
-    17
+    16
 (1 row)
 
 ----------------------------------------------------------------
@@ -226,15 +223,15 @@ SELECT COUNT(*) FROM test_customers
   GROUP BY substring(city, 1, 1);
  count 
 -------
-     8
-     8
+     7
+     7
 (2 rows)
 
 SELECT COUNT(*) FROM test_customers
   GROUP BY width_bucket(id, 0, 1000, 10), width_bucket(id::float, 0.0, 1000.0, 10);
  count 
 -------
-    17
+    16
 (1 row)
 
 SELECT COUNT(*) FROM test_customers
@@ -263,11 +260,8 @@ FROM test_customers
 GROUP BY 1, 2;
  round_by | round_by | count 
 ----------+----------+-------
-        0 |        0 |     2
-        5 |        5 |     4
-       10 |       10 |     4
-       15 |       15 |     2
-(4 rows)
+       10 |       10 |     3
+(1 row)
 
 SELECT 
   diffix.ceil_by(id::numeric, 5),
@@ -277,10 +271,9 @@ FROM test_customers
 GROUP BY 1, 2;
  ceil_by | ceil_by | count 
 ---------+---------+-------
-       5 |       5 |     5
-      10 |      10 |     4
-      15 |      15 |     4
-(3 rows)
+       5 |       5 |     4
+      15 |      15 |     3
+(2 rows)
 
 SELECT 
   diffix.floor_by(id::numeric, 5),
@@ -290,10 +283,9 @@ FROM test_customers
 GROUP BY 1, 2;
  floor_by | floor_by | count 
 ----------+----------+-------
-        0 |        0 |     6
-        5 |        5 |     4
-       10 |       10 |     5
-(3 rows)
+        0 |        0 |     5
+       10 |       10 |     4
+(2 rows)
 
 ----------------------------------------------------------------
 -- Allow all functions post-anonymization

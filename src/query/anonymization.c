@@ -56,6 +56,11 @@ void rewrite_query(Query *query, List *sensitive_relations)
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
 
+seed_t compute_bucket_seed(void)
+{
+  return 0;
+}
+
 /*-------------------------------------------------------------------------
  * Implicit grouping
  *-------------------------------------------------------------------------

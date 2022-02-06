@@ -15,6 +15,7 @@
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/aggregation/count.h"
+#include "pg_diffix/query/anonymization.h"
 
 /* TODO: Implement aggregator methods. */
 const AnonAggFuncs g_count_distinct_funcs = {0};
@@ -217,29 +218,33 @@ static seed_t seed_from_aidv(const List *aidvs)
   return seed;
 }
 
-static bool aid_set_is_high_count(const List *aidvs)
+static bool aid_set_is_high_count(seed_t bucket_seed, const List *aidvs)
 {
   if (list_length(aidvs) < g_config.low_count_min_threshold)
     return false; /* Less AID values than minimum threshold, value is low-count. */
-  seed_t seed = seed_from_aidv(aidvs);
-  int threshold = generate_lcf_threshold(seed);
+
+  seed_t aid_seed = seed_from_aidv(aidvs);
+
+  seed_t seeds[] = {bucket_seed, aid_seed};
+  int threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
+
   return list_length(aidvs) >= threshold;
 }
 
-static bool aid_sets_are_high_count(const List *aidvs)
+static bool aid_sets_are_high_count(seed_t bucket_seed, const List *aidvs)
 {
   ListCell *cell;
   foreach (cell, aidvs)
   {
     const List *aidv = (const List *)lfirst(cell);
-    if (!aid_set_is_high_count(aidv))
+    if (!aid_set_is_high_count(bucket_seed, aidv))
       return false;
   }
   return true;
 }
 
 /* Returns a list with the tracker entries that are low count. */
-static List *filter_lc_entries(DistinctTracker_hash *tracker)
+static List *filter_lc_entries(seed_t bucket_seed, DistinctTracker_hash *tracker)
 {
   List *lc_entries = NIL;
 
@@ -248,7 +253,7 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
   DistinctTrackerHashEntry *entry = NULL;
   while ((entry = DistinctTracker_iterate(tracker, &it)) != NULL)
   {
-    if (!aid_sets_are_high_count(entry->aidvs))
+    if (!aid_sets_are_high_count(bucket_seed, entry->aidvs))
       lc_entries = lappend(lc_entries, entry);
   }
 
@@ -395,19 +400,20 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
   }
 }
 
-/* Computes the aggregation seed, total count of contributors and fills the top contributors array. */
-static void process_lc_values_contributions(
-    List *per_aid_values, seed_t *seed, uint64 *contributors_count,
-    Contributors *top_contributors)
+/* Computes the aid seed, total count of contributors and fills the top contributors array. */
+static void process_lc_values_contributions(List *per_aid_values,
+                                            seed_t *aid_seed,
+                                            uint64 *contributors_count,
+                                            Contributors *top_contributors)
 {
   *contributors_count = 0;
-  *seed = 0;
+  *aid_seed = 0;
 
   ListCell *cell;
   foreach (cell, per_aid_values)
   {
     PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
-    *seed ^= entry->aid;
+    *aid_seed ^= entry->aid;
     if (entry->contributions > 0)
     {
       Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
@@ -425,10 +431,11 @@ static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
 {
   int aids_count = PG_NARGS() - AIDS_OFFSET;
   int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
+  seed_t bucket_seed = compute_bucket_seed();
 
   DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
 
-  List *lc_entries = filter_lc_entries(tracker);
+  List *lc_entries = filter_lc_entries(bucket_seed, tracker);
   list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
 
   CountDistinctResult result = {0};
@@ -451,16 +458,18 @@ static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
     list_sort(per_aid_values, &compare_per_aid_values_entries);
     distribute_lc_values(per_aid_values, lc_values_true_count);
 
-    seed_t seed = 0;
+    seed_t aid_seed = 0;
     uint64 contributors_count = 0;
     process_lc_values_contributions(
         per_aid_values,
-        &seed, &contributors_count,
+        &aid_seed, &contributors_count,
         top_contributors);
 
     // NOTE: 0 is the unaccounted_for
     CountResult inner_count_result = aggregate_count_contributions(
-        seed, lc_values_true_count, contributors_count, 0, top_contributors);
+        bucket_seed, aid_seed,
+        lc_values_true_count, contributors_count, 0,
+        top_contributors);
 
     list_free_deep(per_aid_values);
     pfree(top_contributors);
