@@ -8,7 +8,7 @@
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/relation.h"
-#include "pg_diffix/query/rewrite.h"
+#include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/validation.h"
 
 /* Hooks type definitions */

@@ -8,7 +8,7 @@
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/relation.h"
-#include "pg_diffix/query/rewrite.h"
+#include "pg_diffix/query/anonymization.h"
 
 typedef struct AidReference
 {

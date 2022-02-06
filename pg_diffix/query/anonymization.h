@@ -1,5 +1,5 @@
-#ifndef PG_DIFFIX_REWRITE_H
-#define PG_DIFFIX_REWRITE_H
+#ifndef PG_DIFFIX_ANONYMIZATION_H
+#define PG_DIFFIX_ANONYMIZATION_H
 
 #include "nodes/parsenodes.h"
 
@@ -8,4 +8,4 @@
  */
 extern void rewrite_query(Query *query, List *sensitive_relations);
 
-#endif /* PG_DIFFIX_REWRITE_H */
+#endif /* PG_DIFFIX_ANONYMIZATION_H */
