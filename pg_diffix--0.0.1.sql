@@ -229,3 +229,74 @@ CREATE AGGREGATE diffix.explain_anon_count_any(value "any", variadic aids "any")
   finalfunc = diffix.anon_count_any_explain_finalfn,
   finalfunc_extra
 );
+
+/* ----------------------------------------------------------------
+ * Scalar functions
+ * ----------------------------------------------------------------
+ */
+
+CREATE OR REPLACE FUNCTION diffix.round_by(value numeric, amount numeric)
+RETURNS numeric AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN round(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION diffix.round_by(value double precision, amount double precision)
+RETURNS double precision AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN round(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION diffix.ceil_by(value numeric, amount numeric)
+RETURNS numeric AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN ceil(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION diffix.ceil_by(value double precision, amount double precision)
+RETURNS double precision AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN ceil(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION diffix.floor_by(value numeric, amount numeric)
+RETURNS numeric AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN floor(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION diffix.floor_by(value double precision, amount double precision)
+RETURNS double precision AS $$
+  BEGIN
+	IF amount <= 0 THEN
+	  RETURN NULL;
+	ELSE
+		RETURN floor(value / amount) * amount;
+	END IF;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;

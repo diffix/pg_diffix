@@ -25,6 +25,13 @@ void oid_cache_init(void)
   g_oid_cache.anon_count = lookup_function("diffix", "anon_count", -1, (Oid[]){});
   g_oid_cache.anon_count_any = lookup_function("diffix", "anon_count_any", -1, (Oid[]){});
 
+  g_oid_cache.round_by_nn = lookup_function("diffix", "round_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
+  g_oid_cache.round_by_dd = lookup_function("diffix", "round_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
+  g_oid_cache.ceil_by_nn = lookup_function("diffix", "ceil_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
+  g_oid_cache.ceil_by_dd = lookup_function("diffix", "ceil_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
+  g_oid_cache.floor_by_nn = lookup_function("diffix", "floor_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
+  g_oid_cache.floor_by_dd = lookup_function("diffix", "floor_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
+
   g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
 
   DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
@@ -62,10 +69,15 @@ char *oids_to_string(Oids *oids)
 
   appendStringInfo(&string, " :count %u", oids->count);
   appendStringInfo(&string, " :count_any %u", oids->count_any);
+
   appendStringInfo(&string, " :lcf %u", oids->lcf);
   appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
   appendStringInfo(&string, " :anon_count %u", oids->anon_count);
   appendStringInfo(&string, " :anon_count_any %u", oids->anon_count_any);
+
+  appendStringInfo(&string, " :round_by (nn %u) (dd %u)", oids->round_by_nn, oids->round_by_dd);
+  appendStringInfo(&string, " :ceil_by (nn %u) (dd %u)", oids->ceil_by_nn, oids->ceil_by_dd);
+  appendStringInfo(&string, " :floor_by (nn %u) (dd %u)", oids->floor_by_nn, oids->floor_by_dd);
 
   appendStringInfo(&string, "}");
 
