@@ -68,7 +68,7 @@ static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource so
 {
   if (source >= PGC_S_INTERACTIVE && *newval > g_config.outlier_count_max)
   {
-    NOTICEWITH("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.outlier_count_max);
+    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.outlier_count_max);
   }
   return true;
 }
@@ -77,7 +77,7 @@ static bool outlier_count_max_check_hook(int *newval, void **extra, GucSource so
 {
   if (source >= PGC_S_INTERACTIVE && *newval < g_config.outlier_count_min)
   {
-    NOTICEWITH("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.outlier_count_min, *newval);
+    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.outlier_count_min, *newval);
   }
   return true;
 }
@@ -86,7 +86,7 @@ static bool top_count_min_check_hook(int *newval, void **extra, GucSource source
 {
   if (source >= PGC_S_INTERACTIVE && *newval > g_config.top_count_max)
   {
-    NOTICEWITH("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.top_count_max);
+    NOTICE_LOG("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.top_count_max);
   }
   return true;
 }
@@ -95,7 +95,7 @@ static bool top_count_max_check_hook(int *newval, void **extra, GucSource source
 {
   if (source >= PGC_S_INTERACTIVE && *newval < g_config.top_count_min)
   {
-    NOTICEWITH("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min, *newval);
+    NOTICE_LOG("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min, *newval);
   }
   return true;
 }
