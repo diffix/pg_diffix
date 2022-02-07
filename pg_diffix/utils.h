@@ -71,6 +71,8 @@ static inline List *scan_table_by_name(
  *-------------------------------------------------------------------------
  */
 
+#define NOTICEWITH(...) ereport(NOTICE, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
+
 #define FAILWITH(...) ereport(ERROR, (errmsg("[PG_DIFFIX] " __VA_ARGS__)))
 
 #define FAILWITH_LOCATION(cursorpos, ...) \

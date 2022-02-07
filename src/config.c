@@ -63,6 +63,43 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
   return true;
 }
 
+// `check_hook`s for intervals only issue warnings, so they only make sense in interactive mode
+static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource source)
+{
+  if (source >= PGC_S_INTERACTIVE && *newval > g_config.outlier_count_max)
+  {
+    NOTICEWITH("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.outlier_count_max);
+  }
+  return true;
+}
+
+static bool outlier_count_max_check_hook(int *newval, void **extra, GucSource source)
+{
+  if (source >= PGC_S_INTERACTIVE && *newval < g_config.outlier_count_min)
+  {
+    NOTICEWITH("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.outlier_count_min, *newval);
+  }
+  return true;
+}
+
+static bool top_count_min_check_hook(int *newval, void **extra, GucSource source)
+{
+  if (source >= PGC_S_INTERACTIVE && *newval > g_config.top_count_max)
+  {
+    NOTICEWITH("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.top_count_max);
+  }
+  return true;
+}
+
+static bool top_count_max_check_hook(int *newval, void **extra, GucSource source)
+{
+  if (source >= PGC_S_INTERACTIVE && *newval < g_config.top_count_min)
+  {
+    NOTICEWITH("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min, *newval);
+  }
+  return true;
+}
+
 void config_init(void)
 {
   g_initializing = true;
@@ -163,58 +200,58 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL);                                                                        /* show_hook */
 
   DefineCustomIntVariable(
-      "pg_diffix.outlier_count_min",        /* name */
-      "Minimum outlier count (inclusive).", /* short_desc */
-      NULL,                                 /* long_desc */
-      &g_config.outlier_count_min,          /* valueAddr */
-      1,                                    /* bootValue */
-      0,                                    /* minValue */
-      MAX_NUMERIC_CONFIG,                   /* maxValue */
-      PGC_SUSET,                            /* context */
-      0,                                    /* flags */
-      NULL,                                 /* check_hook */
-      NULL,                                 /* assign_hook */
-      NULL);                                /* show_hook */
+      "pg_diffix.outlier_count_min",                 /* name */
+      "Minimum outlier count (inclusive).",          /* short_desc */
+      "Must not be greater than outlier_count_max.", /* long_desc */
+      &g_config.outlier_count_min,                   /* valueAddr */
+      1,                                             /* bootValue */
+      0,                                             /* minValue */
+      MAX_NUMERIC_CONFIG,                            /* maxValue */
+      PGC_SUSET,                                     /* context */
+      0,                                             /* flags */
+      &outlier_count_min_check_hook,                 /* check_hook */
+      NULL,                                          /* assign_hook */
+      NULL);                                         /* show_hook */
 
   DefineCustomIntVariable(
-      "pg_diffix.outlier_count_max",        /* name */
-      "Maximum outlier count (inclusive).", /* short_desc */
-      NULL,                                 /* long_desc */
-      &g_config.outlier_count_max,          /* valueAddr */
-      2,                                    /* bootValue */
-      0,                                    /* minValue */
-      MAX_NUMERIC_CONFIG,                   /* maxValue */
-      PGC_SUSET,                            /* context */
-      0,                                    /* flags */
-      NULL,                                 /* check_hook */
-      NULL,                                 /* assign_hook */
-      NULL);                                /* show_hook */
+      "pg_diffix.outlier_count_max",                 /* name */
+      "Maximum outlier count (inclusive).",          /* short_desc */
+      "Must not be smaller than outlier_count_min.", /* long_desc */
+      &g_config.outlier_count_max,                   /* valueAddr */
+      2,                                             /* bootValue */
+      0,                                             /* minValue */
+      MAX_NUMERIC_CONFIG,                            /* maxValue */
+      PGC_SUSET,                                     /* context */
+      0,                                             /* flags */
+      &outlier_count_max_check_hook,                 /* check_hook */
+      NULL,                                          /* assign_hook */
+      NULL);                                         /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.top_count_min",                     /* name */
       "Minimum top contributors count (inclusive).", /* short_desc */
-      NULL,                                          /* long_desc */
+      "Must not be greater than top_count_max.",     /* long_desc */
       &g_config.top_count_min,                       /* valueAddr */
       4,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
       0,                                             /* flags */
-      NULL,                                          /* check_hook */
+      &top_count_min_check_hook,                     /* check_hook */
       NULL,                                          /* assign_hook */
       NULL);                                         /* show_hook */
 
   DefineCustomIntVariable(
       "pg_diffix.top_count_max",                     /* name */
       "Maximum top contributors count (inclusive).", /* short_desc */
-      NULL,                                          /* long_desc */
+      "Must not be smaller than top_count_min.",     /* long_desc */
       &g_config.top_count_max,                       /* valueAddr */
       6,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
       0,                                             /* flags */
-      NULL,                                          /* check_hook */
+      &top_count_max_check_hook,                     /* check_hook */
       NULL,                                          /* assign_hook */
       NULL);                                         /* show_hook */
 
@@ -223,4 +260,12 @@ and the mean of the low count filter threshold.", /* short_desc */
   pfree(config_str);
 
   g_initializing = false;
+}
+
+void config_check(void)
+{
+  if (g_config.top_count_min > g_config.top_count_max)
+    FAILWITH("pg_diffix is misconfigured: top_count_min > top_count_max.");
+  if (g_config.outlier_count_min > g_config.outlier_count_max)
+    FAILWITH("pg_diffix is misconfigured: outlier_count_min > outlier_count_max.");
 }
