@@ -19,6 +19,11 @@ static void verify_bucket_functions(Query *query);
 
 void verify_anonymization_requirements(Query *query)
 {
+  /* 
+   * No easy way to fully check these related parameters using GUC. If someone manages to misconfigure, we need to fail
+   * here.
+   */
+  config_check();
   verify_query(query);
 }
 

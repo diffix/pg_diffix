@@ -151,8 +151,8 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(cell);               // pointer to the set of AID values
-        *aidv = list_append_unique_ptr(*aidv, (void *)aid); // add current AID value to the set
+        List **aidv = (List **)&lfirst(cell);               /* pointer to the set of AID values */
+        *aidv = list_append_unique_ptr(*aidv, (void *)aid); /* add current AID value to the set */
       }
     }
   }
@@ -458,7 +458,7 @@ static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
         &seed, &contributors_count,
         top_contributors);
 
-    // NOTE: 0 is the unaccounted_for
+    /* NOTE: 0 is the unaccounted_for */
     CountResult inner_count_result = aggregate_count_contributions(
         seed, lc_values_true_count, contributors_count, 0, top_contributors);
 
