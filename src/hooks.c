@@ -51,7 +51,7 @@ static void prepare_query(Query *query)
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
 
-  rewrite_query(query, sensitive_relations);
+  anonymize_query(query, sensitive_relations);
 
   /* Print rewritten query. */
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));

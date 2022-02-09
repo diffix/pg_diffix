@@ -6,9 +6,9 @@
 #include "pg_diffix/aggregation/noise.h"
 
 /*
- * Rewrites a regular query to an anonymizing query.
+ * Transforms a standard query into an anonymizing query.
  */
-extern void rewrite_query(Query *query, List *sensitive_relations);
+extern void anonymize_query(Query *query, List *sensitive_relations);
 
 /*
  * Returns the noise layer seed for the current bucket.
