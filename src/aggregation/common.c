@@ -11,10 +11,7 @@
 #define PG_RETURN_AGG_STATE(state) PG_RETURN_INT64(state)
 
 /* Memory context of currently executing BucketScan node (if any). */
-/* extern MemoryContext g_current_bucket_context; */
-
-/* TODO: Remove once bucket scan is implemented. */
-MemoryContext g_current_bucket_context = NULL;
+extern MemoryContext g_current_bucket_context;
 
 PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);

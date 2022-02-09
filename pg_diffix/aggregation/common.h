@@ -3,7 +3,8 @@
 
 #include "fmgr.h"
 
-/*
+/*-------------------------------------------------------------------------
+ *
  * AnonAggFuncs is the unified interface for all anonymizing aggregators.
  *
  * The `create_state` function must:
