@@ -103,7 +103,7 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
 
 static LcfResult lcf_calculate_final(seed_t bucket_seed, const AidTrackerState *tracker)
 {
-  LcfResult result = { .aid_seed = tracker->aid_seed };
+  LcfResult result = {.aid_seed = tracker->aid_seed};
 
   seed_t seeds[] = {bucket_seed, tracker->aid_seed};
   result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
