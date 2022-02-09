@@ -2,13 +2,18 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_oper.h"
+#include "parser/parsetree.h"
 #include "catalog/pg_type.h"
 #include "catalog/pg_aggregate.h"
+#include "optimizer/optimizer.h"
+#include "utils/fmgrprotos.h"
+#include "utils/lsyscache.h"
+#include "common/shortest_dec.h"
 
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/relation.h"
-#include "pg_diffix/query/rewrite.h"
+#include "pg_diffix/query/anonymization.h"
 
 typedef struct AidReference
 {
@@ -25,36 +30,11 @@ typedef struct QueryContext
   List *child_contexts; /* `QueryContext`s of subqueries */
 } QueryContext;
 
-/* Mutators */
-static void group_and_expand_implicit_buckets(Query *query);
-static Node *aggregate_expression_mutator(Node *node, QueryContext *context);
-static void add_low_count_filter(QueryContext *context);
+static seed_t g_sql_seed = 0; /* Stores the static part of the bucket seed. */
 
 /* AID Utils */
 static QueryContext *build_context(Query *query, List *relations);
 static void append_aid_args(Aggref *aggref, QueryContext *context);
-
-/*-------------------------------------------------------------------------
- * Public API
- *-------------------------------------------------------------------------
- */
-
-void rewrite_query(Query *query, List *sensitive_relations)
-{
-  QueryContext *context = build_context(query, sensitive_relations);
-
-  group_and_expand_implicit_buckets(query);
-
-  query_tree_mutator(
-      query,
-      aggregate_expression_mutator,
-      context,
-      QTW_DONT_COPY_QUERY);
-
-  add_low_count_filter(context);
-
-  query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
-}
 
 /*-------------------------------------------------------------------------
  * Implicit grouping
@@ -379,4 +359,161 @@ static void append_aid_args(Aggref *aggref, QueryContext *context)
 
   if (!found_any)
     FAILWITH("No AID found in target relations.");
+}
+
+/*-------------------------------------------------------------------------
+ * Bucket seeding
+ *-------------------------------------------------------------------------
+ */
+
+#define MAX_SEED_MATERIAL_SIZE 1024 /* Fixed max size, to avoid dynamic allocation. */
+
+static void append_seed_material(
+    char *existing_material, const char *new_material, char separator)
+{
+  size_t existing_material_length = strlen(existing_material);
+  size_t new_material_length = strlen(new_material);
+
+  if (existing_material_length + new_material_length + 2 > MAX_SEED_MATERIAL_SIZE)
+    FAILWITH_CODE(ERRCODE_NAME_TOO_LONG, "Bucket seed material too long!");
+
+  if (existing_material_length > 0)
+    existing_material[existing_material_length++] = separator;
+
+  strcpy(existing_material + existing_material_length, new_material);
+}
+
+static double cast_const_to_double(const Const *const_expr)
+{
+  switch (const_expr->consttype)
+  {
+  case INT2OID:
+    return DatumGetInt16(const_expr->constvalue);
+  case INT4OID:
+    return DatumGetInt32(const_expr->constvalue);
+  case INT8OID:
+    return DatumGetInt64(const_expr->constvalue);
+  case FLOAT4OID:
+    return DatumGetFloat4(const_expr->constvalue);
+  case FLOAT8OID:
+    return DatumGetFloat8(const_expr->constvalue);
+  case NUMERICOID:
+    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
+  default:
+    FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
+  }
+}
+
+typedef struct CollectMaterialContext
+{
+  Query *query;
+  char material[MAX_SEED_MATERIAL_SIZE];
+} CollectMaterialContext;
+
+static bool collect_seed_material(Node *node, CollectMaterialContext *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, FuncExpr))
+  {
+    FuncExpr *func_expr = (FuncExpr *)node;
+    char *func_name = get_func_name(func_expr->funcid);
+    if (func_name)
+    {
+      /* TODO: Normalize function names. */
+      /* TODO: Ignore casts. */
+      append_seed_material(context->material, func_name, ',');
+      pfree(func_name);
+    }
+  }
+
+  if (IsA(node, Var))
+  {
+    Var *var_expr = (Var *)node;
+    RangeTblEntry *rte = rt_fetch(var_expr->varno, context->query->rtable);
+
+    char *relation_name = get_rel_name(rte->relid);
+    /* TODO: Remove this check once anonymization over non-ordinary relations is rejected. */
+    if (relation_name)
+      append_seed_material(context->material, relation_name, ',');
+
+    char *attribute_name = get_rte_attribute_name(rte, var_expr->varattno);
+    append_seed_material(context->material, attribute_name, '.');
+  }
+
+  if (IsA(node, Const))
+  {
+    Const *const_expr = (Const *)node;
+    double const_as_double = cast_const_to_double(const_expr);
+    char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
+    double_to_shortest_decimal_buf(const_as_double, const_as_string);
+    append_seed_material(context->material, const_as_string, ',');
+  }
+
+  /* We ignore unknown nodes. Validation should make sure nothing unsafe reaches this stage. */
+  return expression_tree_walker(node, collect_seed_material, context);
+}
+
+/*
+ * Computes the SQL part of the bucket seed by combining the unique grouping expressions' seed material hashes.
+ * Grouping clause (if any) must be made explicit before calling this.
+ */
+static void prepare_bucket_seeds(Query *query)
+{
+  g_sql_seed = 0;
+
+  List *seed_material_hashes = NULL;
+  ListCell *cell = NULL;
+
+  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  foreach (cell, grouping_exprs)
+  {
+    Node *expr = lfirst(cell);
+
+    /* Start from empty string and append material pieces for each non-cast expression. */
+    CollectMaterialContext collect_context = {.query = query, .material = ""};
+    collect_seed_material(expr, &collect_context);
+
+    /* Keep materials with unique hashes to avoid them cancelling each other. */
+    hash_t seed_material_hash = hash_bytes(collect_context.material, strlen(collect_context.material));
+    seed_material_hashes = list_append_unique_ptr(seed_material_hashes, (void *)seed_material_hash);
+  }
+
+  foreach (cell, seed_material_hashes)
+  {
+    hash_t seed_material_hash = (hash_t)lfirst(cell);
+    g_sql_seed ^= seed_material_hash;
+  }
+
+  list_free(seed_material_hashes);
+}
+
+/*-------------------------------------------------------------------------
+ * Public API
+ *-------------------------------------------------------------------------
+ */
+
+void anonymize_query(Query *query, List *sensitive_relations)
+{
+  QueryContext *context = build_context(query, sensitive_relations);
+
+  group_and_expand_implicit_buckets(query);
+
+  query_tree_mutator(
+      query,
+      aggregate_expression_mutator,
+      context,
+      QTW_DONT_COPY_QUERY);
+
+  add_low_count_filter(context);
+
+  query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+
+  prepare_bucket_seeds(query);
+}
+
+seed_t compute_bucket_seed(void)
+{
+  return g_sql_seed;
 }

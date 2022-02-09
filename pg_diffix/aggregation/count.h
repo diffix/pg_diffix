@@ -23,7 +23,8 @@ typedef struct CountResult
 } CountResult;
 
 extern CountResult aggregate_count_contributions(
-    seed_t seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
+    seed_t bucket_seed, seed_t aid_seed,
+    uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors);
 
 /*

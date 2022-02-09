@@ -11,12 +11,13 @@
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/count.h"
 #include "pg_diffix/aggregation/noise.h"
+#include "pg_diffix/query/anonymization.h"
 
 /* TODO: Implement aggregator methods. */
 const AnonAggFuncs g_count_funcs = {0};
 const AnonAggFuncs g_count_any_funcs = {0};
 
-static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker);
+static CountResult count_calculate_result(seed_t bucket_seed, const ContributionTrackerState *tracker);
 static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
 static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers);
 static void determine_outlier_top_counts(
@@ -128,9 +129,10 @@ Datum anon_count_any_finalfn(PG_FUNCTION_ARGS)
   return count_calculate_final(fcinfo, trackers);
 }
 
-static void append_tracker_info(StringInfo string, const ContributionTrackerState *tracker)
+static void append_tracker_info(StringInfo string, seed_t bucket_seed,
+                                const ContributionTrackerState *tracker)
 {
-  CountResult result = count_calculate_aid_result(tracker);
+  CountResult result = count_calculate_result(bucket_seed, tracker);
 
   appendStringInfo(string, "uniq=%" PRIu32, tracker->contribution_table->members);
 
@@ -160,10 +162,11 @@ static void append_tracker_info(StringInfo string, const ContributionTrackerStat
     appendStringInfo(string, ", flat=%.3f, noise=%.3f, SD=%.3f",
                      result.flattened_count, result.noise, result.noise_sd);
 
-  appendStringInfo(string, ", aid_seed=%016" PRIx64, result.aid_seed);
+  appendStringInfo(string, ", seeds: bkt=%016" PRIx64 ", aid=%016" PRIx64,
+                   bucket_seed, result.aid_seed);
 }
 
-static Datum explain_count_trackers(List *trackers)
+static Datum explain_count_trackers(seed_t bucket_seed, List *trackers)
 {
   StringInfoData string;
   initStringInfo(&string);
@@ -175,7 +178,7 @@ static Datum explain_count_trackers(List *trackers)
       appendStringInfo(&string, " \n");
 
     ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
-    append_tracker_info(&string, tracker);
+    append_tracker_info(&string, bucket_seed, tracker);
   }
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
@@ -184,17 +187,20 @@ static Datum explain_count_trackers(List *trackers)
 Datum anon_count_explain_finalfn(PG_FUNCTION_ARGS)
 {
   List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_AIDS_OFFSET, &count_descriptor);
-  return explain_count_trackers(trackers);
+  seed_t bucket_seed = compute_bucket_seed();
+  return explain_count_trackers(bucket_seed, trackers);
 }
 
 Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
 {
   List *trackers = get_aggregate_contribution_trackers(fcinfo, COUNT_ANY_AIDS_OFFSET, &count_descriptor);
-  return explain_count_trackers(trackers);
+  seed_t bucket_seed = compute_bucket_seed();
+  return explain_count_trackers(bucket_seed, trackers);
 }
 
 CountResult aggregate_count_contributions(
-    seed_t aid_seed, uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
+    seed_t bucket_seed, seed_t aid_seed,
+    uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors)
 {
   CountResult result = {0};
@@ -233,14 +239,16 @@ CountResult aggregate_count_contributions(
   double average = result.flattened_count / (double)distinct_contributors;
   double noise_scale = Max(average, 0.5 * top_average);
   result.noise_sd = g_config.noise_layer_sd * noise_scale;
-  result.noise = generate_normal_noise(aid_seed, "noise", result.noise_sd);
+  seed_t noise_layers[] = {bucket_seed, aid_seed};
+  result.noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), "noise", result.noise_sd);
 
   return result;
 }
 
-static CountResult count_calculate_aid_result(const ContributionTrackerState *tracker)
+static CountResult count_calculate_result(seed_t bucket_seed, const ContributionTrackerState *tracker)
 {
   return aggregate_count_contributions(
+      bucket_seed,
       tracker->aid_seed,
       tracker->overall_contribution.integer,
       tracker->distinct_contributors,
@@ -282,12 +290,13 @@ static Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
 {
   CountResultAccumulator result_accumulator = {0};
   int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
+  seed_t bucket_seed = compute_bucket_seed();
 
   ListCell *cell;
   foreach (cell, trackers)
   {
     ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
-    CountResult result = count_calculate_aid_result(tracker);
+    CountResult result = count_calculate_result(bucket_seed, tracker);
 
     if (result.not_enough_aidvs)
       PG_RETURN_INT64(min_count);

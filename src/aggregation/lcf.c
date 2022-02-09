@@ -8,6 +8,7 @@
 #include "pg_diffix/aggregation/aid_tracker.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
+#include "pg_diffix/query/anonymization.h"
 
 /* TODO: Implement aggregator methods. */
 const AnonAggFuncs g_lcf_funcs = {0};
@@ -19,7 +20,7 @@ typedef struct LcfResult
   bool passes_lcf;
 } LcfResult;
 
-static LcfResult lcf_calculate_final(const AidTrackerState *tracker);
+static LcfResult lcf_calculate_final(seed_t bucket_seed, const AidTrackerState *tracker);
 
 PG_FUNCTION_INFO_V1(lcf_transfn);
 PG_FUNCTION_INFO_V1(lcf_finalfn);
@@ -52,21 +53,22 @@ Datum lcf_finalfn(PG_FUNCTION_ARGS)
 {
   bool passes_lcf = true;
   List *trackers = get_aggregate_aid_trackers(fcinfo, LCF_AIDS_OFFSET);
+  seed_t bucket_seed = compute_bucket_seed();
 
   ListCell *cell;
   foreach (cell, trackers)
   {
     AidTrackerState *tracker = (AidTrackerState *)lfirst(cell);
-    LcfResult result = lcf_calculate_final(tracker);
+    LcfResult result = lcf_calculate_final(bucket_seed, tracker);
     passes_lcf = passes_lcf && result.passes_lcf;
   }
 
   PG_RETURN_BOOL(passes_lcf);
 }
 
-static void append_tracker_info(StringInfo string, const AidTrackerState *tracker)
+static void append_tracker_info(StringInfo string, seed_t bucket_seed, const AidTrackerState *tracker)
 {
-  LcfResult result = lcf_calculate_final(tracker);
+  LcfResult result = lcf_calculate_final(bucket_seed, tracker);
 
   appendStringInfo(string, "uniq=%" PRIu32, tracker->aid_set->members);
 
@@ -74,7 +76,8 @@ static void append_tracker_info(StringInfo string, const AidTrackerState *tracke
                    result.threshold,
                    result.passes_lcf ? "true" : "false");
 
-  appendStringInfo(string, ", aid_seed=%016" PRIx64, result.aid_seed);
+  appendStringInfo(string, ", seeds: bkt=%016" PRIx64 ", aid=%016" PRIx64,
+                   bucket_seed, result.aid_seed);
 }
 
 Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
@@ -83,6 +86,7 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
   initStringInfo(&string);
 
   List *trackers = get_aggregate_aid_trackers(fcinfo, LCF_AIDS_OFFSET);
+  seed_t bucket_seed = compute_bucket_seed();
 
   ListCell *cell;
   foreach (cell, trackers)
@@ -91,18 +95,18 @@ Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
       appendStringInfo(&string, " \n");
 
     AidTrackerState *tracker = (AidTrackerState *)lfirst(cell);
-    append_tracker_info(&string, tracker);
+    append_tracker_info(&string, bucket_seed, tracker);
   }
 
   PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
-static LcfResult lcf_calculate_final(const AidTrackerState *tracker)
+static LcfResult lcf_calculate_final(seed_t bucket_seed, const AidTrackerState *tracker)
 {
-  LcfResult result = {0};
+  LcfResult result = {.aid_seed = tracker->aid_seed};
 
-  result.aid_seed = tracker->aid_seed;
-  result.threshold = generate_lcf_threshold(tracker->aid_seed);
+  seed_t seeds[] = {bucket_seed, tracker->aid_seed};
+  result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
   result.passes_lcf = tracker->aid_set->members >= result.threshold;
 
   return result;

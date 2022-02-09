@@ -8,7 +8,7 @@
 #include "pg_diffix/utils.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/relation.h"
-#include "pg_diffix/query/rewrite.h"
+#include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/validation.h"
 
 /* Hooks type definitions */
@@ -51,7 +51,7 @@ static void prepare_query(Query *query)
   /* Halts execution if requirements are not met. */
   verify_anonymization_requirements(query);
 
-  rewrite_query(query, sensitive_relations);
+  anonymize_query(query, sensitive_relations);
 
   /* Print rewritten query. */
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));

@@ -11,13 +11,15 @@ typedef hash_t seed_t;
 extern int generate_uniform_noise(seed_t seed, const char *step_name, int min, int max);
 
 /*
- * Returns a zero-mean gaussian double with the specified standard deviation for the given seed and step name.
+ * Returns the combined zero-mean gaussian noise value for the given noise layers and step name.
  */
-extern double generate_normal_noise(seed_t seed, const char *step_name, double sd);
+extern double generate_layered_noise(const seed_t *seeds, int seeds_count,
+                                     const char *step_name,
+                                     double layer_sd);
 
 /*
- * Returns the noisy LCF threshold for the given seed.
+ * Returns the noisy LCF threshold for the given noise layers.
  */
-extern int generate_lcf_threshold(seed_t seed);
+extern int generate_lcf_threshold(const seed_t *seeds, int seeds_count);
 
 #endif /* PG_DIFFIX_NOISE_H */
