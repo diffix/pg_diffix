@@ -1,9 +1,9 @@
 #include "postgres.h"
 #include "utils/fmgrtab.h"
 
-#include "pg_diffix/query/allowed_functions.h"
-#include "pg_diffix/utils.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/utils.h"
+#include "pg_diffix/query/allowed_functions.h"
 
 static const char *const g_allowed_builtins[] = {
     /* casts */
@@ -16,7 +16,7 @@ static const char *const g_allowed_builtins[] = {
     /* width_bucket */
     "width_bucket_float8", "width_bucket_numeric"};
 
-// some allowed functions don't appear in the builtins catalogue, so we must allow them manually by OID
+/* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
 
