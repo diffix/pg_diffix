@@ -120,6 +120,10 @@ struct AnonAggState
   MemoryContext memory_context;  /* Where this state lives. */
 };
 
+/*
+ * Finds aggregator spec for given OID.
+ * Returns NULL if the given OID is not an anonymizing aggregator.
+ */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
 
 #endif /* PG_DIFFIX_COMMON_H */

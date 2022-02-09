@@ -46,7 +46,6 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
   else if (oid == g_oid_cache.lcf)
     return &g_lcf_funcs;
 
-  FAILWITH("Unsupported anonymizing aggregator (OID %u)", oid);
   return NULL;
 }
 
@@ -64,6 +63,9 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
 
   Aggref *aggref = AggGetAggref(fcinfo);
   const AnonAggFuncs *agg_funcs = find_agg_funcs(aggref->aggfnoid);
+
+  if (unlikely(agg_funcs == NULL))
+    FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
   AnonAggState *state = agg_funcs->create_state(bucket_context, fcinfo);
   Assert(state->agg_funcs == agg_funcs);
