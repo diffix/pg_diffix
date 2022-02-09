@@ -84,8 +84,8 @@ typedef void Bucket;
 
 struct AnonAggFuncs
 {
-  /* Get type of final value. */
-  Oid (*final_type)(void);
+  /* Get type information of final value. */
+  void (*final_type)(Oid *type, int32 *typmod, Oid *collid);
 
   /*
    * Create an empty state in the given memory context. The implementation is
@@ -119,5 +119,7 @@ struct AnonAggState
   const AnonAggFuncs *agg_funcs; /* Aggregator implementation. */
   MemoryContext memory_context;  /* Where this state lives. */
 };
+
+extern const AnonAggFuncs *find_agg_funcs(Oid oid);
 
 #endif /* PG_DIFFIX_COMMON_H */

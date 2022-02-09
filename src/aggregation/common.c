@@ -33,7 +33,7 @@ Datum anon_agg_state_output(PG_FUNCTION_ARGS)
   PG_RETURN_CSTRING(str);
 }
 
-static const AnonAggFuncs *find_agg_funcs(Oid oid)
+const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
   Assert(OidIsValid(oid));
 
