@@ -1,6 +1,8 @@
 #include "postgres.h"
 
+#include "executor/executor.h"
 #include "miscadmin.h"
+#include "optimizer/planner.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -11,10 +13,6 @@
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
-
-/* Hooks type definitions */
-#include "executor/executor.h"
-#include "optimizer/planner.h"
 
 planner_hook_type prev_planner_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
