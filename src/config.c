@@ -1,12 +1,13 @@
 #include "postgres.h"
-#include "lib/stringinfo.h"
-#include "fmgr.h"
-#include "utils/guc.h"
-#include "miscadmin.h"
 
+#include "fmgr.h"
+#include "lib/stringinfo.h"
+#include "miscadmin.h"
+#include "utils/guc.h"
+
+#include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/auth.h"
 
 DiffixConfig g_config; /* Gets initialized by config_init. */
 

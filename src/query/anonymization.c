@@ -1,19 +1,20 @@
 #include "postgres.h"
+
+#include "catalog/pg_aggregate.h"
+#include "catalog/pg_type.h"
+#include "common/shortest_dec.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
+#include "optimizer/optimizer.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
-#include "catalog/pg_type.h"
-#include "catalog/pg_aggregate.h"
-#include "optimizer/optimizer.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
-#include "common/shortest_dec.h"
 
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/utils.h"
-#include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/anonymization.h"
+#include "pg_diffix/query/relation.h"
+#include "pg_diffix/utils.h"
 
 typedef struct AidReference
 {

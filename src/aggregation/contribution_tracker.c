@@ -1,8 +1,8 @@
 #include "postgres.h"
 
+#include "pg_diffix/aggregation/contribution_tracker.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/aggregation/contribution_tracker.h"
 
 /* ----------------------------------------------------------------
  * Top contributors management
