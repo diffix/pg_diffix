@@ -113,13 +113,13 @@ FROM (
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
 FROM (
-  SELECT id, cid, 'City: ' || city as user_city
+  SELECT id, cid, city as user_city
   FROM test_customers
   INNER JOIN test_purchases tp ON id = cid
 ) x
 GROUP BY 1;
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
 
 ----------------------------------------------------------------
 -- Empty tables
@@ -192,5 +192,6 @@ FROM (
 ) x;
 
 -- Get rejected because only a subset of functions is supported for defining buckets.
-SELECT COUNT(*) FROM test_customers GROUP BY length(city);
+SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
+SELECT LENGTH(city) FROM test_customers;
