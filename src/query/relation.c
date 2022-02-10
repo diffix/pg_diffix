@@ -1,14 +1,15 @@
 #include "postgres.h"
+
+#include "access/table.h"
 #include "catalog/namespace.h"
 #include "nodes/nodeFuncs.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
-#include "access/table.h"
 #include "utils/rel.h"
 
 #include "pg_diffix/auth.h"
-#include "pg_diffix/utils.h"
 #include "pg_diffix/query/relation.h"
+#include "pg_diffix/utils.h"
 
 static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_oid)
 {

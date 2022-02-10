@@ -1,9 +1,9 @@
 #ifndef PG_DIFFIX_RELATION_H
 #define PG_DIFFIX_RELATION_H
 
+#include "access/attnum.h"
 #include "nodes/parsenodes.h"
 #include "nodes/pg_list.h"
-#include "access/attnum.h"
 
 /*
  * Data for an Anonymization ID column.

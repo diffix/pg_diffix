@@ -1,12 +1,13 @@
 #include "postgres.h"
+
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/utils.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/validation.h"
+#include "pg_diffix/utils.h"
 
 #define NOT_SUPPORTED(cond, feature) \
   if (cond)                          \

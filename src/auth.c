@@ -1,15 +1,16 @@
 #include "postgres.h"
+
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
 
 /* Security labels type definitions */
-#include "commands/seclabel.h"
-#include "catalog/pg_class.h"
-#include "catalog/pg_namespace.h"
-#include "catalog/pg_database.h"
 #include "catalog/pg_authid.h"
+#include "catalog/pg_class.h"
+#include "catalog/pg_database.h"
+#include "catalog/pg_namespace.h"
+#include "commands/seclabel.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"

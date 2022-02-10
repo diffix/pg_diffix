@@ -1,4 +1,5 @@
 #include "postgres.h"
+
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
 #include "parser/parse_func.h"

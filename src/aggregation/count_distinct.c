@@ -1,4 +1,5 @@
 #include "postgres.h"
+
 #include "fmgr.h"
 #include "lib/stringinfo.h"
 #include "utils/builtins.h"
@@ -6,16 +7,16 @@
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
 
-#include <math.h>
 #include <inttypes.h>
+#include <math.h>
 
-#include "pg_diffix/config.h"
-#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/common.h"
-#include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/aggregation/count.h"
+#include "pg_diffix/aggregation/noise.h"
+#include "pg_diffix/config.h"
 #include "pg_diffix/query/anonymization.h"
+#include "pg_diffix/utils.h"
 
 /* TODO: Implement aggregator methods. */
 const AnonAggFuncs g_count_distinct_funcs = {0};

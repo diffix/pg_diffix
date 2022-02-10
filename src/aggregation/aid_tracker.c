@@ -1,7 +1,7 @@
 #include "postgres.h"
 
-#include "pg_diffix/utils.h"
 #include "pg_diffix/aggregation/aid_tracker.h"
+#include "pg_diffix/utils.h"
 
 /*
  * Definitions for HashTable<aid_t, AidTrackerHashEntry>

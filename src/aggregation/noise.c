@@ -1,8 +1,9 @@
 #include "postgres.h"
+
 #include "common/sha2.h"
 
-#include <math.h>
 #include <limits.h>
+#include <math.h>
 
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/config.h"

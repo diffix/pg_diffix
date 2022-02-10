@@ -1,9 +1,10 @@
 #include "postgres.h"
+
 #include "utils/fmgrtab.h"
 
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/utils.h"
 #include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/utils.h"
 
 static const char *const g_allowed_builtins[] = {
     /* casts */

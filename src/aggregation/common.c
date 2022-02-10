@@ -1,9 +1,10 @@
 #include "postgres.h"
+
 #include "nodes/primnodes.h"
 
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
-#include "pg_diffix/aggregation/common.h"
 
 /* See AggState definition in SQL. */
 #define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_INT64(index))
