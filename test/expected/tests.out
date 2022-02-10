@@ -192,18 +192,18 @@ FROM (
 
 SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
 FROM (
-  SELECT id, cid, 'City: ' || city as user_city
+  SELECT id, cid, city as user_city
   FROM test_customers
   INNER JOIN test_purchases tp ON id = cid
 ) x
 GROUP BY 1;
-  user_city   | count | count | count 
---------------+-------+-------+-------
- City: Berlin |    13 |     5 |     5
- City: Rome   |    15 |     7 |     7
+ user_city | count | count | count 
+-----------+-------+-------+-------
+ Berlin    |    13 |     5 |     5
+ Rome      |    15 |     7 |     7
 (2 rows)
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id + 1 AS modified_id FROM test_customers ) x;
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
  count 
 -------
     16
@@ -330,11 +330,15 @@ FROM (
 ) x;
 ERROR:  [PG_DIFFIX] Feature 'grouping in subqueries' is not currently supported.
 -- Get rejected because only a subset of functions is supported for defining buckets.
-SELECT COUNT(*) FROM test_customers GROUP BY length(city);
+SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
-LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY length(city);
+LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
                                                      ^
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
 ERROR:  [PG_DIFFIX] Unsupported operator used to define buckets.
 LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
                                                           ^
+SELECT LENGTH(city) FROM test_customers;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT LENGTH(city) FROM test_customers;
+               ^

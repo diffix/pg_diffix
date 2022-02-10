@@ -2,6 +2,7 @@
 
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
+#include "optimizer/tlist.h"
 
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
@@ -20,7 +21,7 @@ static void verify_bucket_functions(Query *query);
 
 void verify_anonymization_requirements(Query *query)
 {
-  /* 
+  /*
    * No easy way to fully check these related parameters using GUC. If someone manages to misconfigure, we need to fail
    * here.
    */
@@ -115,7 +116,15 @@ static bool verify_bucket_function(Node *node, void *context)
 
 static void verify_bucket_functions(Query *query)
 {
-  List *exprs_list = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  List *exprs_list = NIL;
+  if (query->groupClause != NIL)
+    /* Buckets are explicitly defined. */
+    exprs_list = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  else if (!query->hasAggs)
+    /* Buckets are implicitly defined. */
+    exprs_list = get_tlist_exprs(query->targetList, false);
+  /* Else we have the global, nothing to check. */
+
   ListCell *cell;
   foreach (cell, exprs_list)
   {
