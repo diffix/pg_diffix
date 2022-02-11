@@ -302,7 +302,7 @@ static void gather_subquery_aids(
   {
     AidReference *child_aid_ref = (AidReference *)lfirst(cell);
 
-    AttrNumber attnum = get_var_attnum(subquery->targetList, rte_index, child_aid_ref->aid_column->attnum);
+    AttrNumber attnum = get_var_attnum(subquery->targetList, child_aid_ref->rte_index, child_aid_ref->aid_attnum);
     if (attnum == InvalidAttrNumber) /* AID not referenced in subquery. */
     {
       /* Export AID from subquery. */
