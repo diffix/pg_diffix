@@ -218,11 +218,7 @@ static Expr *make_aid_expr(AidReference *ref)
 
 static TargetEntry *make_aid_target(AidReference *ref, AttrNumber resno, bool resjunk)
 {
-  TargetEntry *te = makeTargetEntry(
-      make_aid_expr(ref),
-      resno,
-      "aid",
-      resjunk);
+  TargetEntry *te = makeTargetEntry(make_aid_expr(ref), resno, "aid", resjunk);
 
   te->resorigtbl = ref->relation->oid;
   te->resorigcol = ref->aid_column->attnum;
