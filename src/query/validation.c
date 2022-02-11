@@ -123,7 +123,7 @@ static void verify_bucket_functions(Query *query)
   else if (!query->hasAggs)
     /* Buckets are implicitly defined. */
     exprs_list = get_tlist_exprs(query->targetList, false);
-  /* Else we have the global, nothing to check. */
+  /* Else we have the global bucket, nothing to check. */
 
   ListCell *cell;
   foreach (cell, exprs_list)
