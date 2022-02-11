@@ -289,6 +289,7 @@ static AttrNumber get_var_attnum(List *target_list, Index rte_index, AttrNumber 
  * References to the exported AIDs are added to `aid_references`.
  */
 static void gather_subquery_aids(
+    RangeTblEntry *parent_rte,
     const QueryContext *child_context,
     Index rte_index,
     List **aid_references)
@@ -308,6 +309,8 @@ static void gather_subquery_aids(
       attnum = next_attnum++;
       TargetEntry *aid_target = make_aid_target(child_aid_ref, attnum, true);
       subquery->targetList = lappend(subquery->targetList, aid_target);
+      /* Update parent range table entry. */
+      parent_rte->eref->colnames = lappend(parent_rte->eref->colnames, makeString(aid_target->resname));
     }
 
     /* Path to AID from parent query. */
@@ -346,7 +349,7 @@ static QueryContext *build_context(Query *query, List *relations)
     {
       QueryContext *child_context = build_context(rte->subquery, relations);
       child_contexts = lappend(child_contexts, child_context);
-      gather_subquery_aids(child_context, rte_index, &aid_references);
+      gather_subquery_aids(rte, child_context, rte_index, &aid_references);
     }
   }
 
