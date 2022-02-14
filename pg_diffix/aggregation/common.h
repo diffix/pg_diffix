@@ -80,8 +80,36 @@ extern const AnonAggFuncs g_count_any_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_lcf_funcs;
 
-/* We don't want implementations to rely on it yet. */
-typedef void Bucket;
+#define BUCKET_LABEL 0
+#define BUCKET_REGULAR_AGG 1
+#define BUCKET_ANON_AGG 2
+
+typedef char BucketDatumTag;
+
+/*
+ * A label or aggregate belonging to a bucket.
+ * We include some metadata because the struct has free space.
+ */
+typedef struct BucketDatum
+{
+  Datum value;        /* Actual data */
+  int typ_len;        /* Type length */
+  bool typ_byval;     /* Type is by value? */
+  bool is_null;       /* Value is null? */
+  BucketDatumTag tag; /* Label or aggregate? */
+} BucketDatum;
+
+/*
+ * A bucket is an output row from an aggregation node.
+ */
+typedef struct Bucket
+{
+  int16 num_labels;                          /* Number of labels in datums */
+  int16 num_aggs;                            /* Number of aggregates in datums */
+  bool low_count;                            /* Has low count AIDs? */
+  bool merged;                               /* Was merged to some other bucket? */
+  BucketDatum datums[FLEXIBLE_ARRAY_MEMBER]; /* Grouping labels followed by aggregates */
+} Bucket;
 
 struct AnonAggFuncs
 {
