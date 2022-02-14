@@ -12,6 +12,7 @@
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/utils.h"
@@ -438,13 +439,15 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
-    char *func_name = get_func_name(func_expr->funcid);
-    if (func_name)
+    if (!is_allowed_cast(func_expr->funcid))
     {
-      /* TODO: Normalize function names. */
-      /* TODO: Ignore casts. */
-      append_seed_material(context->material, func_name, ',');
-      pfree(func_name);
+      char *func_name = get_func_name(func_expr->funcid);
+      if (func_name)
+      {
+        /* TODO: Normalize function names. */
+        append_seed_material(context->material, func_name, ',');
+        pfree(func_name);
+      }
     }
   }
 
