@@ -233,7 +233,7 @@ SELECT COUNT(*) FROM test_customers
   GROUP BY width_bucket(id, 0, 1000, 10), width_bucket(id::float, 0.0, 1000.0, 10);
  count 
 -------
-    17
+    18
 (1 row)
 
 SELECT COUNT(*) FROM test_customers
@@ -277,9 +277,8 @@ GROUP BY 1, 2;
  ceil_by | ceil_by | count 
 ---------+---------+-------
        5 |       5 |     4
-      10 |      10 |     4
-      15 |      15 |     4
-(3 rows)
+      15 |      15 |     3
+(2 rows)
 
 SELECT 
   diffix.floor_by(id::numeric, 5),
@@ -289,9 +288,9 @@ FROM test_customers
 GROUP BY 1, 2;
  floor_by | floor_by | count 
 ----------+----------+-------
-        0 |        0 |     7
-        5 |        5 |     6
-       10 |       10 |     6
+        0 |        0 |     5
+        5 |        5 |     4
+       10 |       10 |     5
 (3 rows)
 
 ----------------------------------------------------------------

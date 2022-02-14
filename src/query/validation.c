@@ -98,17 +98,15 @@ static bool verify_bucket_function(Node *node, void *context)
     FuncExpr *funcref = (FuncExpr *)node;
     Oid funcoid = funcref->funcid;
 
-    if (!is_allowed_function(funcoid))
+    if (!is_allowed_cast(funcoid) && !is_allowed_function(funcoid))
       FAILWITH_LOCATION(funcref->location, "Unsupported function used to define buckets.");
   }
 
   if (IsA(node, OpExpr))
   {
     OpExpr *funcref = (OpExpr *)node;
-    Oid funcoid = funcref->opfuncid;
-
-    if (!is_allowed_function(funcoid))
-      FAILWITH_LOCATION(funcref->location, "Unsupported operator used to define buckets.");
+    /* We don't yet support any operators. */
+    FAILWITH_LOCATION(funcref->location, "Unsupported operator used to define buckets.");
   }
 
   return expression_tree_walker(node, verify_bucket_function, context);

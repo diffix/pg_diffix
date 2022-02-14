@@ -6,16 +6,23 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/utils.h"
 
+static const char *const g_allowed_casts[] = {
+    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
+    "dtoi2", "ftoi2", "ftod", "ftoi4", "ftoi8", "dtof", "dtoi4", "dtoi8",
+    "int4_numeric", "float4_numeric", "float8_numeric", "numeric_int4",
+    "numeric_float4", "numeric_float8",
+    /**/
+};
+
 static const char *const g_allowed_builtins[] = {
-    /* casts */
-    "i2tod", "i2tof", "dtoi2", "ftoi2", "ftod", "dtof", "i2toi4", "i4toi2", "i4tod", "dtoi4", "i4tof", "ftoi4", "i8tod", "dtoi8", "i8tof", "ftoi8",
-    "int4_numeric", "float4_numeric", "float8_numeric", "numeric_int4", "numeric_float4", "numeric_float8",
     /* substring */
     "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len",
     /* numeric generalization */
     "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
     /* width_bucket */
-    "width_bucket_float8", "width_bucket_numeric"};
+    "width_bucket_float8", "width_bucket_numeric",
+    /**/
+};
 
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
@@ -42,6 +49,21 @@ static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
     return NULL;
 
   return &fmgr_builtins[index];
+}
+
+bool is_allowed_cast(Oid funcoid)
+{
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < ARRAY_LENGTH(g_allowed_casts); i++)
+    {
+      if (strcmp(g_allowed_casts[i], fmgr_builtin->funcName) == 0)
+        return true;
+    }
+  }
+
+  return false;
 }
 
 bool is_allowed_function(Oid funcoid)
