@@ -78,7 +78,7 @@ typedef struct AnonAggState AnonAggState;
 extern const AnonAggFuncs g_count_funcs;
 extern const AnonAggFuncs g_count_any_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
-extern const AnonAggFuncs g_lcf_funcs;
+extern const AnonAggFuncs g_low_count_funcs;
 
 #define BUCKET_LABEL 0
 #define BUCKET_REGULAR_AGG 1

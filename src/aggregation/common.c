@@ -41,8 +41,8 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
     return &g_count_any_funcs;
   else if (oid == g_oid_cache.anon_count_distinct)
     return &g_count_distinct_funcs;
-  else if (oid == g_oid_cache.lcf)
-    return &g_lcf_funcs;
+  else if (oid == g_oid_cache.low_count)
+    return &g_low_count_funcs;
 
   return NULL;
 }

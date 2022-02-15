@@ -12,7 +12,7 @@
 #include "pg_diffix/query/anonymization.h"
 
 /* TODO: Implement aggregator methods. */
-const AnonAggFuncs g_lcf_funcs = {0};
+const AnonAggFuncs g_low_count_funcs = {0};
 
 typedef struct LcfResult
 {

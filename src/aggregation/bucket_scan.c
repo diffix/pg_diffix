@@ -165,10 +165,12 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 /*
  * Determines whether the given bucket is low count.
  */
-static bool eval_low_count(Bucket *bucket)
+static bool eval_low_count(Bucket *bucket, int low_count_index)
 {
-  /* TODO */
-  return false;
+  bool is_null = false;
+  Datum is_low_count = g_low_count_funcs.finalize((AnonAggState *)bucket->datums[low_count_index].value, bucket, &is_null);
+  Assert(!is_null);
+  return DatumGetBool(is_low_count);
 }
 
 static void fill_bucket_list(BucketScanState *bucket_state)
@@ -185,6 +187,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
   int num_labels = plan->num_labels;
   int num_aggs = plan->num_aggs;
   int num_atts = num_labels + num_aggs;
+  int low_count_index = plan->low_count_index;
   BucketDatumTag *att_tags = bucket_state->att_tags;
   TupleDesc slot_desc = outer_plan_state->ps_ResultTupleDesc;
   size_t bucket_size = sizeof(Bucket) + num_atts * sizeof(BucketDatum);
@@ -229,12 +232,20 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
     buckets = lappend(buckets, bucket);
 
-    /* Switch to tuple memory to evaluate low count. */
-    MemoryContextSwitchTo(per_tuple_memory);
+    /*
+     * If the aggregate is missing, we consider buckets high-count.
+     * This can happen with global aggregation or non-anonymizing queries.
+     */
+    if (low_count_index != -1)
+    {
+      /* Switch to tuple memory to evaluate low count. */
+      MemoryContextSwitchTo(per_tuple_memory);
 
-    bucket->low_count = eval_low_count(bucket);
+      bucket->low_count = eval_low_count(bucket, low_count_index);
 
-    MemoryContextReset(per_tuple_memory);
+      MemoryContextReset(per_tuple_memory);
+    }
+
     MemoryContextSwitchTo(old_context);
   }
 
@@ -636,7 +647,7 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   agg->plan.targetlist = flat_agg_tlist;
   agg->plan.qual = NIL;
 
-  bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.lcf);
+  bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
   bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count);
   bucket_scan->expand_buckets = expand_buckets;
 
