@@ -28,6 +28,10 @@ INSERT INTO test_patients VALUES
 
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
 
+-- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
+CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
+
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -38,6 +42,8 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 
 ----------------------------------------------------------------
 -- Utilities
@@ -67,21 +73,6 @@ SELECT city FROM test_patients GROUP BY 1;
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 
 ----------------------------------------------------------------
--- `JOIN` queries
-----------------------------------------------------------------
-
-SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
-  INNER JOIN test_purchases tp ON id = cid;
-
-SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id;
-
-SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
-
-SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
-
-----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
 
@@ -91,35 +82,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
-
-----------------------------------------------------------------
--- Non-aggregating subqueries
-----------------------------------------------------------------
-
--- Reference result
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
-
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
-FROM (
-  SELECT * FROM test_customers
-) x;
-
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
-FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_customers ) y
-) x;
-
-SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
-FROM (
-  SELECT id, cid, city as user_city
-  FROM test_customers
-  INNER JOIN test_purchases tp ON id = cid
-) x
-GROUP BY 1;
-
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
 
 ----------------------------------------------------------------
 -- Empty tables
@@ -181,8 +144,37 @@ SELECT 2 * length(city) FROM test_customers GROUP BY city;
 SELECT SUM(id) FROM test_customers;
 SELECT MIN(id) + MAX(id) FROM test_customers;
 SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+SELECT count(city ORDER BY city) FROM test_customers;
+SELECT count(*) FILTER (WHERE true) FROM test_customers;
 
--- Get rejected because aggregating subqueries are not supported.
+-- Get rejected because only a subset of functions is supported for defining buckets.
+SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
+SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
+SELECT LENGTH(city) FROM test_customers;
+
+-- Get rejected because of subqueries
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM test_customers
+) x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM test_customers ) y
+) x;
+
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, city as user_city
+  FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
+
+-- Get rejected because of subqueries, but used to be rejected because of their inner aggregation
 SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
 
 SELECT COUNT(city)
@@ -191,7 +183,19 @@ FROM (
   GROUP BY 1
 ) x;
 
--- Get rejected because only a subset of functions is supported for defining buckets.
-SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
-SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
-SELECT LENGTH(city) FROM test_customers;
+-- Get rejected because of JOINs
+SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid;
+
+SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id;
+
+SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
+
+SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
+
+SELECT city, COUNT(price) FROM test_products CROSS JOIN test_customers GROUP BY 1;
+
+-- Get rejected because of WHERE
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';

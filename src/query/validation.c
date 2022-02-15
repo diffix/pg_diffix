@@ -15,6 +15,7 @@
     FAILWITH("Feature '%s' is not currently supported.", (feature));
 
 static void verify_query(Query *query);
+static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_functions(Query *query);
@@ -41,27 +42,30 @@ static void verify_query(Query *query)
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
+  verify_where(query);
   verify_aggregators(query);
   verify_bucket_functions(query);
   verify_rtable(query);
 }
 
-static void verify_subquery(Query *query)
+static void verify_where(Query *query)
 {
-  NOT_SUPPORTED(query->groupClause, "grouping in subqueries");
-  NOT_SUPPORTED(query->hasAggs, "aggregates in subqueries");
-  verify_query(query);
+  NOT_SUPPORTED(query->jointree->quals, "WHERE clauses in anonymizing queries");
 }
 
 static void verify_rtable(Query *query)
 {
+  /* Cater for cross joins in the form of `FROM from_item1, from_item2, ...`. */
+  NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
+
   ListCell *cell = NULL;
   foreach (cell, query->rtable)
   {
     RangeTblEntry *range_table = lfirst_node(RangeTblEntry, cell);
-    if (range_table->rtekind == RTE_SUBQUERY)
-      verify_subquery(range_table->subquery);
-    else if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
+    NOT_SUPPORTED(range_table->rtekind == RTE_SUBQUERY, "Subqueries in anonymizing queries");
+    NOT_SUPPORTED(range_table->rtekind == RTE_JOIN, "JOINs in anonymizing queries");
+
+    if (range_table->rtekind != RTE_RELATION)
       FAILWITH("Unsupported FROM clause.");
   }
 }
@@ -78,6 +82,9 @@ static bool verify_aggregator(Node *node, void *context)
 
     if (aggoid != g_oid_cache.count && aggoid != g_oid_cache.count_any)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
+
+    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
+    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
   }
 
   return expression_tree_walker(node, verify_aggregator, context);

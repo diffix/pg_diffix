@@ -21,6 +21,9 @@ INSERT INTO test_patients VALUES
   (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+-- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
+CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -31,6 +34,8 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 ----------------------------------------------------------------
 -- Utilities
 ----------------------------------------------------------------
@@ -89,38 +94,6 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 (1 row)
 
 ----------------------------------------------------------------
--- `JOIN` queries
-----------------------------------------------------------------
-SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
-  INNER JOIN test_purchases tp ON id = cid;
- count | count | count 
--------+-------+-------
-    34 |    13 |    13
-(1 row)
-
-SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id;
- count | count 
--------+-------
-    33 |    28
-(1 row)
-
-SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
-  city  | count 
---------+-------
- Rome   |    32
- Berlin |    33
-(2 rows)
-
-SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
-  city  | count 
---------+-------
- Rome   |    32
- Berlin |    33
-(2 rows)
-
-----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
 SELECT id FROM test_customers;
@@ -155,58 +128,10 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  Berlin
 (1 row)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
-(1 row)
-
-----------------------------------------------------------------
--- Non-aggregating subqueries
-----------------------------------------------------------------
--- Reference result
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id) FROM test_customers x;
- count | count | count 
--------+-------+-------
-    16 |    15 |    16
-(1 row)
-
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
-FROM (
-  SELECT * FROM test_customers
-) x;
- count | count | count 
--------+-------+-------
-    16 |    15 |    16
-(1 row)
-
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
-FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_customers ) y
-) x;
- count | count | count 
--------+-------+-------
-    16 |    15 |    16
-(1 row)
-
-SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
-FROM (
-  SELECT id, cid, city as user_city
-  FROM test_customers
-  INNER JOIN test_purchases tp ON id = cid
-) x
-GROUP BY 1;
- user_city | count | count | count 
------------+-------+-------+-------
- Berlin    |    13 |     5 |     5
- Rome      |    15 |     7 |     7
-(2 rows)
-
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
- count 
--------
-    16
 (1 row)
 
 ----------------------------------------------------------------
@@ -319,15 +244,10 @@ SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
 LINE 1: ...LECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH...
                                                              ^
--- Get rejected because aggregating subqueries are not supported.
-SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
-ERROR:  [PG_DIFFIX] Feature 'aggregates in subqueries' is not currently supported.
-SELECT COUNT(city)
-FROM (
-  SELECT city FROM test_customers
-  GROUP BY 1
-) x;
-ERROR:  [PG_DIFFIX] Feature 'grouping in subqueries' is not currently supported.
+SELECT count(city ORDER BY city) FROM test_customers;
+ERROR:  [PG_DIFFIX] Feature 'ORDER BY clauses in aggregate expressions' is not currently supported.
+SELECT count(*) FILTER (WHERE true) FROM test_customers;
+ERROR:  [PG_DIFFIX] Feature 'FILTER clauses in aggregate expressions' is not currently supported.
 -- Get rejected because only a subset of functions is supported for defining buckets.
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
@@ -341,3 +261,51 @@ SELECT LENGTH(city) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
 LINE 1: SELECT LENGTH(city) FROM test_customers;
                ^
+-- Get rejected because of subqueries
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM test_customers
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM test_customers ) y
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, city as user_city
+  FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_customers ) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+-- Get rejected because of subqueries, but used to be rejected because of their inner aggregation
+SELECT * FROM ( SELECT COUNT(*) FROM test_customers ) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM test_customers
+  GROUP BY 1
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+-- Get rejected because of JOINs
+SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_customers
+  INNER JOIN test_purchases tp ON id = cid;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT COUNT(c.city), COUNT(p.name) FROM test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM test_products CROSS JOIN test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+-- Get rejected because of WHERE
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
