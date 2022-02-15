@@ -239,6 +239,10 @@ SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
 LINE 1: ...LECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH...
                                                              ^
+SELECT count(city ORDER BY city) FROM test_customers;
+ERROR:  [PG_DIFFIX] Feature 'ORDER BY clauses in aggregate expressions' is not currently supported.
+SELECT count(*) FILTER (WHERE true) FROM test_customers;
+ERROR:  [PG_DIFFIX] Feature 'FILTER clauses in aggregate expressions' is not currently supported.
 -- Get rejected because only a subset of functions is supported for defining buckets.
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.

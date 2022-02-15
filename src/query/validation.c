@@ -75,6 +75,9 @@ static bool verify_aggregator(Node *node, void *context)
 
     if (aggoid != g_oid_cache.count && aggoid != g_oid_cache.count_any)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
+
+    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
+    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
   }
 
   return expression_tree_walker(node, verify_aggregator, context);

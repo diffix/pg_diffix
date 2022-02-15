@@ -138,6 +138,8 @@ SELECT 2 * length(city) FROM test_customers GROUP BY city;
 SELECT SUM(id) FROM test_customers;
 SELECT MIN(id) + MAX(id) FROM test_customers;
 SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+SELECT count(city ORDER BY city) FROM test_customers;
+SELECT count(*) FILTER (WHERE true) FROM test_customers;
 
 -- Get rejected because only a subset of functions is supported for defining buckets.
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
