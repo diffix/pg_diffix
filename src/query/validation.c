@@ -46,22 +46,19 @@ static void verify_query(Query *query)
   verify_rtable(query);
 }
 
-static void verify_subquery(Query *query)
-{
-  NOT_SUPPORTED(query->groupClause, "grouping in subqueries");
-  NOT_SUPPORTED(query->hasAggs, "aggregates in subqueries");
-  verify_query(query);
-}
-
 static void verify_rtable(Query *query)
 {
+  /* Cater for cross joins in the form of `FROM from_item1, from_item2, ...`. */
+  NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
+
   ListCell *cell = NULL;
   foreach (cell, query->rtable)
   {
     RangeTblEntry *range_table = lfirst_node(RangeTblEntry, cell);
-    if (range_table->rtekind == RTE_SUBQUERY)
-      verify_subquery(range_table->subquery);
-    else if (range_table->rtekind != RTE_RELATION && range_table->rtekind != RTE_JOIN)
+    NOT_SUPPORTED(range_table->rtekind == RTE_SUBQUERY, "Subqueries in anonymizing queries");
+    NOT_SUPPORTED(range_table->rtekind == RTE_JOIN, "JOINs in anonymizing queries");
+
+    if (range_table->rtekind != RTE_RELATION)
       FAILWITH("Unsupported FROM clause.");
   }
 }
