@@ -147,10 +147,14 @@ SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 SELECT count(city ORDER BY city) FROM test_customers;
 SELECT count(*) FILTER (WHERE true) FROM test_customers;
 
--- Get rejected because only a subset of functions is supported for defining buckets.
+-- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
 SELECT LENGTH(city) FROM test_customers;
+SELECT city, 'aaaa' FROM test_customers;
+SELECT COUNT(*) FROM test_customers GROUP BY round(floor(id));
+SELECT COUNT(*) FROM test_customers GROUP BY substr(city, 1, id);
+SELECT COUNT(*) FROM test_customers GROUP BY substr('aaaa', 1, 2);
 
 -- Get rejected because of subqueries
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
