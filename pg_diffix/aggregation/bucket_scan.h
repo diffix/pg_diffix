@@ -3,6 +3,6 @@
 
 #include "nodes/plannodes.h"
 
-extern Plan *make_bucket_scan(Plan *left_tree);
+extern Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets);
 
 #endif /* PG_DIFFIX_BUCKET_SCAN_H */

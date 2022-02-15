@@ -12,6 +12,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
 /*-------------------------------------------------------------------------
@@ -50,8 +51,11 @@
 typedef struct BucketScan
 {
   CustomScan custom_scan;
-  int num_labels; /* Number of grouping labels */
-  int num_aggs;   /* Number of aggregates in child Agg */
+  int num_labels;       /* Number of grouping labels */
+  int num_aggs;         /* Number of aggregates in child Agg */
+  int low_count_index;  /* Index of low count aggregate */
+  int count_star_index; /* Index of anonymizing count(*) aggregate */
+  bool expand_buckets;  /* Whether to expand implicitly grouped buckets */
 } BucketScan;
 
 /* Executor node */
@@ -62,6 +66,7 @@ typedef struct BucketScanState
   BucketDatumTag *att_tags;       /* Cached tags for bucket values */
   const AnonAggFuncs **agg_funcs; /* Cached anon agg funcs. NULL for labels/regular aggs */
   List *buckets;                  /* List of buckets gathered from child plan */
+  int64 repeat_previous_bucket;   /* If greater than zero, previous bucket will be emitted again */
   int next_bucket_index;          /* Next bucket to emit, starting from 0 */
   bool input_done;                /* Is the list of buckets populated? */
 } BucketScanState;
@@ -147,6 +152,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 
   bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScanState", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
+  bucket_state->repeat_previous_bucket = 0;
   bucket_state->next_bucket_index = 0;
   bucket_state->input_done = false;
 
@@ -275,6 +281,15 @@ static void finalize_bucket(Bucket *bucket, ExprContext *econtext)
   MemoryContextSwitchTo(old_context);
 }
 
+static int64 scan_slot_get_int64(ExprContext *econtext, int index)
+{
+  TupleTableSlot *scan_slot = econtext->ecxt_scantuple;
+  if (scan_slot->tts_isnull[index])
+    return 0;
+  else
+    return DatumGetInt64(scan_slot->tts_values[index]);
+}
+
 static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
 {
   BucketScanState *bucket_state = (BucketScanState *)css;
@@ -285,6 +300,15 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     run_hooks(bucket_state);
   }
 
+  /* Expand previously emitted bucket. */
+  if (bucket_state->repeat_previous_bucket > 0)
+  {
+    CHECK_FOR_INTERRUPTS();
+    bucket_state->repeat_previous_bucket--;
+    return bucket_state->css.ss.ps.ps_ResultTupleSlot;
+  }
+
+  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
   ExprContext *econtext = css->ss.ps.ps_ExprContext;
   ProjectionInfo *proj_info = css->ss.ps.ps_ProjInfo;
   ExprState *qual = css->ss.ps.qual;
@@ -309,6 +333,12 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     /* We do not reset after qual because some values in scan tuple are owned by econtext. */
     if (ExecQual(qual, econtext))
     {
+      if (plan->expand_buckets)
+      {
+        /* Repeat bucket for n-1 times after current one. */
+        bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan->count_star_index) - 1;
+      }
+
       return ExecProject(proj_info);
     }
   }
@@ -524,7 +554,7 @@ static List *project_agg_tlist(List *orig_agg_tlist, RewriteProjectionContext *c
   ListCell *cell;
   foreach (cell, orig_agg_tlist)
   {
-    TargetEntry *orig_tle = (TargetEntry *)lfirst(cell);
+    TargetEntry *orig_tle = lfirst_node(TargetEntry, cell);
 
     TargetEntry *projected_tle = makeTargetEntry(
         (Expr *)rewrite_projection_mutator((Node *)orig_tle->expr, context),
@@ -556,17 +586,32 @@ static List *project_agg_qual(List *orig_agg_qual, RewriteProjectionContext *con
   return projected_qual;
 }
 
-Plan *make_bucket_scan(Plan *left_tree)
+static int find_agg_index(List *tlist, Oid fnoid)
+{
+  ListCell *cell;
+  foreach (cell, tlist)
+  {
+    TargetEntry *tle = lfirst_node(TargetEntry, cell);
+    Expr *expr = tle->expr;
+    if (IsA(expr, Aggref) && ((Aggref *)expr)->aggfnoid == fnoid)
+      return foreach_current_index(cell);
+  }
+
+  return -1;
+}
+
+Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 {
   if (!IsA(left_tree, Agg))
     FAILWITH("Outer plan of BucketScan needs to be an aggregation node.");
 
   Agg *agg = (Agg *)left_tree;
+  int num_labels = agg->numCols;
 
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
   bucket_scan->custom_scan.methods = &BucketScanScanMethods;
-  bucket_scan->num_labels = agg->numCols;
+  bucket_scan->num_labels = num_labels;
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
 
   /*
@@ -583,13 +628,20 @@ Plan *make_bucket_scan(Plan *left_tree)
 
   /* Lift projection and qual up. */
   List *flat_agg_tlist = flatten_agg_tlist(agg);
-  bucket_scan->num_aggs = list_length(flat_agg_tlist) - bucket_scan->num_labels;
-  RewriteProjectionContext context = {flat_agg_tlist, bucket_scan->num_labels};
+  bucket_scan->num_aggs = list_length(flat_agg_tlist) - num_labels;
+  RewriteProjectionContext context = {flat_agg_tlist, num_labels};
   plan->targetlist = project_agg_tlist(agg->plan.targetlist, &context);
   plan->qual = project_agg_qual(agg->plan.qual, &context);
   outerPlan(plan) = left_tree;
   agg->plan.targetlist = flat_agg_tlist;
   agg->plan.qual = NIL;
+
+  bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.lcf);
+  bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count);
+  bucket_scan->expand_buckets = expand_buckets;
+
+  if (expand_buckets && bucket_scan->count_star_index == -1)
+    FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
 
   return (Plan *)bucket_scan;
 }
