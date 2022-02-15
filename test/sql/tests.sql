@@ -28,6 +28,10 @@ INSERT INTO test_patients VALUES
 
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
 
+-- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
+CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
+
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -38,6 +42,8 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 
 ----------------------------------------------------------------
 -- Utilities
@@ -76,7 +82,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
 
 ----------------------------------------------------------------
 -- Empty tables
@@ -190,3 +196,6 @@ SELECT city, COUNT(price) FROM test_customers, test_products GROUP BY 1;
 SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 
 SELECT city, COUNT(price) FROM test_products CROSS JOIN test_customers GROUP BY 1;
+
+-- Get rejected because of WHERE
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';

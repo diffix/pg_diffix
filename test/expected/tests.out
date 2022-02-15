@@ -21,6 +21,9 @@ INSERT INTO test_patients VALUES
   (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+-- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
+CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -31,6 +34,8 @@ SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 ----------------------------------------------------------------
 -- Utilities
 ----------------------------------------------------------------
@@ -123,7 +128,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  Berlin
 (1 row)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
@@ -301,3 +306,6 @@ SELECT city, COUNT(price) FROM test_products, test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
 SELECT city, COUNT(price) FROM test_products CROSS JOIN test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+-- Get rejected because of WHERE
+SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.

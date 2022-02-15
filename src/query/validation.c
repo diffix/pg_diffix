@@ -15,6 +15,7 @@
     FAILWITH("Feature '%s' is not currently supported.", (feature));
 
 static void verify_query(Query *query);
+static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_functions(Query *query);
@@ -41,9 +42,15 @@ static void verify_query(Query *query)
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
 
+  verify_where(query);
   verify_aggregators(query);
   verify_bucket_functions(query);
   verify_rtable(query);
+}
+
+static void verify_where(Query *query)
+{
+  NOT_SUPPORTED(query->jointree->quals, "WHERE clauses in anonymizing queries");
 }
 
 static void verify_rtable(Query *query)
