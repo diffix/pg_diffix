@@ -244,9 +244,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     {
       /* Switch to tuple memory to evaluate low count. */
       MemoryContextSwitchTo(per_tuple_memory);
-
       bucket->low_count = eval_low_count(bucket, bucket_desc, low_count_index);
-
       MemoryContextReset(per_tuple_memory);
     }
 
@@ -396,11 +394,8 @@ static const CustomExecMethods BucketScanExecMethods = {
 
 static Node *create_bucket_scan_state(CustomScan *custom_scan)
 {
-  BucketScanState *bucket_state = (BucketScanState *)newNode(
-      sizeof(BucketScanState), T_CustomScanState);
-
+  BucketScanState *bucket_state = (BucketScanState *)newNode(sizeof(BucketScanState), T_CustomScanState);
   bucket_state->css.methods = &BucketScanExecMethods;
-
   return (Node *)bucket_state;
 }
 
@@ -466,11 +461,7 @@ static List *flatten_agg_tlist(Agg *agg)
     Var *label_var = makeVarFromTargetEntry(OUTER_VAR, child_target_entry);
     Assert(label_var_attno == label_var->varattno);
 
-    TargetEntry *label_target_entry = makeTargetEntry(
-        (Expr *)label_var,
-        i + 1,
-        NULL,
-        false);
+    TargetEntry *label_target_entry = makeTargetEntry((Expr *)label_var, i + 1, NULL, false);
     label_target_entry->ressortgroupref = i + 1;
 
     TargetEntry *orig_target_entry = find_var_target_entry(orig_agg_tlist, label_var_attno);
@@ -493,14 +484,9 @@ static List *flatten_agg_tlist(Agg *agg)
   for (int i = 0; i < num_aggrefs; i++)
   {
     Expr *aggref = (Expr *)list_nth(aggrefs, i);
-
-    TargetEntry *agg_target_entry = makeTargetEntry(
-        aggref,
-        num_labels + i + 1,
-        NULL,
-        false);
-
+    TargetEntry *agg_target_entry = makeTargetEntry(aggref, num_labels + i + 1, NULL, false);
     TargetEntry *orig_target_entry = tlist_member(aggref, orig_agg_tlist);
+
     if (orig_target_entry != NULL)
       agg_target_entry->resname = orig_target_entry->resname;
 
@@ -543,13 +529,7 @@ static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *co
     int32 final_typmod;
     Oid final_collid;
     agg_funcs->final_type(&final_type, &final_typmod, &final_collid);
-
-    return (Node *)makeVar(INDEX_VAR,
-                           agg_tle->resno,
-                           final_type,
-                           final_typmod,
-                           final_collid,
-                           0);
+    return (Node *)makeVar(INDEX_VAR, agg_tle->resno, final_type, final_typmod, final_collid, 0);
   }
 
   if (IsA(node, Var))
