@@ -62,13 +62,12 @@ typedef struct BucketScan
 typedef struct BucketScanState
 {
   CustomScanState css;
-  MemoryContext bucket_context;   /* Buckets and aggregates are allocated in this context */
-  BucketDatumTag *att_tags;       /* Cached tags for bucket values */
-  const AnonAggFuncs **agg_funcs; /* Cached anon agg funcs. NULL for labels/regular aggs */
-  List *buckets;                  /* List of buckets gathered from child plan */
-  int64 repeat_previous_bucket;   /* If greater than zero, previous bucket will be emitted again */
-  int next_bucket_index;          /* Next bucket to emit, starting from 0 */
-  bool input_done;                /* Is the list of buckets populated? */
+  MemoryContext bucket_context;  /* Buckets and aggregates are allocated in this context */
+  BucketDescriptor *bucket_desc; /* Bucket metadata */
+  List *buckets;                 /* List of buckets gathered from child plan */
+  int64 repeat_previous_bucket;  /* If greater than zero, previous bucket will be emitted again */
+  int next_bucket_index;         /* Next bucket to emit, starting from 0 */
+  bool input_done;               /* Is the list of buckets populated? */
 } BucketScanState;
 
 /* Memory context of currently executing BucketScan node. */
@@ -80,60 +79,72 @@ MemoryContext g_current_bucket_context = NULL;
  */
 
 /*
- * Prepares scan tuple slot for storing labels and finalized aggregates.
- * Also populates `att_tags` and `agg_funcs` of BucketScanState.
+ * Populates `bucket_desc` field with type metadata.
  */
-static void init_scan_slot(BucketScanState *bucket_state, EState *estate)
+static void init_bucket_descriptor(BucketScanState *bucket_state)
 {
-  ScanState *scan_state = &bucket_state->css.ss;
-  BucketScan *plan = (BucketScan *)scan_state->ps.plan;
-  int num_labels = plan->num_labels;
-  int num_atts = num_labels + plan->num_aggs;
-  List *agg_tlist = outerPlan(plan)->targetlist;
-  TupleDesc scan_tupdesc = CreateTemplateTupleDesc(num_atts);
-  bucket_state->att_tags = palloc0(num_atts * sizeof(BucketDatumTag));
-  bucket_state->agg_funcs = palloc0(num_atts * sizeof(AnonAggFuncs *));
+  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
+  int num_atts = plan->num_labels + plan->num_aggs;
+
+  BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
+  bucket_desc->num_labels = plan->num_labels;
+  bucket_desc->num_aggs = plan->num_aggs;
+
+  List *outer_tlist = outerPlan(plan)->targetlist;
+  TupleDesc outer_tupdesc = outerPlanState(bucket_state)->ps_ResultTupleDesc;
 
   for (int i = 0; i < num_atts; i++)
   {
-    TargetEntry *tle = list_nth_node(TargetEntry, agg_tlist, i);
+    TargetEntry *tle = list_nth_node(TargetEntry, outer_tlist, i);
+
+    BucketAttribute *att = &bucket_desc->attrs[i];
+    att->typ_len = outer_tupdesc->attrs[i].attlen;
+    att->typ_byval = outer_tupdesc->attrs[i].attbyval;
+    att->resname = tle->resname;
 
     const AnonAggFuncs *agg_funcs = NULL;
-    if (i >= num_labels)
+    if (i >= plan->num_labels)
     {
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
-      bucket_state->att_tags[i] = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
-      bucket_state->agg_funcs[i] = agg_funcs;
+      att->agg_funcs = agg_funcs;
+      att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
-    Oid entry_type;
-    int32 entry_typmod;
-    Oid entry_collid;
     if (agg_funcs != NULL)
     {
       /* For anonymizing aggregate we describe finalized type. */
-      agg_funcs->final_type(&entry_type, &entry_typmod, &entry_collid);
+      agg_funcs->final_type(&att->final_type, &att->final_typmod, &att->final_collid);
     }
     else
     {
       /* Describe label or regular aggregate. */
       Node *expr = (Node *)tle->expr;
-      entry_type = exprType(expr);
-      entry_typmod = exprTypmod(expr);
-      entry_collid = exprCollation(expr);
+      att->final_type = exprType(expr);
+      att->final_typmod = exprTypmod(expr);
+      att->final_collid = exprCollation(expr);
     }
+  }
 
+  bucket_state->bucket_desc = bucket_desc;
+}
+
+/*
+ * Prepares scan tuple slot for storing labels and finalized aggregates.
+ */
+static void init_scan_slot(BucketScanState *bucket_state, EState *estate)
+{
+  ScanState *scan_state = &bucket_state->css.ss;
+  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
+  int num_atts = bucket_desc->num_labels + bucket_desc->num_aggs;
+  TupleDesc scan_tupdesc = CreateTemplateTupleDesc(num_atts);
+
+  for (int i = 0; i < num_atts; i++)
+  {
+    BucketAttribute *att = &bucket_desc->attrs[i];
     AttrNumber resno = 1 + i;
-    TupleDescInitEntry(scan_tupdesc,
-                       resno,
-                       tle->resname,
-                       entry_type,
-                       entry_typmod,
-                       0);
-    TupleDescInitEntryCollation(scan_tupdesc,
-                                resno,
-                                entry_collid);
+    TupleDescInitEntry(scan_tupdesc, resno, att->resname, att->final_type, att->final_typmod, 0);
+    TupleDescInitEntryCollation(scan_tupdesc, resno, att->final_collid);
   }
 
   ExecInitScanTupleSlot(estate, scan_state, scan_tupdesc, &TTSOpsVirtual);
@@ -156,19 +167,24 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   bucket_state->next_bucket_index = 0;
   bucket_state->input_done = false;
 
+  /* Initialize child plan. */
+  outerPlanState(bucket_state) = ExecInitNode(outerPlan(plan), estate, eflags);
+
+  /* Requires an initialized outerPlanState. */
+  init_bucket_descriptor(bucket_state);
   init_scan_slot(bucket_state, estate);
   css->ss.ps.ps_ExprContext->ecxt_scantuple = css->ss.ss_ScanTupleSlot;
-
-  outerPlanState(bucket_state) = ExecInitNode(outerPlan(plan), estate, eflags);
 }
 
 /*
  * Determines whether the given bucket is low count.
  */
-static bool eval_low_count(Bucket *bucket, int low_count_index)
+static bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc, int low_count_index)
 {
+  AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
+  Assert(agg_state != NULL);
   bool is_null = false;
-  Datum is_low_count = g_low_count_funcs.finalize((AnonAggState *)bucket->datums[low_count_index].value, bucket, &is_null);
+  Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
   Assert(!is_null);
   return DatumGetBool(is_low_count);
 }
@@ -183,17 +199,11 @@ static void fill_bucket_list(BucketScanState *bucket_state)
   BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
   PlanState *outer_plan_state = outerPlanState(bucket_state);
 
-  /* Data needed to build buckets. */
-  int num_labels = plan->num_labels;
-  int num_aggs = plan->num_aggs;
-  int num_atts = num_labels + num_aggs;
+  int num_atts = plan->num_labels + plan->num_aggs;
   int low_count_index = plan->low_count_index;
-  BucketDatumTag *att_tags = bucket_state->att_tags;
-  TupleDesc slot_desc = outer_plan_state->ps_ResultTupleDesc;
-  size_t bucket_size = sizeof(Bucket) + num_atts * sizeof(BucketDatum);
+  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
 
   List *buckets = NIL;
-
   for (;;)
   {
     CHECK_FOR_INTERRUPTS();
@@ -207,27 +217,21 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     /* Make sure data is safe for copying. */
     ExecMaterializeSlot(outer_slot);
     slot_getallattrs(outer_slot);
-    Datum *slot_values = outer_slot->tts_values;
-    bool *slot_is_null = outer_slot->tts_isnull;
 
     /* Buckets are allocated in longer lived memory. */
     MemoryContext old_context = MemoryContextSwitchTo(bucket_context);
-    Bucket *bucket = (Bucket *)palloc0(bucket_size);
-    bucket->num_labels = num_labels;
-    bucket->num_aggs = num_aggs;
+    Bucket *bucket = (Bucket *)palloc0(sizeof(Bucket));
+    bucket->values = (Datum *)palloc0(num_atts * sizeof(Datum));
+    bucket->is_null = (bool *)palloc0(num_atts * sizeof(bool));
 
     for (int i = 0; i < num_atts; i++)
     {
-      BucketDatum *datum = &bucket->datums[i];
-
-      datum->typ_len = slot_desc->attrs[i].attlen;
-      datum->typ_byval = slot_desc->attrs[i].attbyval;
-      datum->tag = att_tags[i];
-
-      if (slot_is_null[i])
-        datum->is_null = true;
+      if (outer_slot->tts_isnull[i])
+        bucket->is_null[i] = true;
       else
-        datum->value = datumCopy(slot_values[i], datum->typ_byval, datum->typ_len);
+        bucket->values[i] = datumCopy(outer_slot->tts_values[i],
+                                      bucket_desc->attrs[i].typ_byval,
+                                      bucket_desc->attrs[i].typ_len);
     }
 
     buckets = lappend(buckets, bucket);
@@ -241,7 +245,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
       /* Switch to tuple memory to evaluate low count. */
       MemoryContextSwitchTo(per_tuple_memory);
 
-      bucket->low_count = eval_low_count(bucket, low_count_index);
+      bucket->low_count = eval_low_count(bucket, bucket_desc, low_count_index);
 
       MemoryContextReset(per_tuple_memory);
     }
@@ -265,7 +269,7 @@ static void run_hooks(BucketScanState *bucket_state)
  * Moves bucket data to scan slot.
  * Aggregates are finalized in per tuple memory context.
  */
-static void finalize_bucket(Bucket *bucket, ExprContext *econtext)
+static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprContext *econtext)
 {
   MemoryContext old_context = MemoryContextSwitchTo(econtext->ecxt_per_tuple_memory);
 
@@ -273,19 +277,19 @@ static void finalize_bucket(Bucket *bucket, ExprContext *econtext)
   Datum *values = scan_slot->tts_values;
   bool *is_null = scan_slot->tts_isnull;
 
-  int num_atts = bucket->num_labels + bucket->num_aggs;
+  int num_atts = bucket_desc->num_labels + bucket_desc->num_aggs;
   for (int i = 0; i < num_atts; i++)
   {
-    BucketDatum *bucket_datum = &bucket->datums[i];
-    if (bucket_datum->tag == BUCKET_ANON_AGG)
+    BucketAttribute *att = &bucket_desc->attrs[i];
+    if (att->tag == BUCKET_ANON_AGG)
     {
-      AnonAggState *agg_state = (AnonAggState *)bucket_datum->value;
-      values[i] = agg_state->agg_funcs->finalize(agg_state, bucket, &is_null[i]);
+      Assert(DatumGetPointer(bucket->values[i]) != NULL);
+      values[i] = att->agg_funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
     }
     else
     {
-      values[i] = bucket_datum->value;
-      is_null[i] = bucket_datum->is_null;
+      values[i] = bucket->values[i];
+      is_null[i] = bucket->is_null[i];
     }
   }
 
@@ -320,6 +324,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
   }
 
   BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
+  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
   ExprContext *econtext = css->ss.ps.ps_ExprContext;
   ProjectionInfo *proj_info = css->ss.ps.ps_ProjInfo;
   ExprState *qual = css->ss.ps.qual;
@@ -339,7 +344,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
       continue; /* We can skip bucket without further evaluation. */
 
     ResetExprContext(econtext);
-    finalize_bucket(bucket, econtext);
+    finalize_bucket(bucket, bucket_desc, econtext);
 
     /* We do not reset after qual because some values in scan tuple are owned by econtext. */
     if (ExecQual(qual, econtext))
@@ -513,7 +518,8 @@ typedef struct RewriteProjectionContext
 
 /*
  * Rewrites a projection to target the flattened target list.
- * These expressions are evaluated in the BucketScan, which has the Agg as its outer plan.
+ * These expressions are evaluated against the BucketScan's scan
+ * slot where aggregates are finalized.
  */
 static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *context)
 {

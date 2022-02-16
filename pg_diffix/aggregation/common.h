@@ -80,35 +80,42 @@ extern const AnonAggFuncs g_count_any_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_low_count_funcs;
 
-#define BUCKET_LABEL 0
-#define BUCKET_REGULAR_AGG 1
-#define BUCKET_ANON_AGG 2
-
-typedef char BucketDatumTag;
-
-/*
- * A label or aggregate belonging to a bucket.
- * We include some metadata because the struct has free space.
- */
-typedef struct BucketDatum
+typedef enum BucketAttributeTag
 {
-  Datum value;        /* Actual data */
-  int typ_len;        /* Type length */
-  bool typ_byval;     /* Type is by value? */
-  bool is_null;       /* Value is null? */
-  BucketDatumTag tag; /* Label or aggregate? */
-} BucketDatum;
+  BUCKET_LABEL = 0,
+  BUCKET_REGULAR_AGG,
+  BUCKET_ANON_AGG
+} BucketAttributeTag;
+
+/* Describes a bucket label or aggregate. */
+typedef struct BucketAttribute
+{
+  const AnonAggFuncs *agg_funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+  BucketAttributeTag tag;        /* Label or aggregate? */
+  int typ_len;                   /* Data type length */
+  bool typ_byval;                /* Data type is by value? */
+  char *resname;                 /* Name of source TargetEntry */
+  Oid final_type;                /* Final type OID */
+  int final_typmod;              /* Final type modifier */
+  Oid final_collid;              /* Final type collation ID */
+} BucketAttribute;
+
+typedef struct BucketDescriptor
+{
+  int num_labels;                               /* Number of label attributes */
+  int num_aggs;                                 /* Number of aggregate attributes */
+  BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
+} BucketDescriptor;
 
 /*
  * A bucket is an output row from an aggregation node.
  */
 typedef struct Bucket
 {
-  int16 num_labels;                          /* Number of labels in datums */
-  int16 num_aggs;                            /* Number of aggregates in datums */
-  bool low_count;                            /* Has low count AIDs? */
-  bool merged;                               /* Was merged to some other bucket? */
-  BucketDatum datums[FLEXIBLE_ARRAY_MEMBER]; /* Grouping labels followed by aggregates */
+  Datum *values;  /* Array of label values followed by aggregates */
+  bool *is_null;  /* Attribute at index is null? */
+  bool low_count; /* Has low count AIDs? */
+  bool merged;    /* Was merged to some other bucket? */
 } Bucket;
 
 struct AnonAggFuncs
@@ -127,7 +134,7 @@ struct AnonAggFuncs
   void (*transition)(AnonAggState *state, PG_FUNCTION_ARGS);
 
   /* Derive final value from aggregation state and bucket data. */
-  Datum (*finalize)(const AnonAggState *state, const Bucket *bucket, bool *is_null);
+  Datum (*finalize)(AnonAggState *state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null);
 
   /* Merge source aggregation state to destination state. */
   void (*merge)(AnonAggState *dst_state, const AnonAggState *src_state);
