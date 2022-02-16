@@ -43,12 +43,19 @@ static void append_aid_args(Aggref *aggref, QueryContext *context);
  *-------------------------------------------------------------------------
  */
 
-static void group_implicit_buckets(Query *query)
+/* Returns whether `all_targets_constant`, which is needed for later treatment of the query. */
+static bool group_implicit_buckets(Query *query)
 {
+  bool all_targets_constant = true;
   ListCell *cell = NULL;
   foreach (cell, query->targetList)
   {
     TargetEntry *tle = lfirst_node(TargetEntry, cell);
+
+    if (tle->expr->type == T_Const)
+      continue;
+
+    all_targets_constant = false;
 
     Oid type = exprType((const Node *)tle->expr);
     Assert(type != UNKNOWNOID);
@@ -73,6 +80,8 @@ static void group_implicit_buckets(Query *query)
     /* Add group clause to query. */
     query->groupClause = lappend(query->groupClause, groupClause);
   }
+
+  return all_targets_constant;
 }
 
 /*
@@ -108,18 +117,6 @@ static void expand_implicit_buckets(Query *query)
   query->hasTargetSRFs = true;
 }
 
-static void group_and_expand_implicit_buckets(Query *query)
-{
-  /* Only simple select queries require implicit grouping. */
-  if (query->hasAggs || query->groupClause != NIL)
-    return;
-
-  DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
-
-  group_implicit_buckets(query);
-  expand_implicit_buckets(query);
-}
-
 /*-------------------------------------------------------------------------
  * Low count filtering
  *-------------------------------------------------------------------------
@@ -128,9 +125,6 @@ static void group_and_expand_implicit_buckets(Query *query)
 static void add_low_count_filter(QueryContext *context)
 {
   Query *query = context->query;
-  /* Global aggregates have to be excluded from low-count filtering. */
-  if (query->hasAggs && query->groupClause == NIL)
-    return;
 
   Aggref *lcf_agg = makeNode(Aggref);
 
@@ -521,7 +515,21 @@ void anonymize_query(Query *query, List *sensitive_relations)
 {
   QueryContext *context = build_context(query, sensitive_relations);
 
-  group_and_expand_implicit_buckets(query);
+  bool has_aggs = query->hasAggs;
+  bool has_group_clause = query->groupClause != NIL;
+  /* Assuming this to be true, unless proven otherwise in the next steps. */
+  bool should_add_lcf = true;
+
+  /* Only simple select queries require implicit grouping. */
+  if (!has_aggs && !has_group_clause)
+  {
+    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+
+    bool all_targets_constant = group_implicit_buckets(query);
+    expand_implicit_buckets(query);
+
+    should_add_lcf = !all_targets_constant;
+  }
 
   query_tree_mutator(
       query,
@@ -529,7 +537,12 @@ void anonymize_query(Query *query, List *sensitive_relations)
       context,
       QTW_DONT_COPY_QUERY);
 
-  add_low_count_filter(context);
+  /* Global aggregates have to be excluded from low-count filtering. */
+  if (has_aggs && !has_group_clause)
+    should_add_lcf = false;
+
+  if (should_add_lcf)
+    add_low_count_filter(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 
