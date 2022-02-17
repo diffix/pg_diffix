@@ -136,7 +136,7 @@ static void init_scan_slot(BucketScanState *bucket_state, EState *estate)
 {
   ScanState *scan_state = &bucket_state->css.ss;
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
-  int num_atts = bucket_desc->num_labels + bucket_desc->num_aggs;
+  int num_atts = bucket_num_atts(bucket_desc);
   TupleDesc scan_tupdesc = CreateTemplateTupleDesc(num_atts);
 
   for (int i = 0; i < num_atts; i++)
@@ -181,6 +181,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
  */
 static bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc, int low_count_index)
 {
+  Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
   AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
   Assert(agg_state != NULL);
   bool is_null = false;
@@ -275,7 +276,7 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
   Datum *values = scan_slot->tts_values;
   bool *is_null = scan_slot->tts_isnull;
 
-  int num_atts = bucket_desc->num_labels + bucket_desc->num_aggs;
+  int num_atts = bucket_num_atts(bucket_desc);
   for (int i = 0; i < num_atts; i++)
   {
     BucketAttribute *att = &bucket_desc->attrs[i];

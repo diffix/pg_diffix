@@ -107,6 +107,11 @@ typedef struct BucketDescriptor
   BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
 } BucketDescriptor;
 
+static inline int bucket_num_atts(BucketDescriptor *bucket_desc)
+{
+  return bucket_desc->num_labels + bucket_desc->num_aggs;
+}
+
 /*
  * A bucket is an output row from an aggregation node.
  */
