@@ -22,7 +22,11 @@ static void verify_bucket_expressions(Query *query);
 
 void verify_anonymization_requirements(Query *query)
 {
-  config_check(); /* No easy way to validate related parameters using only GUC. */
+  /*
+   * Since we cannot easily validate cross-dependent parameters using GUC,
+   * we verify those here and fail if they are misconfigured.
+   */
+  config_check();
   verify_query(query);
 }
 

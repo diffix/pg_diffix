@@ -47,7 +47,7 @@ static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 typedef struct DistinctTrackerHashEntry
 {
   Datum value; /* Unique value */
-  List *aidvs; /* List of AID value lists, one for each AID instance */
+  List *aidvs; /* List of AID sets (represented as Lists), one for each AID instance */
   char status; /* Required for hash table */
 } DistinctTrackerHashEntry;
 
