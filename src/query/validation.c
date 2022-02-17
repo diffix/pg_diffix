@@ -18,15 +18,15 @@ static void verify_query(Query *query);
 static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
-static void verify_bucket_functions(Query *query);
+static void verify_bucket_expressions(Query *query);
 
 void verify_anonymization_requirements(Query *query)
 {
   /*
-   * No easy way to fully check these related parameters using GUC. If someone manages to misconfigure, we need to fail
-   * here.
+   * Since we cannot easily validate cross-dependent parameters using GUC,
+   * we verify those here and fail if they are misconfigured.
    */
-  config_check();
+  config_validate();
   verify_query(query);
 }
 
@@ -44,7 +44,7 @@ static void verify_query(Query *query)
 
   verify_where(query);
   verify_aggregators(query);
-  verify_bucket_functions(query);
+  verify_bucket_expressions(query);
   verify_rtable(query);
 }
 
@@ -55,7 +55,6 @@ static void verify_where(Query *query)
 
 static void verify_rtable(Query *query)
 {
-  /* Cater for cross joins in the form of `FROM from_item1, from_item2, ...`. */
   NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
 
   ListCell *cell = NULL;
@@ -95,31 +94,64 @@ static void verify_aggregators(Query *query)
   query_tree_walker(query, verify_aggregator, NULL, 0);
 }
 
-static bool verify_bucket_function(Node *node, void *context)
+static bool is_expression_a(Node *node, NodeTag tag)
 {
-  if (node == NULL)
-    return false;
+  if (node->type == tag)
+    return true;
 
   if (IsA(node, FuncExpr))
   {
-    FuncExpr *funcref = (FuncExpr *)node;
-    Oid funcoid = funcref->funcid;
+    FuncExpr *func_expr = (FuncExpr *)node;
+    if (is_allowed_cast(func_expr->funcid))
+    {
+      Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
+      return is_expression_a(linitial(func_expr->args), tag);
+    }
+  }
 
-    if (!is_allowed_cast(funcoid) && !is_allowed_function(funcoid))
-      FAILWITH_LOCATION(funcref->location, "Unsupported function used to define buckets.");
+  return false;
+}
+
+static void verify_bucket_expression(Node *node)
+{
+  if (IsA(node, FuncExpr))
+  {
+    FuncExpr *func_expr = (FuncExpr *)node;
+    if (is_allowed_cast(func_expr->funcid))
+    {
+      Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
+      return verify_bucket_expression(linitial(func_expr->args));
+    }
+
+    if (!is_allowed_function(func_expr->funcid))
+      FAILWITH_LOCATION(func_expr->location, "Unsupported function used to define buckets.");
+
+    Assert(list_length(func_expr->args) > 0); /* All allowed functions require at least one argument. */
+
+    if (!is_expression_a(linitial(func_expr->args), T_Var))
+      FAILWITH_LOCATION(func_expr->location, "Primary argument for a bucket function has to be a simple column reference.");
+
+    for (int i = 1; i < list_length(func_expr->args); i++)
+    {
+      if (!is_expression_a((Node *)list_nth(func_expr->args, i), T_Const))
+        FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
+    }
   }
 
   if (IsA(node, OpExpr))
   {
-    OpExpr *funcref = (OpExpr *)node;
-    /* We don't yet support any operators. */
-    FAILWITH_LOCATION(funcref->location, "Unsupported operator used to define buckets.");
+    OpExpr *op_expr = (OpExpr *)node;
+    FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
   }
 
-  return expression_tree_walker(node, verify_bucket_function, context);
+  if (IsA(node, Const))
+  {
+    Const *const_expr = (Const *)node;
+    FAILWITH_LOCATION(const_expr->location, "Simple constants are not allowed as bucket expressions.");
+  }
 }
 
-static void verify_bucket_functions(Query *query)
+static void verify_bucket_expressions(Query *query)
 {
   List *exprs_list = NIL;
   if (query->groupClause != NIL)
@@ -134,6 +166,6 @@ static void verify_bucket_functions(Query *query)
   foreach (cell, exprs_list)
   {
     Node *expr = (Node *)lfirst(cell);
-    verify_bucket_function(expr, NULL);
+    verify_bucket_expression(expr);
   }
 }

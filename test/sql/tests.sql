@@ -4,11 +4,11 @@ LOAD 'pg_diffix';
 SET pg_diffix.session_access_level = 'publish';
 
 -- Create test data.
-CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT);
+CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL);
 INSERT INTO test_customers VALUES
-  (0, NULL), (1, 'Berlin'), (2, 'Berlin'), (3, 'Rome'), (4, 'London'), (5, 'Berlin'), (6, 'Rome'),
-  (7, 'Rome'), (8, 'Berlin'), (9, 'Rome'), (10, 'Berlin'), (11, 'Rome'), (12, 'Rome'), (13, 'Rome'),
-  (14, 'Berlin'), (15, 'Berlin');
+  (0, NULL, NULL), (1, 'Berlin', 1.0), (2, 'Berlin', 1.0), (3, 'Rome', 0.5), (4, 'London', 2.0), (5, 'Berlin', 2.0),
+  (6, 'Rome', 1.0), (7, 'Rome', 0.5), (8, 'Berlin', 0.0), (9, 'Rome', 1.0), (10, 'Berlin', 2.0), (11, 'Rome', 1.5),
+  (12, 'Rome', 0.5), (13, 'Rome', 0.5), (14, 'Berlin', 1.5), (15, 'Berlin', 1.0);
 
 CREATE TABLE test_products (id INTEGER PRIMARY KEY, name TEXT, price REAL);
 INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5),
@@ -156,10 +156,15 @@ SELECT city FROM test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 SELECT count(city ORDER BY city) FROM test_customers;
 SELECT count(*) FILTER (WHERE true) FROM test_customers;
 
--- Get rejected because only a subset of functions is supported for defining buckets.
+-- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
 SELECT LENGTH(city) FROM test_customers;
+SELECT city, 'aaaa' FROM test_customers;
+SELECT COUNT(*) FROM test_customers GROUP BY round(floor(id));
+SELECT COUNT(*) FROM test_customers GROUP BY floor(cast(discount AS integer));
+SELECT COUNT(*) FROM test_customers GROUP BY substr(city, 1, id);
+SELECT COUNT(*) FROM test_customers GROUP BY substr('aaaa', 1, 2);
 
 -- Get rejected because of subqueries
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)

@@ -8,13 +8,15 @@
 
 static const char *const g_allowed_casts[] = {
     "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
-    "dtoi2", "ftoi2", "ftod", "ftoi4", "ftoi8", "dtof", "dtoi4", "dtoi8",
-    "int4_numeric", "float4_numeric", "float8_numeric", "numeric_int4",
+    "ftod", "dtof",
+    "int4_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
     /**/
 };
 
 static const char *const g_allowed_builtins[] = {
+    /* rounding casts */
+    "ftoi2", "ftoi4", "ftoi8", "dtoi2", "dtoi4", "dtoi8", "numeric_int4",
     /* substring */
     "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len",
     /* numeric generalization */
@@ -28,7 +30,7 @@ static const char *const g_allowed_builtins[] = {
 #define F_NUMERIC_ROUND_INT 1708
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
 
-/* These are filled at runtime. Array of const pointers to const values. */
+/* Pointers to OID cache which is populated at runtime. */
 static const Oid *const g_allowed_udfs[] = {
     &g_oid_cache.round_by_nn,
     &g_oid_cache.round_by_dd,
@@ -38,7 +40,7 @@ static const Oid *const g_allowed_udfs[] = {
     &g_oid_cache.floor_by_dd,
 };
 
-/* Taken from fmgr.c, which has it static too. See there for original comments */
+/* Taken from fmgr.c. */
 static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
 {
   if (id > fmgr_last_builtin_oid)
