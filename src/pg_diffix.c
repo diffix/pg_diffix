@@ -25,7 +25,7 @@ void _PG_init(void)
 
   auth_init();
   config_init();
-  config_check();
+  config_validate();
   hooks_init();
 }
 

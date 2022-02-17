@@ -34,6 +34,6 @@ extern void config_init(void);
 /*
  * Validates cross-dependent configuration variables and fails if they are mismatched.
  */
-extern void config_check(void);
+extern void config_validate(void);
 
 #endif /* PG_DIFFIX_CONFIG_H */

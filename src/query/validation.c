@@ -26,7 +26,7 @@ void verify_anonymization_requirements(Query *query)
    * Since we cannot easily validate cross-dependent parameters using GUC,
    * we verify those here and fail if they are misconfigured.
    */
-  config_check();
+  config_validate();
   verify_query(query);
 }
 
@@ -141,7 +141,7 @@ static void verify_bucket_expression(Node *node)
   if (IsA(node, OpExpr))
   {
     OpExpr *op_expr = (OpExpr *)node;
-    FAILWITH_LOCATION(op_expr->location, "Unsupported operator used to define buckets.");
+    FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
   }
 
   if (IsA(node, Const))

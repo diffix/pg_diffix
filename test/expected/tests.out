@@ -254,7 +254,7 @@ ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
 LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
                                                      ^
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
-ERROR:  [PG_DIFFIX] Unsupported operator used to define buckets.
+ERROR:  [PG_DIFFIX] Use of operators to define buckets is not supported.
 LINE 1: SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
                                                           ^
 SELECT LENGTH(city) FROM test_customers;

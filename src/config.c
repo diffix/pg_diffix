@@ -48,9 +48,10 @@ static char *config_to_string(DiffixConfig *config)
 static bool g_initializing = false; /* Set to true during config initialization. */
 
 /*
- * Because initialization can have nondeterministic order, we can only validate single
- * parameters using GUC hooks. Cross-dependent parameters such as intervals have to be
- * validated via `config_check`, which is called at runtime during query validation.
+ * Because initialization can be done in order out of our control, we can fully validate only single
+ * parameters using GUC hooks. Cross-dependent parameters such as intervals are only soft-validated
+ * in GUC hooks, issuing warnings under some circumstances. Later they have to be re-validated
+ * strictly via `config_validate`, which is called at runtime during query validation.
  */
 
 static bool session_access_level_check(int *newval, void **extra, GucSource source)
@@ -269,7 +270,7 @@ and the mean of the low count filter threshold.", /* short_desc */
   g_initializing = false;
 }
 
-void config_check(void)
+void config_validate(void)
 {
   if (g_config.top_count_min > g_config.top_count_max)
     FAILWITH("pg_diffix is misconfigured: top_count_min > top_count_max.");
