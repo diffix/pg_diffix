@@ -80,6 +80,66 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 (2 rows)
 
 ----------------------------------------------------------------
+-- Basic queries - expanding constants in target expressions
+----------------------------------------------------------------
+SELECT 1 FROM test_patients;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(10 rows)
+
+SELECT cast(1 as real) FROM test_patients;
+ float4 
+--------
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+(10 rows)
+
+SELECT 1, COUNT(*) FROM test_patients;
+ ?column? | count 
+----------+-------
+        1 |    10
+(1 row)
+
+SELECT 1, city FROM test_customers;
+ ?column? |  city  
+----------+--------
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Rome
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+(16 rows)
+
+----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
 SELECT city FROM test_patients GROUP BY 1;

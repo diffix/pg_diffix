@@ -65,6 +65,15 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
+-- Basic queries - expanding constants in target expressions
+----------------------------------------------------------------
+
+SELECT 1 FROM test_patients;
+SELECT cast(1 as real) FROM test_patients;
+SELECT 1, COUNT(*) FROM test_patients;
+SELECT 1, city FROM test_customers;
+
+----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
 

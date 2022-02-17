@@ -43,19 +43,47 @@ static void append_aid_args(Aggref *aggref, QueryContext *context);
  *-------------------------------------------------------------------------
  */
 
-/* Returns whether `all_targets_constant`, which is needed for later treatment of the query. */
-static bool group_implicit_buckets(Query *query)
+static bool is_constant_expression(Node *node, bool *context)
 {
-  bool all_targets_constant = true;
+  if (node == NULL || IsA(node, Const))
+    return false;
+
+  if (IsA(node, Var))
+  {
+    *context = false;
+    return true;
+  }
+
+  return expression_tree_walker(node, is_constant_expression, context);
+}
+
+static bool all_targets_constant(Query *query)
+{
   ListCell *cell = NULL;
   foreach (cell, query->targetList)
   {
     TargetEntry *tle = lfirst_node(TargetEntry, cell);
 
-    if (tle->expr->type == T_Const)
-      continue;
+    bool is_constant = true;
+    is_constant_expression((Node *)tle->expr, &is_constant);
+    if (!is_constant)
+      return false;
+  }
 
-    all_targets_constant = false;
+  return true;
+}
+
+static void group_implicit_buckets(Query *query)
+{
+  ListCell *cell = NULL;
+  foreach (cell, query->targetList)
+  {
+    TargetEntry *tle = lfirst_node(TargetEntry, cell);
+
+    bool is_constant = true;
+    is_constant_expression((Node *)tle->expr, &is_constant);
+    if (is_constant)
+      continue;
 
     Oid type = exprType((const Node *)tle->expr);
     Assert(type != UNKNOWNOID);
@@ -80,8 +108,6 @@ static bool group_implicit_buckets(Query *query)
     /* Add group clause to query. */
     query->groupClause = lappend(query->groupClause, groupClause);
   }
-
-  return all_targets_constant;
 }
 
 /*
@@ -515,20 +541,17 @@ void anonymize_query(Query *query, List *sensitive_relations)
 {
   QueryContext *context = build_context(query, sensitive_relations);
 
-  bool has_aggs = query->hasAggs;
-  bool has_group_clause = query->groupClause != NIL;
-  /* Assuming this to be true, unless proven otherwise in the next steps. */
-  bool should_add_lcf = true;
+  bool initial_has_aggs = query->hasAggs;
+  bool initial_has_group_clause = query->groupClause != NIL;
+  bool initial_all_targets_constant = all_targets_constant(query);
 
   /* Only simple select queries require implicit grouping. */
-  if (!has_aggs && !has_group_clause)
+  if (!initial_has_aggs && !initial_has_group_clause)
   {
     DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
 
-    bool all_targets_constant = group_implicit_buckets(query);
+    group_implicit_buckets(query);
     expand_implicit_buckets(query);
-
-    should_add_lcf = !all_targets_constant;
   }
 
   query_tree_mutator(
@@ -538,10 +561,7 @@ void anonymize_query(Query *query, List *sensitive_relations)
       QTW_DONT_COPY_QUERY);
 
   /* Global aggregates have to be excluded from low-count filtering. */
-  if (has_aggs && !has_group_clause)
-    should_add_lcf = false;
-
-  if (should_add_lcf)
+  if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))
     add_low_count_filter(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
