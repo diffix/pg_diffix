@@ -36,8 +36,8 @@ typedef struct AidTrackerState
 extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
 
 /*
- * Gets or creates the multi-AID aggregation state from the function arguments.
+ * Creates the multi-AID aggregation state from the function arguments.
  */
-extern List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset);
+extern List *create_aid_trackers(PG_FUNCTION_ARGS, int aids_offset);
 
 #endif /* PG_DIFFIX_AID_TRACKER_H */

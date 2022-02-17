@@ -37,17 +37,9 @@ void aid_tracker_update(AidTrackerState *state, aid_t aid)
   }
 }
 
-static const int STATE_INDEX = 0;
-
-List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
+List *create_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
 {
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (List *)PG_GETARG_POINTER(STATE_INDEX);
-
   Assert(PG_NARGS() > aids_offset);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   List *trackers = NIL;
   for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
@@ -57,6 +49,5 @@ List *get_aggregate_aid_trackers(PG_FUNCTION_ARGS, int aids_offset)
     trackers = lappend(trackers, tracker);
   }
 
-  MemoryContextSwitchTo(old_context);
   return trackers;
 }
