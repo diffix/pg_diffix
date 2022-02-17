@@ -8,13 +8,15 @@
 
 static const char *const g_allowed_casts[] = {
     "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
-    "dtoi2", "ftoi2", "ftod", "ftoi4", "ftoi8", "dtof", "dtoi4", "dtoi8",
-    "int4_numeric", "float4_numeric", "float8_numeric", "numeric_int4",
+    "ftod", "dtof",
+    "int4_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
     /**/
 };
 
 static const char *const g_allowed_builtins[] = {
+    /* rounding casts */
+    "ftoi2", "ftoi4", "ftoi8", "dtoi2", "dtoi4", "dtoi8", "numeric_int4",
     /* substring */
     "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len",
     /* numeric generalization */
