@@ -23,10 +23,10 @@ static void verify_bucket_expressions(Query *query);
 void verify_anonymization_requirements(Query *query)
 {
   /*
-   * No easy way to fully check these related parameters using GUC. If someone manages to misconfigure, we need to fail
-   * here.
+   * Since we cannot easily validate cross-dependent parameters using GUC,
+   * we verify those here and fail if they are misconfigured.
    */
-  config_check();
+  config_validate();
   verify_query(query);
 }
 
@@ -55,7 +55,6 @@ static void verify_where(Query *query)
 
 static void verify_rtable(Query *query)
 {
-  /* Cater for cross joins in the form of `FROM from_item1, from_item2, ...`. */
   NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
 
   ListCell *cell = NULL;
@@ -142,14 +141,12 @@ static void verify_bucket_expression(Node *node)
   if (IsA(node, OpExpr))
   {
     OpExpr *op_expr = (OpExpr *)node;
-    /* We don't yet support any operators. */
-    FAILWITH_LOCATION(op_expr->location, "Unsupported operator used to define buckets.");
+    FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
   }
 
   if (IsA(node, Const))
   {
     Const *const_expr = (Const *)node;
-    /* We don't yet support any operators. */
     FAILWITH_LOCATION(const_expr->location, "Simple constants are not allowed as bucket expressions.");
   }
 }

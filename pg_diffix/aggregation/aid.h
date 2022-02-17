@@ -11,7 +11,7 @@ typedef aid_t (*MakeAidFunc)(Datum datum);
 
 typedef struct AidDescriptor
 {
-  MakeAidFunc make_aid; /* Function which gets an AID from a Datum */
+  MakeAidFunc make_aid; /* Maps Datum to an AID value */
 } AidDescriptor;
 
 extern AidDescriptor get_aid_descriptor(Oid aid_type);

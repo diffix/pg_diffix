@@ -52,7 +52,6 @@ static void prepare_query(Query *query)
 
   anonymize_query(query, sensitive_relations);
 
-  /* Print rewritten query. */
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 }
 
