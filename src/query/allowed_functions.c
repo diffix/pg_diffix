@@ -28,7 +28,7 @@ static const char *const g_allowed_builtins[] = {
 #define F_NUMERIC_ROUND_INT 1708
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
 
-/* These are filled at runtime. Array of const pointers to const values. */
+/* Pointers to OID cache which is populated at runtime. */
 static const Oid *const g_allowed_udfs[] = {
     &g_oid_cache.round_by_nn,
     &g_oid_cache.round_by_dd,
@@ -38,7 +38,7 @@ static const Oid *const g_allowed_udfs[] = {
     &g_oid_cache.floor_by_dd,
 };
 
-/* Taken from fmgr.c, which has it static too. See there for original comments */
+/* Taken from fmgr.c. */
 static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
 {
   if (id > fmgr_last_builtin_oid)

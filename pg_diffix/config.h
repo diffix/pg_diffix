@@ -31,11 +31,8 @@ extern DiffixConfig g_config;
 
 extern void config_init(void);
 
-/* 
- * Strict checking of the configuration variables.
- *
- * GUC's `check_hook` need to be NOTICE only, for all variables which are cross-dependent on each other. This function
- * provides a way to do a strict check after a full round of setting all variables has passed, e.g. after `config_init`
+/*
+ * Validates cross-dependent configuration variables and fails if they are mismatched.
  */
 extern void config_check(void);
 

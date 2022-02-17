@@ -104,7 +104,6 @@ Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
     {
       aid_t aid = tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
       if (PG_ARGISNULL(VALUE_INDEX))
-        /* count argument is NULL, so no contribution, only keep track of the AID value */
         contribution_tracker_update_aid(tracker, aid);
       else
         contribution_tracker_update_contribution(tracker, aid, one_contribution);

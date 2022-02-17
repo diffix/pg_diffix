@@ -47,7 +47,7 @@ static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 typedef struct DistinctTrackerHashEntry
 {
   Datum value; /* Unique value */
-  List *aidvs; /* List of (hashes of) AID value lists, one for each AID instance */
+  List *aidvs; /* List of AID value lists, one for each AID instance */
   char status; /* Required for hash table */
 } DistinctTrackerHashEntry;
 
@@ -153,8 +153,8 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
       {
         Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
         aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(cell);               /* pointer to the set of AID values */
-        *aidv = list_append_unique_ptr(*aidv, (void *)aid); /* add current AID value to the set */
+        List **aidv = (List **)&lfirst(cell);
+        *aidv = list_append_unique_ptr(*aidv, (void *)aid);
       }
     }
   }
@@ -222,7 +222,7 @@ static seed_t seed_from_aidv(const List *aidvs)
 static bool aid_set_is_high_count(seed_t bucket_seed, const List *aidvs)
 {
   if (list_length(aidvs) < g_config.low_count_min_threshold)
-    return false; /* Less AID values than minimum threshold, value is low-count. */
+    return false; /* Fewer AID values than minimum threshold, value is low-count. */
 
   seed_t aid_seed = seed_from_aidv(aidvs);
 
@@ -466,11 +466,10 @@ static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
         &aid_seed, &contributors_count,
         top_contributors);
 
-    /* NOTE: 0 is the unaccounted_for */
+    uint64 unaccounted_for = 0;
     CountResult inner_count_result = aggregate_count_contributions(
-        bucket_seed, aid_seed,
-        lc_values_true_count, contributors_count, 0,
-        top_contributors);
+        bucket_seed, aid_seed, lc_values_true_count,
+        contributors_count, unaccounted_for, top_contributors);
 
     list_free_deep(per_aid_values);
     pfree(top_contributors);
