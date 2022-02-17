@@ -9,7 +9,7 @@
  *
  * The `create_state` function must:
  *   - Switch to the provided memory context to ensure adequate lifetime of the state.
- *   - Return a derived struct with its first member of type AnonAggState (not pointer!) and populate it.
+ *   - Return a derived struct with its first member of type BaseAggState (not pointer!) and populate it.
  *   - Inspect PG_FUNCTION_ARGS for type info but not values, since it may also be called during finalfunc.
  *     Argument at index 0 should be ignored because it is managed by the wrapper function.
  *   - Initialize aggregator data such as hash tables (in the provided memory context).
@@ -72,7 +72,7 @@
  */
 
 typedef struct AnonAggFuncs AnonAggFuncs;
-typedef struct AnonAggState AnonAggState;
+typedef struct BaseAggState BaseAggState;
 
 /* Known anonymizing aggregators. */
 extern const AnonAggFuncs g_count_funcs;
@@ -133,29 +133,29 @@ struct AnonAggFuncs
    * responsible for switching to this memory context when allocating.
    * PG_FUNCTION_ARGS should be used only for inspecting parameter types.
    */
-  AnonAggState *(*create_state)(MemoryContext memory_context, PG_FUNCTION_ARGS);
+  BaseAggState *(*create_state)(MemoryContext memory_context, PG_FUNCTION_ARGS);
 
   /* Transitions the aggregator state for an input tuple. */
-  void (*transition)(AnonAggState *state, PG_FUNCTION_ARGS);
+  void (*transition)(BaseAggState *state, PG_FUNCTION_ARGS);
 
   /* Derive final value from aggregation state and bucket data. */
-  Datum (*finalize)(AnonAggState *state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null);
+  Datum (*finalize)(BaseAggState *state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null);
 
   /* Merge source aggregation state to destination state. */
-  void (*merge)(AnonAggState *dst_state, const AnonAggState *src_state);
+  void (*merge)(BaseAggState *dst_state, const BaseAggState *src_state);
 
   /*
    * Returns a string representation of the aggregator state.
    * The string should be allocated in the current (not state's) memory context.
    */
-  const char *(*explain)(const AnonAggState *state);
+  const char *(*explain)(const BaseAggState *state);
 };
 
 /*
  * Base data for an anonymizing aggregator state.
  * Must be the first member in derived structs.
  */
-struct AnonAggState
+struct BaseAggState
 {
   const AnonAggFuncs *agg_funcs; /* Aggregator implementation. */
   MemoryContext memory_context;  /* Where this state lives. */

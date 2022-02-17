@@ -7,7 +7,7 @@
 #include "pg_diffix/utils.h"
 
 /* See AggState definition in SQL. */
-#define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_INT64(index))
+#define PG_GET_AGG_STATE(index) ((BaseAggState *)PG_GETARG_INT64(index))
 #define PG_RETURN_AGG_STATE(state) PG_RETURN_INT64(state)
 
 /* Memory context of currently executing BucketScan node (if any). */
@@ -26,7 +26,7 @@ Datum anon_agg_state_input(PG_FUNCTION_ARGS)
 
 Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 {
-  AnonAggState *state = PG_GET_AGG_STATE(0);
+  BaseAggState *state = PG_GET_AGG_STATE(0);
   const char *str = state->agg_funcs->explain(state);
   PG_RETURN_CSTRING(str);
 }
@@ -47,7 +47,7 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
   return NULL;
 }
 
-static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
+static BaseAggState *get_agg_state(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(0))
     return PG_GET_AGG_STATE(0);
@@ -65,16 +65,16 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (unlikely(agg_funcs == NULL))
     FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
-  AnonAggState *state = agg_funcs->create_state(bucket_context, fcinfo);
-  Assert(state->agg_funcs == agg_funcs);
-  Assert(state->memory_context == bucket_context);
+  BaseAggState *state = agg_funcs->create_state(bucket_context, fcinfo);
+  state->agg_funcs = agg_funcs;
+  state->memory_context = bucket_context;
 
   return state;
 }
 
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
-  AnonAggState *state = get_agg_state(fcinfo);
+  BaseAggState *state = get_agg_state(fcinfo);
   state->agg_funcs->transition(state, fcinfo);
   PG_RETURN_AGG_STATE(state);
 }
@@ -85,6 +85,6 @@ Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
  */
 Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
-  AnonAggState *state = get_agg_state(fcinfo);
+  BaseAggState *state = get_agg_state(fcinfo);
   PG_RETURN_AGG_STATE(state);
 }
