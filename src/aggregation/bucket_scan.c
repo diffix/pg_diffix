@@ -182,7 +182,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 static bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc, int low_count_index)
 {
   Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
-  BaseAggState *agg_state = (BaseAggState *)DatumGetInt64(bucket->values[low_count_index]);
+  AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
   Assert(agg_state != NULL);
   bool is_null = false;
   Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
@@ -283,7 +283,7 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     if (att->tag == BUCKET_ANON_AGG)
     {
       Assert(DatumGetPointer(bucket->values[i]) != NULL);
-      values[i] = att->agg_funcs->finalize((BaseAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
+      values[i] = att->agg_funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
     }
     else
     {

@@ -43,26 +43,26 @@ static void agg_final_type(Oid *type, int32 *typmod, Oid *collid)
   *collid = 0;
 }
 
-typedef struct AggState
+typedef struct LowCountState
 {
-  BaseAggState base;
+  AnonAggState base;
   List *aid_trackers;
-} AggState;
+} LowCountState;
 
-static BaseAggState *agg_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *agg_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  AggState *state = (AggState *)palloc0(sizeof(AggState));
+  LowCountState *state = (LowCountState *)palloc0(sizeof(LowCountState));
   state->aid_trackers = create_aid_trackers(fcinfo, AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
 }
 
-static void agg_transition(BaseAggState *base_state, PG_FUNCTION_ARGS)
+static void agg_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
 {
-  AggState *state = (AggState *)base_state;
+  LowCountState *state = (LowCountState *)base_state;
 
   Assert(PG_NARGS() == list_length(state->aid_trackers) + AIDS_OFFSET);
 
@@ -79,9 +79,9 @@ static void agg_transition(BaseAggState *base_state, PG_FUNCTION_ARGS)
   }
 }
 
-static Datum agg_finalize(BaseAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  AggState *state = (AggState *)base_state;
+  LowCountState *state = (LowCountState *)base_state;
 
   bool passes_lcf = true;
   seed_t bucket_seed = compute_bucket_seed();
@@ -98,10 +98,10 @@ static Datum agg_finalize(BaseAggState *base_state, Bucket *bucket, BucketDescri
   PG_RETURN_BOOL(passes_lcf);
 }
 
-static void agg_merge(BaseAggState *dst_base_state, const BaseAggState *src_base_state)
+static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
 {
-  AggState *dst_state = (AggState *)dst_base_state;
-  const AggState *src_state = (const AggState *)src_base_state;
+  LowCountState *dst_state = (LowCountState *)dst_base_state;
+  const LowCountState *src_state = (const LowCountState *)src_base_state;
 
   Assert(list_length(dst_state->aid_trackers) == list_length(src_state->aid_trackers));
 
@@ -136,9 +136,9 @@ static void append_tracker_info(StringInfo string, seed_t bucket_seed, const Aid
                    bucket_seed, result.aid_seed);
 }
 
-static const char *agg_explain(const BaseAggState *base_state)
+static const char *agg_explain(const AnonAggState *base_state)
 {
-  AggState *state = (AggState *)base_state;
+  LowCountState *state = (LowCountState *)base_state;
 
   StringInfoData string;
   initStringInfo(&string);
@@ -178,10 +178,10 @@ PG_FUNCTION_INFO_V1(lcf_explain_finalfn);
 
 static const int STATE_INDEX = 0;
 
-static BaseAggState *agg_get_state(PG_FUNCTION_ARGS)
+static AnonAggState *agg_get_state(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
-    return (BaseAggState *)PG_GETARG_POINTER(STATE_INDEX);
+    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
 
   /* We want all memory allocations to be done per aggregation node. */
   MemoryContext memory_context;
@@ -193,7 +193,7 @@ static BaseAggState *agg_get_state(PG_FUNCTION_ARGS)
 
 Datum lcf_transfn(PG_FUNCTION_ARGS)
 {
-  BaseAggState *state = agg_get_state(fcinfo);
+  AnonAggState *state = agg_get_state(fcinfo);
   agg_transition(state, fcinfo);
   PG_RETURN_POINTER(state);
 }
