@@ -66,8 +66,8 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
     FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
   AnonAggState *state = agg_funcs->create_state(bucket_context, fcinfo);
-  Assert(state->agg_funcs == agg_funcs);
-  Assert(state->memory_context == bucket_context);
+  state->agg_funcs = agg_funcs;
+  state->memory_context = bucket_context;
 
   return state;
 }
