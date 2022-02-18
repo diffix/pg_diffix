@@ -98,9 +98,28 @@ static Datum agg_finalize(BaseAggState *base_state, Bucket *bucket, BucketDescri
   PG_RETURN_BOOL(passes_lcf);
 }
 
-static void agg_merge(BaseAggState *dst_state, const BaseAggState *src_state)
+static void agg_merge(BaseAggState *dst_base_state, const BaseAggState *src_base_state)
 {
-  FAILWITH("Not implemented!");
+  AggState *dst_state = (AggState *)dst_base_state;
+  const AggState *src_state = (const AggState *)src_base_state;
+
+  Assert(list_length(dst_state->aid_trackers) == list_length(src_state->aid_trackers));
+
+  ListCell *dst_cell = NULL;
+  const ListCell *src_cell = NULL;
+  forboth(dst_cell, dst_state->aid_trackers, src_cell, src_state->aid_trackers)
+  {
+    AidTrackerState *dst_aid_tracker = (AidTrackerState *)lfirst(dst_cell);
+    const AidTrackerState *src_aid_tracker = (const AidTrackerState *)lfirst(src_cell);
+
+    AidTracker_iterator iterator;
+    AidTracker_start_iterate(src_aid_tracker->aid_set, &iterator);
+    AidTrackerHashEntry *entry = NULL;
+    while ((entry = AidTracker_iterate(src_aid_tracker->aid_set, &iterator)) != NULL)
+    {
+      aid_tracker_update(dst_aid_tracker, entry->aid);
+    }
+  }
 }
 
 static void append_tracker_info(StringInfo string, seed_t bucket_seed, const AidTrackerState *tracker)
