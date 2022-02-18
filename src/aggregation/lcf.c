@@ -95,7 +95,7 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   }
 
   *is_null = false;
-  PG_RETURN_BOOL(passes_lcf);
+  return DatumGetBool(passes_lcf);
 }
 
 static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
@@ -201,7 +201,7 @@ Datum lcf_transfn(PG_FUNCTION_ARGS)
 Datum lcf_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  return agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null);
+  PG_RETURN_DATUM(agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null));
 }
 
 Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
