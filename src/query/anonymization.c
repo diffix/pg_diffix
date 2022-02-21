@@ -44,34 +44,17 @@ static void append_aid_args(Aggref *aggref, QueryContext *context);
  *-------------------------------------------------------------------------
  */
 
-static bool is_constant_expression(Node *node, bool *context)
+static bool is_not_const(Node *node, void *context)
 {
-  if (node == NULL || IsA(node, Const))
+  if (node == NULL)
     return false;
 
   if (IsA(node, Var))
   {
-    *context = false;
     return true;
   }
 
-  return expression_tree_walker(node, is_constant_expression, context);
-}
-
-static bool all_targets_constant(Query *query)
-{
-  ListCell *cell = NULL;
-  foreach (cell, query->targetList)
-  {
-    TargetEntry *tle = lfirst_node(TargetEntry, cell);
-
-    bool is_constant = true;
-    is_constant_expression((Node *)tle->expr, &is_constant);
-    if (!is_constant)
-      return false;
-  }
-
-  return true;
+  return expression_tree_walker(node, is_not_const, context);
 }
 
 static void group_implicit_buckets(Query *query)
@@ -81,9 +64,7 @@ static void group_implicit_buckets(Query *query)
   {
     TargetEntry *tle = lfirst_node(TargetEntry, cell);
 
-    bool is_constant = true;
-    is_constant_expression((Node *)tle->expr, &is_constant);
-    if (is_constant)
+    if (!is_not_const((Node *)tle->expr, NULL))
       continue;
 
     Oid type = exprType((const Node *)tle->expr);
@@ -533,13 +514,13 @@ static void prepare_bucket_seeds(Query *query)
   list_free(seed_material_hashes);
 }
 
-static void rewrite_query(Query *query, List *sensitive_relations)
+static void make_query_anonymizing(Query *query, List *sensitive_relations)
 {
   QueryContext *context = build_context(query, sensitive_relations);
 
   bool initial_has_aggs = query->hasAggs;
   bool initial_has_group_clause = query->groupClause != NIL;
-  bool initial_all_targets_constant = all_targets_constant(query);
+  bool initial_all_targets_constant = !is_not_const((Node *)query->targetList, NULL);
 
   /* Only simple select queries require implicit grouping. */
   if (!initial_has_aggs && !initial_has_group_clause)
@@ -568,13 +549,13 @@ static void rewrite_query(Query *query, List *sensitive_relations)
  *-------------------------------------------------------------------------
  */
 
-void anonymize_query(Query *query, List *sensitive_relations)
+void compile_anonymizing_query(Query *query, List *sensitive_relations)
 {
   verify_anonymization_requirements(query);
 
-  rewrite_query(query, sensitive_relations);
+  make_query_anonymizing(query, sensitive_relations);
 
-  verify_rewritten_query(query);
+  verify_anonymizing_query(query);
 
   prepare_bucket_seeds(query);
 }

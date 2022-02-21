@@ -30,7 +30,7 @@ void verify_anonymization_requirements(Query *query)
   verify_query(query);
 }
 
-void verify_rewritten_query(Query *query)
+void verify_anonymizing_query(Query *query)
 {
   verify_bucket_expressions(query);
 }
