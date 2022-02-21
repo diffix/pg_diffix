@@ -11,20 +11,20 @@
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/query/anonymization.h"
 
-typedef struct LcfResult
+typedef struct AidResult
 {
   seed_t aid_seed;
   int threshold;
-  bool passes_lcf;
-} LcfResult;
+  bool low_count;
+} AidResult;
 
-static LcfResult lcf_calculate_final(seed_t bucket_seed, const AidTrackerState *tracker)
+static AidResult calculate_aid_result(seed_t bucket_seed, const AidTrackerState *tracker)
 {
-  LcfResult result = {.aid_seed = tracker->aid_seed};
+  AidResult result = {.aid_seed = tracker->aid_seed};
 
   seed_t seeds[] = {bucket_seed, tracker->aid_seed};
   result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
-  result.passes_lcf = tracker->aid_set->members >= result.threshold;
+  result.low_count = tracker->aid_set->members < result.threshold;
 
   return result;
 }
@@ -83,19 +83,19 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
 {
   LowCountState *state = (LowCountState *)base_state;
 
-  bool passes_lcf = true;
+  bool low_count = false;
   seed_t bucket_seed = compute_bucket_seed();
 
   ListCell *cell;
   foreach (cell, state->aid_trackers)
   {
     AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-    LcfResult result = lcf_calculate_final(bucket_seed, aid_tracker);
-    passes_lcf = passes_lcf && result.passes_lcf;
+    AidResult result = calculate_aid_result(bucket_seed, aid_tracker);
+    low_count = low_count || result.low_count;
   }
 
   *is_null = false;
-  return DatumGetBool(passes_lcf);
+  return DatumGetBool(low_count);
 }
 
 static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
@@ -124,13 +124,13 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
 
 static void append_tracker_info(StringInfo string, seed_t bucket_seed, const AidTrackerState *tracker)
 {
-  LcfResult result = lcf_calculate_final(bucket_seed, tracker);
+  AidResult result = calculate_aid_result(bucket_seed, tracker);
 
   appendStringInfo(string, "uniq=%" PRIu32, tracker->aid_set->members);
 
-  appendStringInfo(string, ", thresh=%i, pass=%s",
+  appendStringInfo(string, ", thresh=%i, LC=%s",
                    result.threshold,
-                   result.passes_lcf ? "true" : "false");
+                   result.low_count ? "true" : "false");
 
   appendStringInfo(string, ", seeds: bkt=%016" PRIx64 ", aid=%016" PRIx64,
                    bucket_seed, result.aid_seed);
@@ -201,7 +201,9 @@ Datum lcf_transfn(PG_FUNCTION_ARGS)
 Datum lcf_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  PG_RETURN_DATUM(agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null));
+  bool low_count = DatumGetBool(agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null));
+  Assert(!is_null);
+  PG_RETURN_BOOL(!low_count);
 }
 
 Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
