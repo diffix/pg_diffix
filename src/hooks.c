@@ -11,7 +11,6 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
-#include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
 planner_hook_type prev_planner_hook = NULL;
@@ -46,9 +45,6 @@ static void prepare_query(Query *query)
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
-
-  /* Halts execution if requirements are not met. */
-  verify_anonymization_requirements(query);
 
   anonymize_query(query, sensitive_relations);
 

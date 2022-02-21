@@ -15,6 +15,7 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
+#include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
 typedef struct AidReference
@@ -532,12 +533,7 @@ static void prepare_bucket_seeds(Query *query)
   list_free(seed_material_hashes);
 }
 
-/*-------------------------------------------------------------------------
- * Public API
- *-------------------------------------------------------------------------
- */
-
-void anonymize_query(Query *query, List *sensitive_relations)
+static void rewrite_query(Query *query, List *sensitive_relations)
 {
   QueryContext *context = build_context(query, sensitive_relations);
 
@@ -565,6 +561,20 @@ void anonymize_query(Query *query, List *sensitive_relations)
     add_low_count_filter(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+}
+
+/*-------------------------------------------------------------------------
+ * Public API
+ *-------------------------------------------------------------------------
+ */
+
+void anonymize_query(Query *query, List *sensitive_relations)
+{
+  verify_anonymization_requirements(query);
+
+  rewrite_query(query, sensitive_relations);
+
+  verify_rewritten_query(query);
 
   prepare_bucket_seeds(query);
 }

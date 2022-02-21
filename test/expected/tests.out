@@ -139,6 +139,27 @@ SELECT 1, city FROM test_customers;
         1 | Berlin
 (16 rows)
 
+SELECT city, 'aaaa' FROM test_customers;
+  city  | ?column? 
+--------+----------
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Rome   | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+(16 rows)
+
 ----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
@@ -321,9 +342,9 @@ SELECT LENGTH(city) FROM test_customers;
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
 LINE 1: SELECT LENGTH(city) FROM test_customers;
                ^
-SELECT city, 'aaaa' FROM test_customers;
+SELECT city, 'aaaa' FROM test_customers GROUP BY 1, 2;
 ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
-LINE 1: SELECT city, 'aaaa' FROM test_customers;
+LINE 1: SELECT city, 'aaaa' FROM test_customers GROUP BY 1, 2;
                      ^
 SELECT COUNT(*) FROM test_customers GROUP BY round(floor(id));
 ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
