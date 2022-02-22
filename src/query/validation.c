@@ -30,6 +30,11 @@ void verify_anonymization_requirements(Query *query)
   verify_query(query);
 }
 
+void verify_anonymizing_query(Query *query)
+{
+  verify_bucket_expressions(query);
+}
+
 static void verify_query(Query *query)
 {
   NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
@@ -44,7 +49,6 @@ static void verify_query(Query *query)
 
   verify_where(query);
   verify_aggregators(query);
-  verify_bucket_expressions(query);
   verify_rtable(query);
 }
 
@@ -151,15 +155,13 @@ static void verify_bucket_expression(Node *node)
   }
 }
 
+/* Should be run on rewritten queries only. */
 static void verify_bucket_expressions(Query *query)
 {
   List *exprs_list = NIL;
   if (query->groupClause != NIL)
-    /* Buckets are explicitly defined. */
+    /* Buckets were either explicitly defined, or implicitly defined and rewritten. */
     exprs_list = get_sortgrouplist_exprs(query->groupClause, query->targetList);
-  else if (!query->hasAggs)
-    /* Buckets are implicitly defined. */
-    exprs_list = get_tlist_exprs(query->targetList, false);
   /* Else we have the global bucket, nothing to check. */
 
   ListCell *cell;
