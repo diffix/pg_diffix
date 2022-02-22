@@ -1,5 +1,5 @@
-#ifndef PG_DIFFIX_COUNT_H
-#define PG_DIFFIX_COUNT_H
+#ifndef PG_DIFFIX_COUNT_COMMON_H
+#define PG_DIFFIX_COUNT_COMMON_H
 
 #include "pg_diffix/aggregation/contribution_tracker.h"
 #include "pg_diffix/aggregation/noise.h"
@@ -7,6 +7,8 @@
 extern const ContributionDescriptor count_descriptor;
 
 static const contribution_t one_contribution = {.integer = 1};
+
+extern List *get_count_contribution_trackers(PG_FUNCTION_ARGS, int aids_offset);
 
 /* Describes the anonymized count aggregation for one AID instance. */
 typedef struct CountResult
@@ -42,4 +44,9 @@ typedef struct CountResultAccumulator
 extern void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result);
 extern int64 finalize_count_result(const CountResultAccumulator *accumulator);
 
-#endif /* PG_DIFFIX_COUNT_H */
+extern bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers);
+extern Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers);
+
+extern Datum explain_count_trackers(seed_t bucket_seed, List *trackers);
+
+#endif /* PG_DIFFIX_COUNT_COMMON_H */
