@@ -58,4 +58,3 @@ Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
   seed_t bucket_seed = compute_bucket_seed();
   return explain_count_trackers(bucket_seed, trackers);
 }
-
