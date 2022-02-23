@@ -3,7 +3,6 @@
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
-#include "utils/fmgrprotos.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -158,29 +157,7 @@ static void verify_substring(FuncExpr *func_expr)
   Const *second_arg = (Const *)node;
 
   if (DatumGetUInt32(second_arg->constvalue) != 1)
-    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level");
-}
-
-// FIXME copied
-static double cast_const_to_double(const Const *const_expr)
-{
-  switch (const_expr->consttype)
-  {
-  case INT2OID:
-    return DatumGetInt16(const_expr->constvalue);
-  case INT4OID:
-    return DatumGetInt32(const_expr->constvalue);
-  case INT8OID:
-    return DatumGetInt64(const_expr->constvalue);
-  case FLOAT4OID:
-    return DatumGetFloat4(const_expr->constvalue);
-  case FLOAT8OID:
-    return DatumGetFloat8(const_expr->constvalue);
-  case NUMERICOID:
-    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
-  default:
-    FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
-  }
+    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 static void verify_rounding(FuncExpr *func_expr)
@@ -189,11 +166,14 @@ static void verify_rounding(FuncExpr *func_expr)
   Assert(IsA(node, Const)); /* Checked by prior validations */
   Const *second_arg = (Const *)node;
 
+  if (!is_supported_numeric_const(second_arg))
+    FAILWITH_LOCATION(second_arg->location, "Unsupported constant type used in generalization.");
+
   char second_arg_as_string[30];
   sprintf(second_arg_as_string, "%.15e", cast_const_to_double(second_arg));
 
   if (!generalization_regex_match(second_arg_as_string))
-    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level");
+    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 static void verify_generalization(Node *node)
@@ -209,7 +189,7 @@ static void verify_generalization(Node *node)
     else if (is_numeric_generalization(func_expr->funcid))
       ;
     else
-      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level");
+      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
   }
 }
 
