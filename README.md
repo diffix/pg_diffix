@@ -98,7 +98,7 @@ For more advanced usage see the [official image reference](https://hub.docker.co
 
 ### Demo image
 
-The demo image extends the base image with a sample dataset and a user configured with `publish` access.
+The demo image extends the base image with a sample dataset and a user configured with `publish_trusted` access.
 
 Once started, the container creates and populates the `banking` database.
 Two users are created, with password `demo`:
