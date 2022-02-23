@@ -291,6 +291,8 @@ void count_agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_
       else
         contribution_tracker_update_aid(dst_contribution_tracker, entry->contributor.aid);
     }
+
+    dst_contribution_tracker->unaccounted_for += src_contribution_tracker->unaccounted_for;
   }
 }
 
