@@ -163,36 +163,36 @@ CREATE AGGREGATE diffix.explain_anon_count_distinct(value "any", variadic aids "
 );
 
 /* ----------------------------------------------------------------
- * anon_count(aids...)
+ * anon_count_row(aids...)
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.anon_count_transfn(internal, variadic aids "any")
+CREATE FUNCTION diffix.anon_count_row_transfn(internal, variadic aids "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_finalfn(internal, variadic aids "any")
+CREATE FUNCTION diffix.anon_count_row_finalfn(internal, variadic aids "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_explain_finalfn(internal, variadic aids "any")
+CREATE FUNCTION diffix.anon_count_row_explain_finalfn(internal, variadic aids "any")
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE AGGREGATE diffix.anon_count(variadic aids "any") (
-  sfunc = diffix.anon_count_transfn,
+CREATE AGGREGATE diffix.anon_count_row(variadic aids "any") (
+  sfunc = diffix.anon_count_row_transfn,
   stype = internal,
-  finalfunc = diffix.anon_count_finalfn,
+  finalfunc = diffix.anon_count_row_finalfn,
   finalfunc_extra
 );
 
-CREATE AGGREGATE diffix.explain_anon_count(variadic aids "any") (
-  sfunc = diffix.anon_count_transfn,
+CREATE AGGREGATE diffix.explain_anon_row_count(variadic aids "any") (
+  sfunc = diffix.anon_count_row_transfn,
   stype = internal,
-  finalfunc = diffix.anon_count_explain_finalfn,
+  finalfunc = diffix.anon_count_row_explain_finalfn,
   finalfunc_extra
 );
 

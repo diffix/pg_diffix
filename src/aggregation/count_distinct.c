@@ -9,7 +9,7 @@
 
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/common.h"
-#include "pg_diffix/aggregation/count_common.h"
+#include "pg_diffix/aggregation/count.h"
 #include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/query/anonymization.h"

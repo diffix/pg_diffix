@@ -635,7 +635,7 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   agg->plan.qual = NIL;
 
   bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
-  bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count);
+  bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_row);
   bucket_scan->expand_buckets = expand_buckets;
 
   if (expand_buckets && bucket_scan->count_star_index == -1)

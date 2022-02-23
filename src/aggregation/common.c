@@ -35,8 +35,8 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
   Assert(OidIsValid(oid));
 
-  if (oid == g_oid_cache.anon_count)
-    return &g_count_funcs;
+  if (oid == g_oid_cache.anon_count_row)
+    return &g_count_row_funcs;
   else if (oid == g_oid_cache.anon_count_any)
     return &g_count_any_funcs;
   else if (oid == g_oid_cache.anon_count_distinct)
