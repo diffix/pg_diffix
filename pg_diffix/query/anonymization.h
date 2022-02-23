@@ -8,7 +8,7 @@
 /*
  * Transforms a standard query into an anonymizing query.
  */
-extern void anonymize_query(Query *query, List *sensitive_relations);
+extern void compile_anonymizing_query(Query *query, List *sensitive_relations);
 
 /*
  * Returns the noise layer seed for the current bucket.

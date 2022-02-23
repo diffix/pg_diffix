@@ -15,6 +15,7 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
+#include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
 typedef struct AidReference
@@ -43,12 +44,28 @@ static void append_aid_args(Aggref *aggref, QueryContext *context);
  *-------------------------------------------------------------------------
  */
 
+static bool is_not_const(Node *node, void *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Var))
+  {
+    return true;
+  }
+
+  return expression_tree_walker(node, is_not_const, context);
+}
+
 static void group_implicit_buckets(Query *query)
 {
   ListCell *cell = NULL;
   foreach (cell, query->targetList)
   {
     TargetEntry *tle = lfirst_node(TargetEntry, cell);
+
+    if (!is_not_const((Node *)tle->expr, NULL))
+      continue;
 
     Oid type = exprType((const Node *)tle->expr);
     Assert(type != UNKNOWNOID);
@@ -108,18 +125,6 @@ static void expand_implicit_buckets(Query *query)
   query->hasTargetSRFs = true;
 }
 
-static void group_and_expand_implicit_buckets(Query *query)
-{
-  /* Only simple select queries require implicit grouping. */
-  if (query->hasAggs || query->groupClause != NIL)
-    return;
-
-  DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
-
-  group_implicit_buckets(query);
-  expand_implicit_buckets(query);
-}
-
 /*-------------------------------------------------------------------------
  * Low count filtering
  *-------------------------------------------------------------------------
@@ -128,9 +133,6 @@ static void group_and_expand_implicit_buckets(Query *query)
 static void add_low_count_filter(QueryContext *context)
 {
   Query *query = context->query;
-  /* Global aggregates have to be excluded from low-count filtering. */
-  if (query->hasAggs && query->groupClause == NIL)
-    return;
 
   Aggref *lcf_agg = makeNode(Aggref);
 
@@ -495,16 +497,22 @@ static void prepare_bucket_seeds(Query *query)
   list_free(seed_material_hashes);
 }
 
-/*-------------------------------------------------------------------------
- * Public API
- *-------------------------------------------------------------------------
- */
-
-void anonymize_query(Query *query, List *sensitive_relations)
+static void make_query_anonymizing(Query *query, List *sensitive_relations)
 {
   QueryContext *context = build_context(query, sensitive_relations);
 
-  group_and_expand_implicit_buckets(query);
+  bool initial_has_aggs = query->hasAggs;
+  bool initial_has_group_clause = query->groupClause != NIL;
+  bool initial_all_targets_constant = !is_not_const((Node *)query->targetList, NULL);
+
+  /* Only simple select queries require implicit grouping. */
+  if (!initial_has_aggs && !initial_has_group_clause)
+  {
+    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+
+    group_implicit_buckets(query);
+    expand_implicit_buckets(query);
+  }
 
   query_tree_mutator(
       query,
@@ -512,9 +520,25 @@ void anonymize_query(Query *query, List *sensitive_relations)
       context,
       QTW_DONT_COPY_QUERY);
 
-  add_low_count_filter(context);
+  /* Global aggregates have to be excluded from low-count filtering. */
+  if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))
+    add_low_count_filter(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+}
+
+/*-------------------------------------------------------------------------
+ * Public API
+ *-------------------------------------------------------------------------
+ */
+
+void compile_anonymizing_query(Query *query, List *sensitive_relations)
+{
+  verify_anonymization_requirements(query);
+
+  make_query_anonymizing(query, sensitive_relations);
+
+  verify_anonymizing_query(query);
 
   prepare_bucket_seeds(query);
 }

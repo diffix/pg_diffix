@@ -65,6 +65,16 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
+-- Basic queries - expanding constants in target expressions
+----------------------------------------------------------------
+
+SELECT 1 FROM test_patients;
+SELECT cast(1 as real) FROM test_patients;
+SELECT 1, COUNT(*) FROM test_patients;
+SELECT 1, city FROM test_customers;
+SELECT city, 'aaaa' FROM test_customers;
+
+----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
 
@@ -151,7 +161,7 @@ SELECT count(*) FILTER (WHERE true) FROM test_customers;
 SELECT COUNT(*) FROM test_customers GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_customers GROUP BY city || 'xxx';
 SELECT LENGTH(city) FROM test_customers;
-SELECT city, 'aaaa' FROM test_customers;
+SELECT city, 'aaaa' FROM test_customers GROUP BY 1, 2;
 SELECT COUNT(*) FROM test_customers GROUP BY round(floor(id));
 SELECT COUNT(*) FROM test_customers GROUP BY floor(cast(discount AS integer));
 SELECT COUNT(*) FROM test_customers GROUP BY substr(city, 1, id);
