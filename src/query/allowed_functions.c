@@ -63,19 +63,24 @@ static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
   return &fmgr_builtins[index];
 }
 
-bool is_allowed_cast(Oid funcoid)
+static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], int length)
 {
   const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
   if (fmgr_builtin != NULL)
   {
-    for (int i = 0; i < ARRAY_LENGTH(g_allowed_casts); i++)
+    for (int i = 0; i < length; i++)
     {
-      if (strcmp(g_allowed_casts[i], fmgr_builtin->funcName) == 0)
+      if (strcmp(name_array[i], fmgr_builtin->funcName) == 0)
         return true;
     }
   }
 
   return false;
+}
+
+bool is_allowed_cast(Oid funcoid)
+{
+  return is_funcname_member_of(funcoid, g_allowed_casts, ARRAY_LENGTH(g_allowed_casts));
 }
 
 bool is_allowed_function(Oid funcoid)
@@ -86,15 +91,8 @@ bool is_allowed_function(Oid funcoid)
       return true;
   }
 
-  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
-  if (fmgr_builtin != NULL)
-  {
-    for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins); i++)
-    {
-      if (strcmp(g_allowed_builtins[i], fmgr_builtin->funcName) == 0)
-        return true;
-    }
-  }
+  if (is_funcname_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
+    return true;
 
   for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins_extra); i++)
   {
@@ -108,30 +106,10 @@ bool is_allowed_function(Oid funcoid)
 
 bool is_substring(Oid funcoid)
 {
-  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
-  if (fmgr_builtin != NULL)
-  {
-    for (int i = 0; i < ARRAY_LENGTH(g_substring_builtins); i++)
-    {
-      if (strcmp(g_substring_builtins[i], fmgr_builtin->funcName) == 0)
-        return true;
-    }
-  }
-
-  return false;
+  return is_funcname_member_of(funcoid, g_substring_builtins, ARRAY_LENGTH(g_substring_builtins));
 }
 
 bool is_numeric_generalization(Oid funcoid)
 {
-  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
-  if (fmgr_builtin != NULL)
-  {
-    for (int i = 0; i < ARRAY_LENGTH(g_numeric_generalization); i++)
-    {
-      if (strcmp(g_numeric_generalization[i], fmgr_builtin->funcName) == 0)
-        return true;
-    }
-  }
-
-  return false;
+  return is_funcname_member_of(funcoid, g_numeric_generalization, ARRAY_LENGTH(g_numeric_generalization));
 }
