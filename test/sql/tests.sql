@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
 
-SET pg_diffix.session_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish_trusted';
 
 -- Create test data.
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL);
@@ -204,3 +204,19 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN test_customers GROUP BY 
 
 -- Get rejected because of WHERE
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
+
+----------------------------------------------------------------
+-- Untrusted mode query restrictions
+----------------------------------------------------------------
+
+SET pg_diffix.session_access_level = 'publish_untrusted';
+SELECT diffix.access_level();
+
+-- Get rejected because of invalid generalization parameters
+SELECT substring(city, 2, 2) from test_customers;
+SELECT diffix.floor_by(discount, 3) from test_customers;
+SELECT diffix.floor_by(discount, 3.0) from test_customers;
+SELECT diffix.floor_by(discount, 5000000000.1) from test_customers;
+SELECT diffix.round_by(discount, 2) from test_customers;
+SELECT diffix.ceil_by(discount, 2) from test_customers;
+SELECT width_bucket(discount, 2, 200, 5) from test_customers;

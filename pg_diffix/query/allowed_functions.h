@@ -11,4 +11,9 @@ extern bool is_allowed_function(Oid funcoid);
  */
 extern bool is_allowed_cast(Oid funcoid);
 
+/*
+ * Retruns whether the OID points to a `substring` functions.
+ */
+extern bool is_substring(Oid funcoid);
+
 #endif /* PG_DIFFIX_ALLOWED_FUNCTIONS_H */

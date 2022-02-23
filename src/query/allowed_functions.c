@@ -26,6 +26,11 @@ static const char *const g_allowed_builtins[] = {
     /**/
 };
 
+static const char *const g_substring_builtins[] = {
+    "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len"
+    /**/
+};
+
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
@@ -93,5 +98,20 @@ bool is_allowed_function(Oid funcoid)
   }
 
   DEBUG_LOG("Rejecting usage of function %u.", funcoid);
+  return false;
+}
+
+bool is_substring(Oid funcoid)
+{
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < ARRAY_LENGTH(g_substring_builtins); i++)
+    {
+      if (strcmp(g_substring_builtins[i], fmgr_builtin->funcName) == 0)
+        return true;
+    }
+  }
+
   return false;
 }

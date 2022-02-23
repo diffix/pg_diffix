@@ -4,6 +4,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 
+#include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
@@ -151,8 +152,29 @@ static void verify_bucket_expression(Node *node)
   }
 }
 
+static void verify_substring(FuncExpr *func_expr)
+{
+  Const *second_arg = (Const *)list_nth(func_expr->args, 1);
+
+  if (DatumGetUInt32(second_arg->constvalue) != 1)
+    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level");
+}
+
+static void verify_generalization(Node *node)
+{
+  if (IsA(node, FuncExpr))
+  {
+    FuncExpr *func_expr = (FuncExpr *)node;
+
+    if (is_substring(func_expr->funcid))
+      return verify_substring(func_expr);
+  }
+}
+
 static void verify_bucket_expressions(Query *query)
 {
+  AccessLevel access_level = get_session_access_level();
+
   List *exprs_list = NIL;
   if (query->groupClause != NIL)
     /* Buckets are explicitly defined. */
@@ -167,5 +189,9 @@ static void verify_bucket_expressions(Query *query)
   {
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
+    if (access_level == ACCESS_PUBLISH_UNTRUSTED)
+    {
+      verify_generalization(expr);
+    }
   }
 }

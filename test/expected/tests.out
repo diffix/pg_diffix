@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
-SET pg_diffix.session_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish_trusted';
 -- Create test data.
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL);
 INSERT INTO test_customers VALUES
@@ -40,9 +40,9 @@ SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 -- Utilities
 ----------------------------------------------------------------
 SELECT diffix.access_level();
- access_level 
---------------
- publish
+  access_level   
+-----------------
+ publish_trusted
 (1 row)
 
 ----------------------------------------------------------------
@@ -329,3 +329,18 @@ ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supp
 -- Get rejected because of WHERE
 SELECT COUNT(*) FROM test_customers WHERE city = 'London';
 ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
+----------------------------------------------------------------
+-- Untrusted mode query restrictions
+----------------------------------------------------------------
+SET pg_diffix.session_access_level = 'publish_untrusted';
+SELECT diffix.access_level();
+   access_level    
+-------------------
+ publish_untrusted
+(1 row)
+
+-- Get rejected because of invalid generalization parameters
+SELECT substring(city, 2, 2) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT substring(city, 2, 2) from test_customers;
+                               ^
