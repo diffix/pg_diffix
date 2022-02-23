@@ -198,20 +198,12 @@ void contribution_tracker_update_contribution(
       entry->contributor);
 }
 
-static const int STATE_INDEX = 0;
-
-List *get_aggregate_contribution_trackers(
+List *create_contribution_trackers(
     PG_FUNCTION_ARGS,
     int aids_offset,
     const ContributionDescriptor *descriptor)
 {
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (List *)PG_GETARG_POINTER(STATE_INDEX);
-
   Assert(PG_NARGS() > aids_offset);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
 
   List *trackers = NIL;
   for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
@@ -221,6 +213,5 @@ List *get_aggregate_contribution_trackers(
     trackers = lappend(trackers, tracker);
   }
 
-  MemoryContextSwitchTo(old_context);
   return trackers;
 }

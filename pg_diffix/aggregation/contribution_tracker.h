@@ -94,7 +94,7 @@ extern void contribution_tracker_update_contribution(
 /*
  * Gets or creates the multi-AID aggregation state from the function arguments.
  */
-extern List *get_aggregate_contribution_trackers(
+extern List *create_contribution_trackers(
     PG_FUNCTION_ARGS,
     int aids_offset,
     const ContributionDescriptor *descriptor);
