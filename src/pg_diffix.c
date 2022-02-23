@@ -7,6 +7,7 @@
 #include "pg_diffix/hooks.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/query/regex_utils.h"
 #include "pg_diffix/utils.h"
 
 #include <limits.h>
@@ -26,6 +27,7 @@ void _PG_init(void)
   auth_init();
   config_init();
   config_validate();
+  regex_init();
   hooks_init();
 }
 
@@ -34,5 +36,6 @@ void _PG_fini(void)
   DEBUG_LOG("Deactivating Diffix extension...");
 
   oid_cache_cleanup();
+  regex_cleanup();
   hooks_cleanup();
 }

@@ -339,8 +339,185 @@ SELECT diffix.access_level();
  publish_untrusted
 (1 row)
 
+-- Get accepted
+SELECT substring(city, 1, 2) from test_customers;
+ substring 
+-----------
+ Be
+ Be
+ Be
+ Be
+ Be
+ Be
+ Be
+ Be
+ Be
+ Ro
+ Ro
+ Ro
+ Ro
+ Ro
+ Ro
+ Ro
+ Ro
+ Ro
+(18 rows)
+
+SELECT floor(discount) from test_customers;
+ floor 
+-------
+     0
+     0
+     0
+     0
+     0
+     1
+     1
+     1
+     1
+     1
+     1
+     1
+     2
+     2
+(14 rows)
+
+SELECT diffix.floor_by(discount, 2) from test_customers;
+ floor_by 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        2
+        2
+(15 rows)
+
+SELECT diffix.floor_by(discount, 20) from test_customers;
+ floor_by 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+(15 rows)
+
+SELECT diffix.floor_by(discount, 2.0) from test_customers;
+ floor_by 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        2
+        2
+(15 rows)
+
+SELECT diffix.floor_by(discount, 0.2) from test_customers;
+ floor_by 
+----------
+        1
+        1
+        1
+        1
+(4 rows)
+
+SELECT diffix.floor_by(discount, 20.0) from test_customers;
+ floor_by 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+(15 rows)
+
+SELECT diffix.floor_by(discount, 50.0) from test_customers;
+ floor_by 
+----------
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+(15 rows)
+
 -- Get rejected because of invalid generalization parameters
 SELECT substring(city, 2, 2) from test_customers;
 ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
 LINE 1: SELECT substring(city, 2, 2) from test_customers;
                                ^
+SELECT diffix.floor_by(discount, 3) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT diffix.floor_by(discount, 3) from test_customers;
+                                         ^
+SELECT diffix.floor_by(discount, 3.0) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT diffix.floor_by(discount, 3.0) from test_customers;
+                                         ^
+SELECT diffix.floor_by(discount, 5000000000.1) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT diffix.floor_by(discount, 5000000000.1) from test_cus...
+                                         ^
+SELECT diffix.round_by(discount, 2) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT diffix.round_by(discount, 2) from test_customers;
+               ^
+SELECT diffix.ceil_by(discount, 2) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT diffix.ceil_by(discount, 2) from test_customers;
+               ^
+-- Get rejected because of invalid generalizing functions
+SELECT width_bucket(discount, 2, 200, 5) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level
+LINE 1: SELECT width_bucket(discount, 2, 200, 5) from test_customers...
+               ^

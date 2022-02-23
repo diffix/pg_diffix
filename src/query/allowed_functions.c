@@ -31,6 +31,11 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
+static const char *const g_numeric_generalization[] = {
+    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor"
+    /**/
+};
+
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
@@ -109,6 +114,21 @@ bool is_substring(Oid funcoid)
     for (int i = 0; i < ARRAY_LENGTH(g_substring_builtins); i++)
     {
       if (strcmp(g_substring_builtins[i], fmgr_builtin->funcName) == 0)
+        return true;
+    }
+  }
+
+  return false;
+}
+
+bool is_numeric_generalization(Oid funcoid)
+{
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < ARRAY_LENGTH(g_numeric_generalization); i++)
+    {
+      if (strcmp(g_numeric_generalization[i], fmgr_builtin->funcName) == 0)
         return true;
     }
   }
