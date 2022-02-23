@@ -461,7 +461,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     char *relation_name = get_rel_name(rte->relid);
     /* TODO: Remove this check once anonymization over non-ordinary relations is rejected. */
     if (relation_name)
+    {
       append_seed_material(context->material, relation_name, ',');
+      pfree(relation_name);
+    }
 
     char *attribute_name = get_rte_attribute_name(rte, var_expr->varattno);
     append_seed_material(context->material, attribute_name, '.');
