@@ -2,7 +2,6 @@
 
 #include "fmgr.h"
 #include "lib/stringinfo.h"
-#include "utils/builtins.h"
 
 #include <inttypes.h>
 #include <math.h>
@@ -34,13 +33,6 @@ const ContributionDescriptor count_descriptor = {
     .contribution_combine = contribution_combine,
     .contribution_initial = {.integer = 0},
 };
-
-List *get_count_contribution_trackers(PG_FUNCTION_ARGS, int aids_offset)
-{
-  List *trackers = get_aggregate_contribution_trackers(fcinfo, aids_offset, &count_descriptor);
-  Assert(PG_NARGS() == list_length(trackers) + aids_offset);
-  return trackers;
-}
 
 static seed_t contributors_seed(const Contributor *contributors, int count)
 {
@@ -179,31 +171,9 @@ int64 finalize_count_result(const CountResultAccumulator *accumulator)
   return Max(rounded_noisy_count, 0);
 }
 
-Datum count_calculate_final(PG_FUNCTION_ARGS, List *trackers)
+bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int aids_count)
 {
-  CountResultAccumulator result_accumulator = {0};
-  int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
-  seed_t bucket_seed = compute_bucket_seed();
-
-  ListCell *cell;
-  foreach (cell, trackers)
-  {
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
-    CountResult result = count_calculate_result(bucket_seed, tracker);
-
-    if (result.not_enough_aidvs)
-      PG_RETURN_INT64(min_count);
-
-    accumulate_count_result(&result_accumulator, &result);
-  }
-
-  int64 finalized_count_result = finalize_count_result(&result_accumulator);
-  PG_RETURN_INT64(Max(finalized_count_result, min_count));
-}
-
-bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int ntrackers)
-{
-  for (int aid_index = aids_offset; aid_index < aids_offset + ntrackers; aid_index++)
+  for (int aid_index = aids_offset; aid_index < aids_offset + aids_count; aid_index++)
   {
     if (!PG_ARGISNULL(aid_index))
       return false;
@@ -248,20 +218,120 @@ static void append_tracker_info(StringInfo string, seed_t bucket_seed,
                    bucket_seed, result.aid_seed);
 }
 
-Datum explain_count_trackers(seed_t bucket_seed, List *trackers)
+/*-------------------------------------------------------------------------
+ * Aggregation callbacks
+ *-------------------------------------------------------------------------
+ */
+
+void count_agg_final_type(Oid *type, int32 *typmod, Oid *collid)
 {
+  *type = INT8OID;
+  *typmod = -1;
+  *collid = 0;
+}
+
+AnonAggState *count_agg_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS, int aids_offset)
+{
+  MemoryContext old_context = MemoryContextSwitchTo(memory_context);
+
+  CountState *state = (CountState *)palloc0(sizeof(CountState));
+  state->is_global = is_global_aggregation(fcinfo);
+  state->contribution_trackers = create_contribution_trackers(fcinfo, aids_offset, &count_descriptor);
+  Assert(PG_NARGS() == list_length(state->contribution_trackers) + aids_offset);
+
+  MemoryContextSwitchTo(old_context);
+  return &state->base;
+}
+
+Datum count_agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+{
+  CountState *state = (CountState *)base_state;
+  CountResultAccumulator result_accumulator = {0};
+  int64 min_count = state->is_global ? 0 : g_config.low_count_min_threshold;
+  seed_t bucket_seed = compute_bucket_seed();
+
+  ListCell *cell = NULL;
+  foreach (cell, state->contribution_trackers)
+  {
+    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
+    CountResult result = count_calculate_result(bucket_seed, contribution_tracker);
+
+    if (result.not_enough_aidvs)
+      return Int64GetDatum(min_count);
+
+    accumulate_count_result(&result_accumulator, &result);
+  }
+
+  int64 finalized_count_result = finalize_count_result(&result_accumulator);
+  return Int64GetDatum(Max(finalized_count_result, min_count));
+}
+
+void count_agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
+{
+  CountState *dst_state = (CountState *)dst_base_state;
+  const CountState *src_state = (const CountState *)src_base_state;
+
+  Assert(list_length(dst_state->contribution_trackers) == list_length(src_state->contribution_trackers));
+
+  ListCell *dst_cell = NULL;
+  const ListCell *src_cell = NULL;
+  forboth(dst_cell, dst_state->contribution_trackers, src_cell, src_state->contribution_trackers)
+  {
+    ContributionTrackerState *dst_contribution_tracker = (ContributionTrackerState *)lfirst(dst_cell);
+    const ContributionTrackerState *src_contribution_tracker = (const ContributionTrackerState *)lfirst(src_cell);
+
+    ContributionTracker_iterator iterator;
+    ContributionTracker_start_iterate(src_contribution_tracker->contribution_table, &iterator);
+    ContributionTrackerHashEntry *entry = NULL;
+    while ((entry = ContributionTracker_iterate(src_contribution_tracker->contribution_table, &iterator)) != NULL)
+    {
+      if (entry->has_contribution)
+        contribution_tracker_update_contribution(
+            dst_contribution_tracker, entry->contributor.aid, entry->contributor.contribution);
+      else
+        contribution_tracker_update_aid(dst_contribution_tracker, entry->contributor.aid);
+    }
+  }
+}
+
+const char *count_agg_explain(const AnonAggState *base_state)
+{
+  CountState *state = (CountState *)base_state;
+
+  seed_t bucket_seed = compute_bucket_seed();
+
   StringInfoData string;
   initStringInfo(&string);
 
-  ListCell *cell;
-  foreach (cell, trackers)
+  ListCell *cell = NULL;
+  foreach (cell, state->contribution_trackers)
   {
     if (foreach_current_index(cell) > 0)
       appendStringInfo(&string, " \n");
 
-    ContributionTrackerState *tracker = (ContributionTrackerState *)lfirst(cell);
-    append_tracker_info(&string, bucket_seed, tracker);
+    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
+    append_tracker_info(&string, bucket_seed, contribution_tracker);
   }
 
-  PG_RETURN_TEXT_P(cstring_to_text(string.data));
+  return string.data;
+}
+
+/*-------------------------------------------------------------------------
+ * UDFs
+ *-------------------------------------------------------------------------
+ */
+
+static const int STATE_INDEX = 0;
+
+AnonAggState *count_agg_get_state(PG_FUNCTION_ARGS, int aids_offset)
+{
+  if (!PG_ARGISNULL(STATE_INDEX))
+    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
+
+  /* We want all memory allocations to be done per aggregation node. */
+  MemoryContext memory_context;
+  if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
+    FAILWITH("Aggregate called in non-aggregate context");
+
+  return count_agg_create_state(memory_context, fcinfo, aids_offset);
 }
