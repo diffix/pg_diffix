@@ -42,33 +42,4 @@ typedef struct CountResultAccumulator
 extern void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result);
 extern int64 finalize_count_result(const CountResultAccumulator *accumulator);
 
-/*-------------------------------------------------------------------------
- * Aggregation callbacks
- *-------------------------------------------------------------------------
- */
-
-typedef struct CountState
-{
-  AnonAggState base;
-  List *contribution_trackers;
-  bool is_global;
-} CountState;
-
-extern void count_agg_final_type(Oid *type, int32 *typmod, Oid *collid);
-extern AnonAggState *count_agg_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS, int aids_offset);
-extern Datum count_agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null);
-extern void count_agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state);
-extern const char *count_agg_explain(const AnonAggState *base_state);
-
-/* Helper function to check if all AID values are null. */
-extern bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int aids_count);
-
-/*-------------------------------------------------------------------------
- * UDFs
- *-------------------------------------------------------------------------
- */
-
-/* Helper function to return the count aggregation state for UDFs. */
-extern AnonAggState *count_agg_get_state(PG_FUNCTION_ARGS, int aids_offset);
-
 #endif /* PG_DIFFIX_COUNT_COMMON_H */

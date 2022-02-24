@@ -18,13 +18,13 @@ void oid_cache_init(void)
   if (g_loaded)
     return;
 
-  g_oid_cache.count = lookup_function(NULL, "count", 0, (Oid[]){});
-  g_oid_cache.count_any = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
+  g_oid_cache.count_star = lookup_function(NULL, "count", 0, (Oid[]){});
+  g_oid_cache.count_value = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
 
   g_oid_cache.lcf = lookup_function("diffix", "lcf", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
-  g_oid_cache.anon_count = lookup_function("diffix", "anon_count", -1, (Oid[]){});
-  g_oid_cache.anon_count_any = lookup_function("diffix", "anon_count_any", -1, (Oid[]){});
+  g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
+  g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
 
   g_oid_cache.round_by_nn = lookup_function("diffix", "round_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
   g_oid_cache.round_by_dd = lookup_function("diffix", "round_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
@@ -68,13 +68,13 @@ char *oids_to_string(Oids *oids)
 
   appendStringInfo(&string, "{OID_CACHE");
 
-  appendStringInfo(&string, " :count %u", oids->count);
-  appendStringInfo(&string, " :count_any %u", oids->count_any);
+  appendStringInfo(&string, " :count_star %u", oids->count_star);
+  appendStringInfo(&string, " :count_value %u", oids->count_value);
 
   appendStringInfo(&string, " :lcf %u", oids->lcf);
   appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
-  appendStringInfo(&string, " :anon_count %u", oids->anon_count);
-  appendStringInfo(&string, " :anon_count_any %u", oids->anon_count_any);
+  appendStringInfo(&string, " :anon_count_star %u", oids->anon_count_star);
+  appendStringInfo(&string, " :anon_count_value %u", oids->anon_count_value);
 
   appendStringInfo(&string, " :round_by (nn %u) (dd %u)", oids->round_by_nn, oids->round_by_dd);
   appendStringInfo(&string, " :ceil_by (nn %u) (dd %u)", oids->ceil_by_nn, oids->ceil_by_dd);

@@ -100,7 +100,7 @@ static void expand_implicit_buckets(Query *query)
   Const *const_one = makeConst(INT8OID, -1, InvalidOid, SIZEOF_LONG, Int64GetDatum(1), false, FLOAT8PASSBYVAL);
 
   Aggref *count_agg = makeNode(Aggref);
-  count_agg->aggfnoid = g_oid_cache.count; /* Will be replaced later with anonymizing version. */
+  count_agg->aggfnoid = g_oid_cache.count_star; /* Will be replaced later with anonymizing version. */
   count_agg->aggtype = INT8OID;
   count_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
   count_agg->aggstar = true;
@@ -186,12 +186,12 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
     Aggref *aggref = (Aggref *)expression_tree_mutator(node, aggregate_expression_mutator, context);
     Oid aggfnoid = aggref->aggfnoid;
 
-    if (aggfnoid == g_oid_cache.count)
-      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count);
-    else if (aggfnoid == g_oid_cache.count_any && aggref->aggdistinct)
+    if (aggfnoid == g_oid_cache.count_star)
+      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_star);
+    else if (aggfnoid == g_oid_cache.count_value && aggref->aggdistinct)
       rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_distinct);
-    else if (aggfnoid == g_oid_cache.count_any)
-      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_any);
+    else if (aggfnoid == g_oid_cache.count_value)
+      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_value);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");

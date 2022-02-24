@@ -83,7 +83,7 @@ static bool verify_aggregator(Node *node, void *context)
     Aggref *aggref = (Aggref *)node;
     Oid aggoid = aggref->aggfnoid;
 
-    if (aggoid != g_oid_cache.count && aggoid != g_oid_cache.count_any)
+    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
     NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
