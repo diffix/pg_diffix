@@ -16,4 +16,14 @@ extern void verify_anonymization_requirements(Query *query);
  */
 extern void verify_anonymizing_query(Query *query);
 
+/*
+ * Returns `true` if the given Const represents a supported numeric value.
+ */
+extern bool is_supported_numeric_const(const Const *const_expr);
+
+/*
+ * Returns the numeric value of a Const as a `double`.
+ */
+extern double const_to_double(const Const *const_expr);
+
 #endif /* PG_DIFFIX_VALIDATION_H */

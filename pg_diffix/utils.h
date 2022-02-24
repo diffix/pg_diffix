@@ -5,7 +5,6 @@
 #include "access/htup_details.h" /* Convenience import for `heap_getattr`. */
 #include "access/tupdesc.h"
 #include "fmgr.h"
-#include "nodes/primnodes.h"
 
 /*-------------------------------------------------------------------------
  * General utils
@@ -122,14 +121,5 @@ extern MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
  * Will not detect an empty grouping when there are multiple grouping sets.
  */
 extern bool is_global_aggregation(PG_FUNCTION_ARGS);
-
-/*-------------------------------------------------------------------------
- * Const utils
- *-------------------------------------------------------------------------
- */
-
-extern bool is_supported_numeric_const(const Const *const_expr);
-
-extern double cast_const_to_double(const Const *const_expr);
 
 #endif /* PG_DIFFIX_UTILS_H */

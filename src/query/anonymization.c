@@ -453,7 +453,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     if (!is_supported_numeric_const(const_expr))
       FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
 
-    double const_as_double = cast_const_to_double(const_expr);
+    double const_as_double = const_to_double(const_expr);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');

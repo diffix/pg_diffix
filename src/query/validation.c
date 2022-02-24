@@ -3,6 +3,7 @@
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+#include "utils/fmgrprotos.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -174,7 +175,7 @@ static void verify_rounding(FuncExpr *func_expr)
     FAILWITH_LOCATION(second_arg->location, "Unsupported constant type used in generalization.");
 
   char second_arg_as_string[30];
-  sprintf(second_arg_as_string, "%.15e", cast_const_to_double(second_arg));
+  sprintf(second_arg_as_string, "%.15e", const_to_double(second_arg));
 
   if (!generalization_regex_match(second_arg_as_string))
     FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
@@ -215,5 +216,43 @@ static void verify_bucket_expressions(Query *query)
     verify_bucket_expression(expr);
     if (access_level == ACCESS_PUBLISH_UNTRUSTED)
       verify_generalization(expr);
+  }
+}
+
+bool is_supported_numeric_const(const Const *const_expr)
+{
+  switch (const_expr->consttype)
+  {
+  case INT2OID:
+  case INT4OID:
+  case INT8OID:
+  case FLOAT4OID:
+  case FLOAT8OID:
+  case NUMERICOID:
+    return true;
+  default:
+    return false;
+  }
+}
+
+double const_to_double(const Const *const_expr)
+{
+  switch (const_expr->consttype)
+  {
+  case INT2OID:
+    return DatumGetInt16(const_expr->constvalue);
+  case INT4OID:
+    return DatumGetInt32(const_expr->constvalue);
+  case INT8OID:
+    return DatumGetInt64(const_expr->constvalue);
+  case FLOAT4OID:
+    return DatumGetFloat4(const_expr->constvalue);
+  case FLOAT8OID:
+    return DatumGetFloat8(const_expr->constvalue);
+  case NUMERICOID:
+    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
+  default:
+    Assert(false);
+    return 0.0;
   }
 }
