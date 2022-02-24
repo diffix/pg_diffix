@@ -326,69 +326,69 @@ static const char *count_explain(const AnonAggState *base_state)
   return string.data;
 }
 
-static const int COUNT_ANY_VALUE_INDEX = 1;
-static const int COUNT_ANY_AIDS_OFFSET = 2;
+static const int COUNT_VALUE_INDEX = 1;
+static const int COUNT_VALUE_AIDS_OFFSET = 2;
 
-static AnonAggState *count_any_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *count_value_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
 {
-  return count_create_state(memory_context, fcinfo, COUNT_ANY_AIDS_OFFSET);
+  return count_create_state(memory_context, fcinfo, COUNT_VALUE_AIDS_OFFSET);
 }
 
-static void count_any_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
+static void count_value_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(fcinfo, COUNT_ANY_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(fcinfo, COUNT_VALUE_AIDS_OFFSET, list_length(state->contribution_trackers)))
     return;
 
   ListCell *cell = NULL;
   foreach (cell, state->contribution_trackers)
   {
-    int aid_index = foreach_current_index(cell) + COUNT_ANY_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_VALUE_AIDS_OFFSET;
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
       aid_t aid = contribution_tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
-      if (PG_ARGISNULL(COUNT_ANY_VALUE_INDEX))
+      if (PG_ARGISNULL(COUNT_VALUE_INDEX))
         /* No contribution since argument is NULL, only keep track of the AID value. */
         contribution_tracker_update_aid(contribution_tracker, aid);
       else
         contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
     }
-    else if (!PG_ARGISNULL(COUNT_ANY_VALUE_INDEX))
+    else if (!PG_ARGISNULL(COUNT_VALUE_INDEX))
     {
       contribution_tracker->unaccounted_for++;
     }
   }
 }
 
-const AnonAggFuncs g_count_any_funcs = {
+const AnonAggFuncs g_count_value_funcs = {
     count_final_type,
-    count_any_create_state,
-    count_any_transition,
+    count_value_create_state,
+    count_value_transition,
     count_finalize,
     count_merge,
     count_explain,
 };
 
-static const int COUNT_ROW_AIDS_OFFSET = 1;
+static const int COUNT_STAR_AIDS_OFFSET = 1;
 
-static AnonAggState *count_row_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *count_star_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
 {
-  return count_create_state(memory_context, fcinfo, COUNT_ROW_AIDS_OFFSET);
+  return count_create_state(memory_context, fcinfo, COUNT_STAR_AIDS_OFFSET);
 }
 
-static void count_row_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
+static void count_star_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(fcinfo, COUNT_ROW_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(fcinfo, COUNT_STAR_AIDS_OFFSET, list_length(state->contribution_trackers)))
     return;
 
   ListCell *cell = NULL;
   foreach (cell, state->contribution_trackers)
   {
-    int aid_index = foreach_current_index(cell) + COUNT_ROW_AIDS_OFFSET;
+    int aid_index = foreach_current_index(cell) + COUNT_STAR_AIDS_OFFSET;
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
     if (!PG_ARGISNULL(aid_index))
     {
@@ -402,10 +402,10 @@ static void count_row_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
   }
 }
 
-const AnonAggFuncs g_count_row_funcs = {
+const AnonAggFuncs g_count_star_funcs = {
     count_final_type,
-    count_row_create_state,
-    count_row_transition,
+    count_star_create_state,
+    count_star_transition,
     count_finalize,
     count_merge,
     count_explain,
@@ -431,50 +431,50 @@ static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
   return count_create_state(memory_context, fcinfo, aids_offset);
 }
 
-PG_FUNCTION_INFO_V1(anon_count_any_transfn);
-PG_FUNCTION_INFO_V1(anon_count_any_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_any_explain_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_value_transfn);
+PG_FUNCTION_INFO_V1(anon_count_value_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_value_explain_finalfn);
 
-Datum anon_count_any_transfn(PG_FUNCTION_ARGS)
+Datum anon_count_value_transfn(PG_FUNCTION_ARGS)
 {
-  AnonAggState *state = count_get_state(fcinfo, COUNT_ANY_AIDS_OFFSET);
-  count_any_transition(state, fcinfo);
+  AnonAggState *state = count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET);
+  count_value_transition(state, fcinfo);
   PG_RETURN_POINTER(state);
 }
 
-Datum anon_count_any_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_value_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_ANY_AIDS_OFFSET), NULL, NULL, &is_null);
+  Datum result = count_finalize(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET), NULL, NULL, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
 }
 
-Datum anon_count_any_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_value_explain_finalfn(PG_FUNCTION_ARGS)
 {
-  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_ANY_AIDS_OFFSET))));
+  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET))));
 }
 
-PG_FUNCTION_INFO_V1(anon_count_row_transfn);
-PG_FUNCTION_INFO_V1(anon_count_row_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_row_explain_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_star_transfn);
+PG_FUNCTION_INFO_V1(anon_count_star_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_star_explain_finalfn);
 
-Datum anon_count_row_transfn(PG_FUNCTION_ARGS)
+Datum anon_count_star_transfn(PG_FUNCTION_ARGS)
 {
-  AnonAggState *state = count_get_state(fcinfo, COUNT_ROW_AIDS_OFFSET);
-  count_row_transition(state, fcinfo);
+  AnonAggState *state = count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET);
+  count_star_transition(state, fcinfo);
   PG_RETURN_POINTER(state);
 }
 
-Datum anon_count_row_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_star_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_ROW_AIDS_OFFSET), NULL, NULL, &is_null);
+  Datum result = count_finalize(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET), NULL, NULL, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
 }
 
-Datum anon_count_row_explain_finalfn(PG_FUNCTION_ARGS)
+Datum anon_count_star_explain_finalfn(PG_FUNCTION_ARGS)
 {
-  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_ROW_AIDS_OFFSET))));
+  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET))));
 }

@@ -75,8 +75,8 @@ typedef struct AnonAggFuncs AnonAggFuncs;
 typedef struct AnonAggState AnonAggState;
 
 /* Known anonymizing aggregators. */
-extern const AnonAggFuncs g_count_row_funcs;
-extern const AnonAggFuncs g_count_any_funcs;
+extern const AnonAggFuncs g_count_star_funcs;
+extern const AnonAggFuncs g_count_value_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_low_count_funcs;
 
