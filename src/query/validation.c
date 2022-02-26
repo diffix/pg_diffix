@@ -4,12 +4,14 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "utils/fmgrprotos.h"
+#include "utils/memutils.h"
+
+#include "regex.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
-#include "pg_diffix/query/regex_utils.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
@@ -165,6 +167,25 @@ static void verify_substring(FuncExpr *func_expr)
     FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
+/* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
+static bool is_money_style(double number)
+{
+  static regex_t *generalization_regex;
+
+  char number_as_string[30];
+  sprintf(number_as_string, "%.15e", number);
+
+  if (generalization_regex == NULL)
+  {
+    generalization_regex = MemoryContextAlloc(TopMemoryContext, sizeof(regex_t));
+    const char *pattern = "^[125]\\.0+e[-+][0-9]+$";
+    if (regcomp(generalization_regex, pattern, REG_EXTENDED + REG_NOSUB) != REG_NOERROR)
+      FAILWITH("Could not compile generalization_regex");
+  }
+
+  return regexec(generalization_regex, number_as_string, 0, NULL, 0) == REG_NOERROR;
+}
+
 static void verify_rounding(FuncExpr *func_expr)
 {
   Node *node = unwrap_cast(list_nth(func_expr->args, 1));
@@ -174,10 +195,7 @@ static void verify_rounding(FuncExpr *func_expr)
   if (!is_supported_numeric_const(second_arg))
     FAILWITH_LOCATION(second_arg->location, "Unsupported constant type used in generalization.");
 
-  char second_arg_as_string[30];
-  sprintf(second_arg_as_string, "%.15e", const_to_double(second_arg));
-
-  if (!generalization_regex_match(second_arg_as_string))
+  if (!is_money_style(const_to_double(second_arg)))
     FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
