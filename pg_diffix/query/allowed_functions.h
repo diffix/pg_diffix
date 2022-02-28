@@ -17,8 +17,8 @@ extern bool is_allowed_cast(Oid funcoid);
 extern bool is_substring(Oid funcoid);
 
 /*
- * Returns whether the OID points to a function being a numeric generalization.
+ * Returns whether the OID points to a function being a floor function.
  */
-extern bool is_numeric_generalization(Oid funcoid);
+extern bool is_builtin_floor(Oid funcoid);
 
 #endif /* PG_DIFFIX_ALLOWED_FUNCTIONS_H */

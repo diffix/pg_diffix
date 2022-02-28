@@ -170,7 +170,7 @@ static void verify_substring(FuncExpr *func_expr)
 /* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
 static bool is_money_style(double number)
 {
-  static regex_t *generalization_regex;
+  static regex_t *generalization_regex = NULL;
 
   char number_as_string[30];
   sprintf(number_as_string, "%.15e", number);
@@ -209,7 +209,7 @@ static void verify_generalization(Node *node)
       verify_substring(func_expr);
     else if (func_expr->funcid == g_oid_cache.floor_by_nn || func_expr->funcid == g_oid_cache.floor_by_dd)
       verify_rounding(func_expr);
-    else if (is_numeric_generalization(func_expr->funcid))
+    else if (is_builtin_floor(func_expr->funcid))
       ;
     else
       FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");

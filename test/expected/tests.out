@@ -597,6 +597,14 @@ SELECT diffix.ceil_by(discount, 2) from test_customers;
 ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
 LINE 1: SELECT diffix.ceil_by(discount, 2) from test_customers;
                ^
+SELECT ceil(discount) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT ceil(discount) from test_customers;
+               ^
+SELECT round(discount) from test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT round(discount) from test_customers;
+               ^
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_customers;
 ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.

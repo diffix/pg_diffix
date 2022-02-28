@@ -239,6 +239,8 @@ SELECT diffix.floor_by(discount, 3.0) from test_customers;
 SELECT diffix.floor_by(discount, 5000000000.1) from test_customers;
 SELECT diffix.round_by(discount, 2) from test_customers;
 SELECT diffix.ceil_by(discount, 2) from test_customers;
+SELECT ceil(discount) from test_customers;
+SELECT round(discount) from test_customers;
 
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_customers;

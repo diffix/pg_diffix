@@ -31,8 +31,8 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
-static const char *const g_numeric_generalization[] = {
-    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor"
+static const char *const g_builtin_floor[] = {
+    "dfloor", "numeric_floor"
     /**/
 };
 
@@ -109,7 +109,7 @@ bool is_substring(Oid funcoid)
   return is_funcname_member_of(funcoid, g_substring_builtins, ARRAY_LENGTH(g_substring_builtins));
 }
 
-bool is_numeric_generalization(Oid funcoid)
+bool is_builtin_floor(Oid funcoid)
 {
-  return is_funcname_member_of(funcoid, g_numeric_generalization, ARRAY_LENGTH(g_numeric_generalization));
+  return is_funcname_member_of(funcoid, g_builtin_floor, ARRAY_LENGTH(g_builtin_floor));
 }
