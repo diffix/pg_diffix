@@ -3,7 +3,6 @@
 #include "fmgr.h"
 #include "lib/stringinfo.h"
 #include "utils/builtins.h"
-#include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
 
@@ -16,25 +15,6 @@
 
 /* TODO: Implement aggregator methods. */
 const AnonAggFuncs g_count_distinct_funcs = {0};
-
-static const bool TYPE_BY_REF = false;
-
-static uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
-{
-  const void *data = NULL;
-  size_t data_size = 0;
-  if (typbyval)
-  {
-    data = &value;
-    data_size = sizeof(Datum);
-  }
-  else
-  {
-    data = DatumGetPointer(value);
-    data_size = datumGetSize(value, TYPE_BY_REF, typlen);
-  }
-  return hash_bytes(data, data_size);
-}
 
 /*
  * For each unique value we encounter, we keep a set of AID values for each AID instance available.

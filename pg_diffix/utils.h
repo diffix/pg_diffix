@@ -5,6 +5,7 @@
 #include "access/htup_details.h" /* Convenience import for `heap_getattr`. */
 #include "access/tupdesc.h"
 #include "fmgr.h"
+#include "utils/datum.h"
 
 /*-------------------------------------------------------------------------
  * General utils
@@ -13,7 +14,7 @@
 
 typedef uint64 hash_t;
 
-static inline hash_t hash_bytes(const void *bytes, size_t size)
+static inline hash_t hash_bytes_64(const void *bytes, size_t size)
 {
   /* Implementation of FNV-1a hash algorithm: http://www.isthe.com/chongo/tech/comp/fnv/index.html */
   const uint64 FNV_PRIME = 1099511628211UL;
@@ -29,6 +30,24 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
   return hash;
 }
 
+static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
+{
+  const void *data = NULL;
+  size_t data_size = 0;
+  if (typbyval)
+  {
+    data = &value;
+    data_size = sizeof(Datum);
+  }
+  else
+  {
+    data = DatumGetPointer(value);
+    data_size = datumGetSize(value, false, typlen);
+  }
+
+  return hash_bytes_64(data, data_size);
+}
+
 /* Calculates the length of an array. */
 #define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
 
@@ -36,6 +55,7 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
  * Compatibility shims
  *-------------------------------------------------------------------------
  */
+
 #if PG_MAJORVERSION_NUM < 13
 #error "This module requires PostgreSQL version 13 or higher!"
 #elif PG_MAJORVERSION_NUM >= 14
