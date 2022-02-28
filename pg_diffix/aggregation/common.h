@@ -167,4 +167,9 @@ struct AnonAggState
  */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
 
+/*
+ * Merges all anonymizing aggregates from source bucket to destination bucket.
+ */
+extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
+
 #endif /* PG_DIFFIX_COMMON_H */
