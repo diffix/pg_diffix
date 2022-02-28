@@ -1,12 +1,14 @@
 #include "postgres.h"
 
+#include "catalog/pg_collation.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+#include "regex/regex.h"
+#include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/memutils.h"
-
-#include "regex.h"
+#include "utils/pg_locale.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -170,20 +172,12 @@ static void verify_substring(FuncExpr *func_expr)
 /* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
 static bool is_money_style(double number)
 {
-  static regex_t *generalization_regex = NULL;
-
   char number_as_string[30];
   sprintf(number_as_string, "%.15e", number);
-
-  if (generalization_regex == NULL)
-  {
-    generalization_regex = MemoryContextAlloc(TopMemoryContext, sizeof(regex_t));
-    const char *pattern = "^[125]\\.0+e[-+][0-9]+$";
-    if (regcomp(generalization_regex, pattern, REG_EXTENDED + REG_NOSUB) != REG_NOERROR)
-      FAILWITH("Could not compile generalization_regex");
-  }
-
-  return regexec(generalization_regex, number_as_string, 0, NULL, 0) == REG_NOERROR;
+  text *pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
+  bool result = RE_compile_and_execute(pattern, number_as_string, strlen(number_as_string), REG_EXTENDED + REG_NOSUB, C_COLLATION_OID, 0, NULL) != REG_OKAY;
+  pfree(pattern);
+  return result;
 }
 
 static void verify_rounding(FuncExpr *func_expr)
