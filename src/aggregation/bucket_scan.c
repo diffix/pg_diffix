@@ -12,6 +12,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/aggregation/led.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
@@ -262,7 +263,12 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
 static void run_hooks(BucketScanState *bucket_state)
 {
-  /* TODO */
+  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
+  bool has_low_count_agg = plan->low_count_index != -1;
+  if (has_low_count_agg)
+  {
+    led_hook(bucket_state->buckets, bucket_state->bucket_desc);
+  }
 }
 
 /*
