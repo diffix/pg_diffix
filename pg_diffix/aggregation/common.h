@@ -102,6 +102,7 @@ typedef struct BucketAttribute
 
 typedef struct BucketDescriptor
 {
+  MemoryContext bucket_context;                 /* Memory context where buckets live */
   int num_labels;                               /* Number of label attributes */
   int num_aggs;                                 /* Number of aggregate attributes */
   BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
