@@ -164,6 +164,7 @@ const AnonAggFuncs g_low_count_funcs = {
     agg_transition,
     agg_finalize,
     agg_merge,
+    NULL /* TODO */,
     agg_explain,
 };
 

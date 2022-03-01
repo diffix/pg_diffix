@@ -9,7 +9,7 @@
  *
  * The `create_state` function must:
  *   - Switch to the provided memory context to ensure adequate lifetime of the state.
- *   - Return a derived struct with its first member of type AnonAggState (not pointer!) and populate it.
+ *   - Return a derived struct with its first member of type AnonAggState (not pointer!).
  *   - Inspect PG_FUNCTION_ARGS for type info but not values, since it may also be called during finalfunc.
  *     Argument at index 0 should be ignored because it is managed by the wrapper function.
  *   - Initialize aggregator data such as hash tables (in the provided memory context).
@@ -35,6 +35,11 @@
  *
  * Both states are known to live in the same memory context. Temporary data should be allocated
  * in the current memory context (not state's).
+ *
+ * The `clone` function must create a deep copy of given state in the same memory context.
+ * Cloning should be equivalent to merging current state to a blank state:
+ *
+ *     clone(current) == merge(new(), current)
  *
  * Memory contexts:
  *
@@ -144,6 +149,9 @@ struct AnonAggFuncs
 
   /* Merge source aggregation state to destination state. */
   void (*merge)(AnonAggState *dst_state, const AnonAggState *src_state);
+
+  /* Create a deep copy of given aggregation state. */
+  void (*clone)(AnonAggState *state);
 
   /*
    * Returns a string representation of the aggregator state.

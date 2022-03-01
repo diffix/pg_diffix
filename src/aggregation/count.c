@@ -368,6 +368,7 @@ const AnonAggFuncs g_count_value_funcs = {
     count_value_transition,
     count_finalize,
     count_merge,
+    NULL /* TODO */,
     count_explain,
 };
 
@@ -408,6 +409,7 @@ const AnonAggFuncs g_count_star_funcs = {
     count_star_transition,
     count_finalize,
     count_merge,
+    NULL /* TODO */,
     count_explain,
 };
 
