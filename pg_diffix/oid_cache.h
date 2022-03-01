@@ -7,16 +7,16 @@
 typedef struct Oids
 {
   /* Aggregators */
-  Oid count;     /* count(*) */
-  Oid count_any; /* count(any) */
+  Oid count_star;  /* count(*) */
+  Oid count_value; /* count(any) */
 
   /* TODO: Remove lcf once low_count is implemented. */
   Oid lcf; /* diffix.lcf(aids...) */
 
   Oid low_count;           /* diffix.low_count(aids...) */
   Oid anon_count_distinct; /* diffix.anon_count_distinct(any, aids...) */
-  Oid anon_count;          /* diffix.anon_count(aids...) */
-  Oid anon_count_any;      /* diffix.anon_count_any(any, aids...) */
+  Oid anon_count_star;     /* diffix.anon_count_star(aids...) */
+  Oid anon_count_value;    /* diffix.anon_count_value(any, aids...) */
 
   /* Scalars */
   Oid round_by_nn; /* diffix.round_by(value numeric, amount numeric) */
