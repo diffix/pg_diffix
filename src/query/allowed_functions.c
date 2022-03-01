@@ -31,7 +31,7 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
-static const char *const g_builtin_roundings[] = {
+static const char *const g_rounding_builtins[] = {
     "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
     /**/
 };
@@ -111,12 +111,12 @@ bool is_allowed_function(Oid funcoid)
   return false;
 }
 
-bool is_substring(Oid funcoid)
+bool is_substring_builtin(Oid funcoid)
 {
   return is_funcname_member_of(funcoid, g_substring_builtins, ARRAY_LENGTH(g_substring_builtins));
 }
 
-bool is_builtin_generalization(Oid funcoid)
+bool is_rounding_builtin(Oid funcoid)
 {
-  return is_funcname_member_of(funcoid, g_builtin_roundings, ARRAY_LENGTH(g_builtin_roundings));
+  return is_funcname_member_of(funcoid, g_rounding_builtins, ARRAY_LENGTH(g_rounding_builtins));
 }

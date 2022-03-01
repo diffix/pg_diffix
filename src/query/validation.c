@@ -180,17 +180,18 @@ static bool is_money_style(double number)
   return result;
 }
 
-static void verify_rounding(FuncExpr *func_expr)
+/* Expects the expression being the second argument to `round_by` et al. */
+static void verify_rounding_range_width(Node *range_expr)
 {
-  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
-  Assert(IsA(node, Const)); /* Checked by prior validations */
-  Const *second_arg = (Const *)node;
+  Node *range_node = unwrap_cast(range_expr);
+  Assert(IsA(range_node, Const)); /* Checked by prior validations */
+  Const *range_const = (Const *)range_node;
 
-  if (!is_supported_numeric_const(second_arg))
-    FAILWITH_LOCATION(second_arg->location, "Unsupported constant type used in generalization.");
+  if (!is_supported_numeric_const(range_const))
+    FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization.");
 
-  if (!is_money_style(const_to_double(second_arg)))
-    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
+  if (!is_money_style(const_to_double(range_const)))
+    FAILWITH_LOCATION(range_const->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 static void verify_generalization(Node *node)
@@ -199,11 +200,11 @@ static void verify_generalization(Node *node)
   {
     FuncExpr *func_expr = (FuncExpr *)node;
 
-    if (is_substring(func_expr->funcid))
+    if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr);
     else if (is_rounding_udf(func_expr->funcid))
-      verify_rounding(func_expr);
-    else if (is_builtin_generalization(func_expr->funcid))
+      verify_rounding_range_width((Node *)list_nth(func_expr->args, 1));
+    else if (is_rounding_builtin(func_expr->funcid))
       ;
     else
       FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
