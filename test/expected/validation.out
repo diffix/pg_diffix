@@ -1,0 +1,182 @@
+LOAD 'pg_diffix';
+SET pg_diffix.session_access_level = 'publish';
+----------------------------------------------------------------
+-- Sanity checks
+----------------------------------------------------------------
+SELECT diffix.access_level();
+ access_level 
+--------------
+ publish
+(1 row)
+
+----------------------------------------------------------------
+-- Supported queries
+----------------------------------------------------------------
+-- Supported functions for defining buckets
+SELECT COUNT(*) FROM empty_test_customers
+  GROUP BY substring(city, 1, 1);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM empty_test_customers
+  GROUP BY width_bucket(id, 0, 1000, 10), width_bucket(id::float, 0.0, 1000.0, 10);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM empty_test_customers
+  GROUP BY round(id::float, -1), round(id::numeric, -1);
+ERROR:  function round(double precision, integer) does not exist
+LINE 2:   GROUP BY round(id::float, -1), round(id::numeric, -1);
+                   ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+SELECT COUNT(*) FROM empty_test_customers
+  GROUP BY round(id::float), ceil(id::float), ceiling(id::float), floor(id::float);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM empty_test_customers
+  GROUP BY round(id::numeric), ceil(id::numeric), ceiling(id::numeric), floor(id::numeric);
+ count 
+-------
+(0 rows)
+
+SELECT
+  diffix.round_by(id::numeric, 5),
+  diffix.round_by(id::double precision, 5),
+  COUNT(*)
+FROM empty_test_customers
+GROUP BY 1, 2;
+ round_by | round_by | count 
+----------+----------+-------
+(0 rows)
+
+SELECT
+  diffix.ceil_by(id::numeric, 5),
+  diffix.ceil_by(id::double precision, 5),
+  COUNT(*)
+FROM empty_test_customers
+GROUP BY 1, 2;
+ ceil_by | ceil_by | count 
+---------+---------+-------
+(0 rows)
+
+SELECT
+  diffix.floor_by(id::numeric, 5),
+  diffix.floor_by(id::double precision, 5),
+  COUNT(*)
+FROM empty_test_customers
+GROUP BY 1, 2;
+ floor_by | floor_by | count 
+----------+----------+-------
+(0 rows)
+
+-- Allow all functions post-anonymization
+SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
+ ?column? 
+----------
+(0 rows)
+
+----------------------------------------------------------------
+-- Unsupported queries
+----------------------------------------------------------------
+-- Get rejected because aggregators are unsupported.
+SELECT SUM(id) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT SUM(id) FROM empty_test_customers;
+               ^
+SELECT MIN(id) + MAX(id) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT MIN(id) + MAX(id) FROM empty_test_customers;
+               ^
+SELECT city FROM empty_test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: ...ity FROM empty_test_customers GROUP BY 1 ORDER BY AVG(LENGTH...
+                                                             ^
+SELECT count(city ORDER BY city) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'ORDER BY clauses in aggregate expressions' is not currently supported.
+SELECT count(*) FILTER (WHERE true) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'FILTER clauses in aggregate expressions' is not currently supported.
+-- Get rejected because only a subset of expressions is supported for defining buckets.
+SELECT COUNT(*) FROM empty_test_customers GROUP BY LENGTH(city);
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: ...ELECT COUNT(*) FROM empty_test_customers GROUP BY LENGTH(cit...
+                                                             ^
+SELECT COUNT(*) FROM empty_test_customers GROUP BY city || 'xxx';
+ERROR:  [PG_DIFFIX] Use of operators to define buckets is not supported.
+LINE 1: ...T COUNT(*) FROM empty_test_customers GROUP BY city || 'xxx';
+                                                              ^
+SELECT LENGTH(city) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT LENGTH(city) FROM empty_test_customers;
+               ^
+SELECT city, 'aaaa' FROM empty_test_customers GROUP BY 1, 2;
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
+LINE 1: SELECT city, 'aaaa' FROM empty_test_customers GROUP BY 1, 2;
+                     ^
+SELECT COUNT(*) FROM empty_test_customers GROUP BY round(floor(id));
+ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+LINE 1: ...ELECT COUNT(*) FROM empty_test_customers GROUP BY round(floo...
+                                                             ^
+SELECT COUNT(*) FROM empty_test_customers GROUP BY floor(cast(discount AS integer));
+ERROR:  column "discount" does not exist
+LINE 1: ...(*) FROM empty_test_customers GROUP BY floor(cast(discount A...
+                                                             ^
+SELECT COUNT(*) FROM empty_test_customers GROUP BY substr(city, 1, id);
+ERROR:  [PG_DIFFIX] Non-primary arguments for a bucket function have to be simple constants.
+LINE 1: ...ELECT COUNT(*) FROM empty_test_customers GROUP BY substr(cit...
+                                                             ^
+SELECT COUNT(*) FROM empty_test_customers GROUP BY substr('aaaa', 1, 2);
+ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+LINE 1: ...ELECT COUNT(*) FROM empty_test_customers GROUP BY substr('aa...
+                                                             ^
+-- Get rejected because of subqueries
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM empty_test_customers
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM empty_test_customers ) y
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
+FROM (
+  SELECT id, cid, city as user_city
+  FROM empty_test_customers
+  INNER JOIN test_purchases tp ON id = cid
+) x
+GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM empty_test_customers ) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+-- Get rejected because of subqueries, but used to be rejected because of their inner aggregation
+SELECT * FROM ( SELECT COUNT(*) FROM empty_test_customers ) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM empty_test_customers
+  GROUP BY 1
+) x;
+ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
+-- Get rejected because of JOINs
+SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM empty_test_customers
+  INNER JOIN test_purchases tp ON id = cid;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT COUNT(c.city), COUNT(p.name) FROM empty_test_customers c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products p ON pid = p.id;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM empty_test_customers, test_products GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM test_products, empty_test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+SELECT city, COUNT(price) FROM test_products CROSS JOIN empty_test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
+-- Get rejected because of WHERE
+SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
+ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
