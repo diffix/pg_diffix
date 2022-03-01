@@ -7,7 +7,7 @@ OBJS = \
 EXTENSION = pg_diffix
 DATA = pg_diffix--0.0.1.sql
 
-TESTS        = $(wildcard test/sql/*.sql)
+TESTS        = $(sort $(wildcard test/sql/*.sql))
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test
 
