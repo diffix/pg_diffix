@@ -73,6 +73,17 @@ GROUP BY 1, 2;
 ----------+----------+-------
 (0 rows)
 
+SELECT
+  substring(cast(last_seen AS text), 1, 3), 
+  substring(cast(birthday AS text), 2, 3),
+  substring(cast(lunchtime AS varchar), 1, 4)
+FROM times
+GROUP BY 1, 2, 3;
+ substring | substring | substring 
+-----------+-----------+-----------
+ Sat       | 1-0       | 12:0
+(1 row)
+
 -- Allow all functions post-anonymization
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
  ?column? 
@@ -180,6 +191,23 @@ ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supp
 -- Get rejected because of WHERE
 SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
 ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
+-- Get rejected because of non-datetime cast to text
+SELECT cast(id AS text) FROM test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
+LINE 1: SELECT cast(id AS text) FROM test_customers GROUP BY 1;
+               ^
+SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
+LINE 1: SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
+               ^
+SELECT substring(cast(id AS text), 1, 1) FROM test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+LINE 1: SELECT substring(cast(id AS text), 1, 1) FROM test_customers...
+               ^
+SELECT substring(cast(id AS varchar), 1, 1) FROM test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+LINE 1: SELECT substring(cast(id AS varchar), 1, 1) FROM test_custom...
+               ^
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------

@@ -30,6 +30,13 @@ CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT)
 CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
 INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
 
+CREATE TABLE times (cid INTEGER PRIMARY key, birthday DATE, lunchtime TIME, last_seen TIMESTAMP);
+INSERT INTO times VALUES
+  (0, '2000-01-01', '12:00:00.0', '2000-01-01Z12:00:00.0'),
+  (1, '2000-01-01', '12:00:00.0', '2000-01-01Z12:00:00.0'),
+  (2, '2000-01-01', '12:00:00.0', '2000-01-01Z12:00:00.0'),
+  (3, '2000-01-01', '12:00:00.0', '2000-01-01Z12:00:00.0');
+
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -42,3 +49,5 @@ SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
+SECURITY LABEL FOR pg_diffix ON TABLE times IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON COLUMN times.cid IS 'aid';

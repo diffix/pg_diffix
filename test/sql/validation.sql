@@ -48,6 +48,13 @@ SELECT
 FROM empty_test_customers
 GROUP BY 1, 2;
 
+SELECT
+  substring(cast(last_seen AS text), 1, 3), 
+  substring(cast(birthday AS text), 2, 3),
+  substring(cast(lunchtime AS varchar), 1, 4)
+FROM times
+GROUP BY 1, 2, 3;
+
 -- Allow all functions post-anonymization
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 
@@ -119,6 +126,12 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN empty_test_customers GRO
 
 -- Get rejected because of WHERE
 SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
+
+-- Get rejected because of non-datetime cast to text
+SELECT cast(id AS text) FROM test_customers GROUP BY 1;
+SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
+SELECT substring(cast(id AS text), 1, 1) FROM test_customers GROUP BY 1;
+SELECT substring(cast(id AS varchar), 1, 1) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions

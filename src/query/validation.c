@@ -4,11 +4,11 @@
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+#include "parser/parse_coerce.h"
 #include "regex/regex.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/memutils.h"
-#include "utils/pg_locale.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -105,6 +105,12 @@ static void verify_aggregators(Query *query)
   query_tree_walker(query, verify_aggregator, NULL, 0);
 }
 
+static bool is_datetime_to_string_cast(CoerceViaIO *expr)
+{
+  Node *arg = (Node *)expr->arg;
+  return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
+}
+
 static Node *unwrap_cast(Node *node)
 {
   if (IsA(node, FuncExpr))
@@ -116,7 +122,18 @@ static Node *unwrap_cast(Node *node)
       return unwrap_cast(linitial(func_expr->args));
     }
   }
-
+  else if (IsA(node, RelabelType))
+  {
+    RelabelType *relabel_expr = (RelabelType *)node;
+    return unwrap_cast((Node *)relabel_expr->arg);
+  }
+  else if (IsA(node, CoerceViaIO))
+  {
+    /* `cast as text`; we treat it as a valid cast for datetime-like types. */
+    CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
+    if (is_datetime_to_string_cast(coerce_expr))
+      return unwrap_cast((Node *)coerce_expr->arg);
+  }
   return node;
 }
 
@@ -156,6 +173,21 @@ static void verify_bucket_expression(Node *node)
   {
     Const *const_expr = (Const *)node;
     FAILWITH_LOCATION(const_expr->location, "Simple constants are not allowed as bucket expressions.");
+  }
+
+  if (IsA(node, RelabelType))
+  {
+    RelabelType *relabel_expr = (RelabelType *)node;
+    verify_bucket_expression((Node *)relabel_expr->arg);
+  }
+
+  if (IsA(node, CoerceViaIO))
+  {
+    CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
+    if (is_datetime_to_string_cast(coerce_expr))
+      return verify_bucket_expression((Node *)coerce_expr->arg);
+    else
+      FAILWITH_LOCATION(coerce_expr->location, "Unsupported cast destination type name.");
   }
 }
 
