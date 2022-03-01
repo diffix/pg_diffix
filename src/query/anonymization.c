@@ -406,27 +406,6 @@ static void append_seed_material(
   strcpy(existing_material + existing_material_length, new_material);
 }
 
-static double cast_const_to_double(const Const *const_expr)
-{
-  switch (const_expr->consttype)
-  {
-  case INT2OID:
-    return DatumGetInt16(const_expr->constvalue);
-  case INT4OID:
-    return DatumGetInt32(const_expr->constvalue);
-  case INT8OID:
-    return DatumGetInt64(const_expr->constvalue);
-  case FLOAT4OID:
-    return DatumGetFloat4(const_expr->constvalue);
-  case FLOAT8OID:
-    return DatumGetFloat8(const_expr->constvalue);
-  case NUMERICOID:
-    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
-  default:
-    FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
-  }
-}
-
 typedef struct CollectMaterialContext
 {
   Query *query;
@@ -473,7 +452,11 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   if (IsA(node, Const))
   {
     Const *const_expr = (Const *)node;
-    double const_as_double = cast_const_to_double(const_expr);
+
+    if (!is_supported_numeric_const(const_expr))
+      FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
+
+    double const_as_double = const_to_double(const_expr);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');

@@ -7,7 +7,7 @@ SET pg_diffix.outlier_count_max = 1;
 SET pg_diffix.top_count_min = 3;
 SET pg_diffix.top_count_max = 3;
 
-SET pg_diffix.session_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish_trusted';
 
 ----------------------------------------------------------------
 -- Sanity checks

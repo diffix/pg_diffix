@@ -1,5 +1,5 @@
 LOAD 'pg_diffix';
-SET pg_diffix.session_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish_trusted';
 
 ----------------------------------------------------------------
 -- Sanity checks
@@ -119,3 +119,33 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN empty_test_customers GRO
 
 -- Get rejected because of WHERE
 SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
+
+----------------------------------------------------------------
+-- Untrusted mode query restrictions
+----------------------------------------------------------------
+
+SET pg_diffix.session_access_level = 'publish_untrusted';
+SELECT diffix.access_level();
+
+-- Get accepted
+SELECT substring(city, 1, 2) from test_customers;
+SELECT floor(discount) from test_customers;
+SELECT diffix.floor_by(discount, 2) from test_customers;
+SELECT diffix.floor_by(discount, 20) from test_customers;
+SELECT diffix.floor_by(discount, 2.0) from test_customers;
+SELECT diffix.floor_by(discount, 0.2) from test_customers;
+SELECT diffix.floor_by(discount, 20.0) from test_customers;
+SELECT diffix.floor_by(discount, 50.0) from test_customers;
+
+-- Get rejected because of invalid generalization parameters
+SELECT substring(city, 2, 2) from test_customers;
+SELECT diffix.floor_by(discount, 3) from test_customers;
+SELECT diffix.floor_by(discount, 3.0) from test_customers;
+SELECT diffix.floor_by(discount, 5000000000.1) from test_customers;
+SELECT diffix.round_by(discount, 2) from test_customers;
+SELECT diffix.ceil_by(discount, 2) from test_customers;
+SELECT ceil(discount) from test_customers;
+SELECT round(discount) from test_customers;
+
+-- Get rejected because of invalid generalizing functions
+SELECT width_bucket(discount, 2, 200, 5) from test_customers;

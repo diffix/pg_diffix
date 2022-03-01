@@ -3,7 +3,7 @@ LOAD 'pg_diffix';
 SET pg_diffix.noise_layer_sd = 7;
 SET pg_diffix.low_count_layer_sd = 3;
 
-SET pg_diffix.session_access_level = 'publish';
+SET pg_diffix.session_access_level = 'publish_trusted';
 
 ----------------------------------------------------------------
 -- Sanity checks

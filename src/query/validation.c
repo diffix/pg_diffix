@@ -1,9 +1,16 @@
 #include "postgres.h"
 
+#include "catalog/pg_collation.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+#include "regex/regex.h"
+#include "utils/builtins.h"
+#include "utils/fmgrprotos.h"
+#include "utils/memutils.h"
+#include "utils/pg_locale.h"
 
+#include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
@@ -98,22 +105,19 @@ static void verify_aggregators(Query *query)
   query_tree_walker(query, verify_aggregator, NULL, 0);
 }
 
-static bool is_expression_a(Node *node, NodeTag tag)
+static Node *unwrap_cast(Node *node)
 {
-  if (node->type == tag)
-    return true;
-
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
     if (is_allowed_cast(func_expr->funcid))
     {
       Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
-      return is_expression_a(linitial(func_expr->args), tag);
+      return unwrap_cast(linitial(func_expr->args));
     }
   }
 
-  return false;
+  return node;
 }
 
 static void verify_bucket_expression(Node *node)
@@ -132,12 +136,12 @@ static void verify_bucket_expression(Node *node)
 
     Assert(list_length(func_expr->args) > 0); /* All allowed functions require at least one argument. */
 
-    if (!is_expression_a(linitial(func_expr->args), T_Var))
+    if (!IsA(unwrap_cast(linitial(func_expr->args)), Var))
       FAILWITH_LOCATION(func_expr->location, "Primary argument for a bucket function has to be a simple column reference.");
 
     for (int i = 1; i < list_length(func_expr->args); i++)
     {
-      if (!is_expression_a((Node *)list_nth(func_expr->args, i), T_Const))
+      if (!IsA(unwrap_cast((Node *)list_nth(func_expr->args, i)), Const))
         FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
     }
   }
@@ -155,9 +159,62 @@ static void verify_bucket_expression(Node *node)
   }
 }
 
+static void verify_substring(FuncExpr *func_expr)
+{
+  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
+  Assert(IsA(node, Const)); /* Checked by prior validations */
+  Const *second_arg = (Const *)node;
+
+  if (DatumGetUInt32(second_arg->constvalue) != 1)
+    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
+}
+
+/* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
+static bool is_money_style(double number)
+{
+  char number_as_string[30];
+  sprintf(number_as_string, "%.15e", number);
+  text *pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
+  bool result = RE_compile_and_execute(pattern, number_as_string, strlen(number_as_string), REG_EXTENDED + REG_NOSUB, C_COLLATION_OID, 0, NULL) != REG_OKAY;
+  pfree(pattern);
+  return result;
+}
+
+static void verify_rounding(FuncExpr *func_expr)
+{
+  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
+  Assert(IsA(node, Const)); /* Checked by prior validations */
+  Const *second_arg = (Const *)node;
+
+  if (!is_supported_numeric_const(second_arg))
+    FAILWITH_LOCATION(second_arg->location, "Unsupported constant type used in generalization.");
+
+  if (!is_money_style(const_to_double(second_arg)))
+    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
+}
+
+static void verify_generalization(Node *node)
+{
+  if (IsA(node, FuncExpr))
+  {
+    FuncExpr *func_expr = (FuncExpr *)node;
+
+    if (is_substring(func_expr->funcid))
+      verify_substring(func_expr);
+    else if (func_expr->funcid == g_oid_cache.floor_by_nn || func_expr->funcid == g_oid_cache.floor_by_dd)
+      verify_rounding(func_expr);
+    else if (is_builtin_floor(func_expr->funcid))
+      ;
+    else
+      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
+  }
+}
+
 /* Should be run on rewritten queries only. */
 static void verify_bucket_expressions(Query *query)
 {
+  AccessLevel access_level = get_session_access_level();
+
   List *exprs_list = NIL;
   if (query->groupClause != NIL)
     /* Buckets were either explicitly defined, or implicitly defined and rewritten. */
@@ -169,5 +226,45 @@ static void verify_bucket_expressions(Query *query)
   {
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
+    if (access_level == ACCESS_PUBLISH_UNTRUSTED)
+      verify_generalization(expr);
+  }
+}
+
+bool is_supported_numeric_const(const Const *const_expr)
+{
+  switch (const_expr->consttype)
+  {
+  case INT2OID:
+  case INT4OID:
+  case INT8OID:
+  case FLOAT4OID:
+  case FLOAT8OID:
+  case NUMERICOID:
+    return true;
+  default:
+    return false;
+  }
+}
+
+double const_to_double(const Const *const_expr)
+{
+  switch (const_expr->consttype)
+  {
+  case INT2OID:
+    return DatumGetInt16(const_expr->constvalue);
+  case INT4OID:
+    return DatumGetInt32(const_expr->constvalue);
+  case INT8OID:
+    return DatumGetInt64(const_expr->constvalue);
+  case FLOAT4OID:
+    return DatumGetFloat4(const_expr->constvalue);
+  case FLOAT8OID:
+    return DatumGetFloat8(const_expr->constvalue);
+  case NUMERICOID:
+    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
+  default:
+    Assert(false);
+    return 0.0;
   }
 }

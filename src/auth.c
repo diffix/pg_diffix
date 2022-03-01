@@ -40,9 +40,14 @@ static inline bool is_aid_label(const char *seclabel)
   return strcasecmp(seclabel, "aid") == 0;
 }
 
-static inline bool is_publish_label(const char *seclabel)
+static inline bool is_publish_trusted_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "publish") == 0;
+  return strcasecmp(seclabel, "publish_trusted") == 0;
+}
+
+static inline bool is_publish_untrusted_label(const char *seclabel)
+{
+  return strcasecmp(seclabel, "publish_untrusted") == 0;
 }
 
 static inline bool is_direct_label(const char *seclabel)
@@ -63,8 +68,10 @@ AccessLevel get_user_access_level(void)
     return (AccessLevel)g_config.default_access_level;
   else if (is_direct_label(seclabel))
     return ACCESS_DIRECT;
-  else if (is_publish_label(seclabel))
-    return ACCESS_PUBLISH;
+  else if (is_publish_trusted_label(seclabel))
+    return ACCESS_PUBLISH_TRUSTED;
+  else if (is_publish_untrusted_label(seclabel))
+    return ACCESS_PUBLISH_UNTRUSTED;
   else
     FAIL_ON_INVALID_LABEL(seclabel);
 }
@@ -149,7 +156,7 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
       return;
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
-  else if (is_publish_label(seclabel) || is_direct_label(seclabel))
+  else if (is_publish_trusted_label(seclabel) || is_publish_untrusted_label(seclabel) || is_direct_label(seclabel))
   {
     if (object->classId == AuthIdRelationId)
     {
@@ -170,8 +177,10 @@ static char *level_to_string(AccessLevel level)
   {
   case ACCESS_DIRECT:
     return "direct";
-  case ACCESS_PUBLISH:
-    return "publish";
+  case ACCESS_PUBLISH_TRUSTED:
+    return "publish_trusted";
+  case ACCESS_PUBLISH_UNTRUSTED:
+    return "publish_untrusted";
   default:
     return NULL;
   }

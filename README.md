@@ -98,7 +98,7 @@ For more advanced usage see the [official image reference](https://hub.docker.co
 
 ### Demo image
 
-The demo image extends the base image with a sample dataset and a user configured with `publish` access.
+The demo image extends the base image with a sample dataset and a user configured with `publish_trusted` access.
 
 Once started, the container creates and populates the `banking` database.
 Two users are created, with password `demo`:
@@ -159,12 +159,12 @@ table can have zero, one or more AID columns.
 SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';
 ```
 
-Regular users can be marked with the anoymization labels `direct` or `publish`. Superusers can not be labeled and
+Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. Superusers can not be labeled and
 always have full access rights to all data. The value of the custom variable `pg_diffix.default_access_level`
 determines the access level for unlabeled regular users.
 
 ```SQL
-SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish';
+SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
 ```
 
 ### System settings
