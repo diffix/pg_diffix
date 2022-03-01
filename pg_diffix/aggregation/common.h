@@ -102,6 +102,7 @@ typedef struct BucketAttribute
 
 typedef struct BucketDescriptor
 {
+  MemoryContext bucket_context;                 /* Memory context where buckets live */
   int num_labels;                               /* Number of label attributes */
   int num_aggs;                                 /* Number of aggregate attributes */
   BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
@@ -166,5 +167,10 @@ struct AnonAggState
  * Returns NULL if the given OID is not an anonymizing aggregator.
  */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
+
+/*
+ * Merges all anonymizing aggregates from source bucket to destination bucket.
+ */
+extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
 
 #endif /* PG_DIFFIX_COMMON_H */

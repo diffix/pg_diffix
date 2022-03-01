@@ -12,6 +12,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/aggregation/led.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
@@ -87,6 +88,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
   int num_atts = plan->num_labels + plan->num_aggs;
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
+  bucket_desc->bucket_context = bucket_state->bucket_context;
   bucket_desc->num_labels = plan->num_labels;
   bucket_desc->num_aggs = plan->num_aggs;
 
@@ -161,7 +163,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   if (eflags & (EXEC_FLAG_REWIND | EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK))
     FAILWITH("Cannot REWIND, BACKWARD, or MARK/RESTORE a BucketScan.");
 
-  bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScanState", ALLOCSET_DEFAULT_SIZES);
+  bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
   bucket_state->repeat_previous_bucket = 0;
   bucket_state->next_bucket_index = 0;
@@ -261,7 +263,12 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
 static void run_hooks(BucketScanState *bucket_state)
 {
-  /* TODO */
+  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
+  bool has_low_count_agg = plan->low_count_index != -1;
+  if (has_low_count_agg)
+  {
+    led_hook(bucket_state->buckets, bucket_state->bucket_desc);
+  }
 }
 
 /*

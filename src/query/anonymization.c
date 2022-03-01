@@ -504,7 +504,7 @@ static void prepare_bucket_seeds(Query *query)
     collect_seed_material(expr, &collect_context);
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
-    hash_t seed_material_hash = hash_bytes(collect_context.material, strlen(collect_context.material));
+    hash_t seed_material_hash = hash_bytes_64(collect_context.material, strlen(collect_context.material));
     seed_material_hashes = list_append_unique_ptr(seed_material_hashes, (void *)seed_material_hash);
   }
 

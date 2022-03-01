@@ -18,19 +18,6 @@ PG_FUNCTION_INFO_V1(anon_agg_state_output);
 PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
 PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
 
-Datum anon_agg_state_input(PG_FUNCTION_ARGS)
-{
-  FAILWITH("Cannot create aggregator state from string.");
-  PG_RETURN_NULL();
-}
-
-Datum anon_agg_state_output(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = PG_GET_AGG_STATE(0);
-  const char *str = state->agg_funcs->explain(state);
-  PG_RETURN_CSTRING(str);
-}
-
 const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
   Assert(OidIsValid(oid));
@@ -45,6 +32,21 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
     return &g_low_count_funcs;
 
   return NULL;
+}
+
+void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc)
+{
+  int num_atts = bucket_num_atts(bucket_desc);
+  for (int i = bucket_desc->num_labels; i < num_atts; i++)
+  {
+    BucketAttribute *att = &bucket_desc->attrs[i];
+    if (att->tag == BUCKET_ANON_AGG)
+    {
+      Assert(!source->is_null[i]);
+      Assert(!destination->is_null[i]);
+      att->agg_funcs->merge((AnonAggState *)destination->values[i], (AnonAggState *)source->values[i]);
+    }
+  }
 }
 
 static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
@@ -70,6 +72,19 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   state->memory_context = bucket_context;
 
   return state;
+}
+
+Datum anon_agg_state_input(PG_FUNCTION_ARGS)
+{
+  FAILWITH("Cannot create aggregator state from string.");
+  PG_RETURN_NULL();
+}
+
+Datum anon_agg_state_output(PG_FUNCTION_ARGS)
+{
+  AnonAggState *state = PG_GET_AGG_STATE(0);
+  const char *str = state->agg_funcs->explain(state);
+  PG_RETURN_CSTRING(str);
 }
 
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
