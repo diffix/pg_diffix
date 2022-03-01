@@ -31,8 +31,8 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
-static const char *const g_builtin_floor[] = {
-    "dfloor", "numeric_floor"
+static const char *const g_builtin_roundings[] = {
+    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
     /**/
 };
 
@@ -41,7 +41,7 @@ static const char *const g_builtin_floor[] = {
 static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
 
 /* Pointers to OID cache which is populated at runtime. */
-static const Oid *const g_allowed_udfs[] = {
+static const Oid *const g_rounding_udfs[] = {
     &g_oid_cache.round_by_nn,
     &g_oid_cache.round_by_dd,
     &g_oid_cache.ceil_by_nn,
@@ -83,13 +83,20 @@ bool is_allowed_cast(Oid funcoid)
   return is_funcname_member_of(funcoid, g_allowed_casts, ARRAY_LENGTH(g_allowed_casts));
 }
 
-bool is_allowed_function(Oid funcoid)
+bool is_rounding_udf(Oid funcoid)
 {
-  for (int i = 0; i < ARRAY_LENGTH(g_allowed_udfs); i++)
+  for (int i = 0; i < ARRAY_LENGTH(g_rounding_udfs); i++)
   {
-    if (*g_allowed_udfs[i] == funcoid)
+    if (*g_rounding_udfs[i] == funcoid)
       return true;
   }
+  return false;
+}
+
+bool is_allowed_function(Oid funcoid)
+{
+  if (is_rounding_udf(funcoid))
+    return true;
 
   if (is_funcname_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
     return true;
@@ -109,7 +116,7 @@ bool is_substring(Oid funcoid)
   return is_funcname_member_of(funcoid, g_substring_builtins, ARRAY_LENGTH(g_substring_builtins));
 }
 
-bool is_builtin_floor(Oid funcoid)
+bool is_builtin_generalization(Oid funcoid)
 {
-  return is_funcname_member_of(funcoid, g_builtin_floor, ARRAY_LENGTH(g_builtin_floor));
+  return is_funcname_member_of(funcoid, g_builtin_roundings, ARRAY_LENGTH(g_builtin_roundings));
 }

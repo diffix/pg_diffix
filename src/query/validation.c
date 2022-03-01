@@ -201,9 +201,9 @@ static void verify_generalization(Node *node)
 
     if (is_substring(func_expr->funcid))
       verify_substring(func_expr);
-    else if (func_expr->funcid == g_oid_cache.floor_by_nn || func_expr->funcid == g_oid_cache.floor_by_dd)
+    else if (is_rounding_udf(func_expr->funcid))
       verify_rounding(func_expr);
-    else if (is_builtin_floor(func_expr->funcid))
+    else if (is_builtin_generalization(func_expr->funcid))
       ;
     else
       FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
