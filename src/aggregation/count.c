@@ -363,12 +363,12 @@ static void count_value_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
 }
 
 const AnonAggFuncs g_count_value_funcs = {
-    count_final_type,
-    count_value_create_state,
-    count_value_transition,
-    count_finalize,
-    count_merge,
-    count_explain,
+    .final_type = count_final_type,
+    .create_state = count_value_create_state,
+    .transition = count_value_transition,
+    .finalize = count_finalize,
+    .merge = count_merge,
+    .explain = count_explain,
 };
 
 static const int COUNT_STAR_AIDS_OFFSET = 1;
@@ -403,12 +403,12 @@ static void count_star_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
 }
 
 const AnonAggFuncs g_count_star_funcs = {
-    count_final_type,
-    count_star_create_state,
-    count_star_transition,
-    count_finalize,
-    count_merge,
-    count_explain,
+    .final_type = count_final_type,
+    .create_state = count_star_create_state,
+    .transition = count_star_transition,
+    .finalize = count_finalize,
+    .merge = count_merge,
+    .explain = count_explain,
 };
 
 /*-------------------------------------------------------------------------

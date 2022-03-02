@@ -159,12 +159,12 @@ static const char *agg_explain(const AnonAggState *base_state)
 }
 
 const AnonAggFuncs g_low_count_funcs = {
-    agg_final_type,
-    agg_create_state,
-    agg_transition,
-    agg_finalize,
-    agg_merge,
-    agg_explain,
+    .final_type = agg_final_type,
+    .create_state = agg_create_state,
+    .transition = agg_transition,
+    .finalize = agg_finalize,
+    .merge = agg_merge,
+    .explain = agg_explain,
 };
 
 /*-------------------------------------------------------------------------
