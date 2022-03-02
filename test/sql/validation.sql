@@ -52,7 +52,7 @@ SELECT
   substring(cast(last_seen AS text), 1, 3), 
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
-FROM times
+FROM empty_test_times
 GROUP BY 1, 2, 3;
 
 -- Allow all functions post-anonymization
