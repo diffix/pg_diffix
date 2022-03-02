@@ -24,7 +24,7 @@ INSERT INTO test_patients VALUES
   (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 
-CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT, discount REAL);
 
 -- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
 CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);

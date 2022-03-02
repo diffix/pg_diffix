@@ -12,13 +12,18 @@ extern bool is_allowed_function(Oid funcoid);
 extern bool is_allowed_cast(Oid funcoid);
 
 /*
- * Returns whether the OID points to a `substring` functions.
+ * Returns whether the OID points to a UDF being a rounding function, e.g. `ceil_by(x, 2.0)`.
  */
-extern bool is_substring(Oid funcoid);
+extern bool is_rounding_udf(Oid funcoid);
 
 /*
- * Returns whether the OID points to a function being a floor function.
+ * Returns whether the OID points to a built-in substring function.
  */
-extern bool is_builtin_floor(Oid funcoid);
+extern bool is_substring_builtin(Oid funcoid);
+
+/*
+ * Returns whether the OID points to a built-in rounding function, e.g. `ceil(x)`.
+ */
+extern bool is_rounding_builtin(Oid funcoid);
 
 #endif /* PG_DIFFIX_ALLOWED_FUNCTIONS_H */
