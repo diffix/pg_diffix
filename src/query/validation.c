@@ -234,9 +234,9 @@ static void verify_generalization(Node *node)
 
     if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr);
-    else if (is_rounding_udf(func_expr->funcid))
+    else if (is_implicit_range_udf(func_expr->funcid))
       verify_bin_size((Node *)list_nth(func_expr->args, 1));
-    else if (is_rounding_builtin(func_expr->funcid))
+    else if (is_implicit_range_builtin(func_expr->funcid))
       ;
     else
       FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
