@@ -213,7 +213,7 @@ static bool is_money_style(double number)
 }
 
 /* Expects the expression being the second argument to `round_by` et al. */
-static void verify_rounding_range_width(Node *range_expr)
+static void verify_bin_size(Node *range_expr)
 {
   Node *range_node = unwrap_cast(range_expr);
   Assert(IsA(range_node, Const)); /* Checked by prior validations */
@@ -235,7 +235,7 @@ static void verify_generalization(Node *node)
     if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr);
     else if (is_rounding_udf(func_expr->funcid))
-      verify_rounding_range_width((Node *)list_nth(func_expr->args, 1));
+      verify_bin_size((Node *)list_nth(func_expr->args, 1));
     else if (is_rounding_builtin(func_expr->funcid))
       ;
     else
