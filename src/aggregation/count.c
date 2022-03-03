@@ -2,6 +2,7 @@
 
 #include "fmgr.h"
 #include "lib/stringinfo.h"
+#include "nodes/execnodes.h"
 #include "utils/builtins.h"
 
 #include <inttypes.h>
@@ -228,7 +229,6 @@ typedef struct CountState
 {
   AnonAggState base;
   List *contribution_trackers;
-  bool is_global;
 } CountState;
 
 static void count_final_type(Oid *type, int32 *typmod, Oid *collid)
@@ -243,7 +243,6 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
   CountState *state = (CountState *)palloc0(sizeof(CountState));
-  state->is_global = is_global_aggregation(args_desc->fcinfo);
   state->contribution_trackers = create_contribution_trackers(args_desc, aids_offset, &count_descriptor);
   Assert(args_desc->num_args == list_length(state->contribution_trackers) + aids_offset);
 
@@ -255,7 +254,8 @@ static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDesc
 {
   CountState *state = (CountState *)base_state;
   CountResultAccumulator result_accumulator = {0};
-  int64 min_count = state->is_global ? 0 : g_config.low_count_min_threshold;
+  bool is_global = bucket_desc->num_labels == 0;
+  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
   seed_t bucket_seed = compute_bucket_seed();
 
   ListCell *cell = NULL;
@@ -416,6 +416,13 @@ const AnonAggFuncs g_count_star_funcs = {
  *-------------------------------------------------------------------------
  */
 
+static int get_num_labels(PG_FUNCTION_ARGS)
+{
+  AggState *agg_state = castNode(AggState, fcinfo->context);
+  Agg *agg_plan = (Agg *)agg_state->ss.ps.plan;
+  return agg_plan->numCols;
+}
+
 static const int STATE_INDEX = 0;
 
 static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
@@ -445,7 +452,8 @@ Datum anon_count_value_transfn(PG_FUNCTION_ARGS)
 Datum anon_count_value_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET), NULL, NULL, &is_null);
+  BucketDescriptor dummy_bucket_desc = {.num_labels = get_num_labels(fcinfo)};
+  Datum result = count_finalize(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET), NULL, &dummy_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
 }
@@ -469,7 +477,8 @@ Datum anon_count_star_transfn(PG_FUNCTION_ARGS)
 Datum anon_count_star_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET), NULL, NULL, &is_null);
+  BucketDescriptor dummy_bucket_desc = {.num_labels = get_num_labels(fcinfo)};
+  Datum result = count_finalize(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET), NULL, &dummy_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
 }

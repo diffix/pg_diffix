@@ -134,7 +134,6 @@ typedef struct ArgDescriptor
 /* Describes the list of function call arguments. */
 typedef struct ArgsDescriptor
 {
-  PG_FUNCTION_ARGS;                          /* Temporary workaround for old-style aggregates */
   int num_args;                              /* Number of arguments in function call */
   ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
 } ArgsDescriptor;

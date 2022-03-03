@@ -53,7 +53,6 @@ ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
 {
   int num_args = PG_NARGS();
   ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
-  args_desc->fcinfo = fcinfo; /* TODO: Remove temporary workaround. */
   args_desc->num_args = num_args;
   for (int i = 0; i < num_args; i++)
     args_desc->args[i].type_oid = get_fn_expr_argtype(fcinfo->flinfo, i);
