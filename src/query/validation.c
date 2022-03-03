@@ -207,7 +207,7 @@ static bool is_money_style(double number)
   char number_as_string[30];
   sprintf(number_as_string, "%.15e", number);
   text *pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
-  bool result = RE_compile_and_execute(pattern, number_as_string, strlen(number_as_string), REG_EXTENDED + REG_NOSUB, C_COLLATION_OID, 0, NULL) != REG_OKAY;
+  bool result = RE_compile_and_execute(pattern, number_as_string, strlen(number_as_string), REG_EXTENDED + REG_NOSUB, C_COLLATION_OID, 0, NULL);
   pfree(pattern);
   return result;
 }
