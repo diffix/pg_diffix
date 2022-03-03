@@ -79,6 +79,22 @@ MemoryContext g_current_bucket_context = NULL;
  *-------------------------------------------------------------------------
  */
 
+static ArgsDescriptor *build_args_desc(Aggref *aggref)
+{
+  List *args = aggref->args;
+  int num_args = list_length(args);
+
+  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  args_desc->num_args = num_args;
+  for (int i = 0; i < num_args; i++)
+  {
+    Node *arg = (Node *)list_nth(args, i);
+    args_desc->args[i].type_oid = exprType(arg);
+  }
+
+  return args_desc;
+}
+
 /*
  * Populates `bucket_desc` field with type metadata.
  */
@@ -110,6 +126,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
       att->agg_funcs = agg_funcs;
+      att->agg_args_desc = build_args_desc(aggref);
       att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
