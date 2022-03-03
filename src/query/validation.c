@@ -209,7 +209,7 @@ static bool is_money_style(double number)
   text *money_pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
   bool matches_money_pattern = RE_compile_and_execute(money_pattern,
                                                       number_as_string, strlen(number_as_string),
-                                                      REG_EXTENDED + REG_NOSUB, C_COLLATION_OID, 0, NULL);
+                                                      REG_EXTENDED | REG_NOSUB, C_COLLATION_OID, 0, NULL);
   pfree(money_pattern);
   return matches_money_pattern;
 }
