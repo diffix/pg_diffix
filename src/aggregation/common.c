@@ -49,6 +49,17 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
   }
 }
 
+ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
+{
+  int num_args = PG_NARGS();
+  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  args_desc->fcinfo = fcinfo; /* TODO: Remove temporary workaround. */
+  args_desc->num_args = num_args;
+  for (int i = 0; i < num_args; i++)
+    args_desc->args[i].type_oid = get_fn_expr_argtype(fcinfo->flinfo, i);
+  return args_desc;
+}
+
 static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(0))
@@ -67,7 +78,8 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (unlikely(agg_funcs == NULL))
     FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
-  AnonAggState *state = agg_funcs->create_state(bucket_context, fcinfo);
+  ArgsDescriptor *args_desc = get_args_desc(fcinfo);
+  AnonAggState *state = agg_funcs->create_state(bucket_context, args_desc);
   state->agg_funcs = agg_funcs;
   state->memory_context = bucket_context;
 
@@ -90,7 +102,7 @@ Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
-  state->agg_funcs->transition(state, fcinfo);
+  state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_AGG_STATE(state);
 }
 

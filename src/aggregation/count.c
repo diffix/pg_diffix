@@ -177,11 +177,11 @@ int64 finalize_count_result(const CountResultAccumulator *accumulator)
  *-------------------------------------------------------------------------
  */
 
-static bool all_aids_null(PG_FUNCTION_ARGS, int aids_offset, int aids_count)
+static bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
 {
   for (int aid_index = aids_offset; aid_index < aids_offset + aids_count; aid_index++)
   {
-    if (!PG_ARGISNULL(aid_index))
+    if (!args[aid_index].isnull)
       return false;
   }
   return true;
@@ -238,14 +238,14 @@ static void count_final_type(Oid *type, int32 *typmod, Oid *collid)
   *collid = 0;
 }
 
-static AnonAggState *count_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS, int aids_offset)
+static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc, int aids_offset)
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
   CountState *state = (CountState *)palloc0(sizeof(CountState));
-  state->is_global = is_global_aggregation(fcinfo);
-  state->contribution_trackers = create_contribution_trackers(fcinfo, aids_offset, &count_descriptor);
-  Assert(PG_NARGS() == list_length(state->contribution_trackers) + aids_offset);
+  state->is_global = is_global_aggregation(args_desc->fcinfo);
+  state->contribution_trackers = create_contribution_trackers(args_desc, aids_offset, &count_descriptor);
+  Assert(args_desc->num_args == list_length(state->contribution_trackers) + aids_offset);
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
@@ -329,16 +329,16 @@ static const char *count_explain(const AnonAggState *base_state)
 static const int COUNT_VALUE_INDEX = 1;
 static const int COUNT_VALUE_AIDS_OFFSET = 2;
 
-static AnonAggState *count_value_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *count_value_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
 {
-  return count_create_state(memory_context, fcinfo, COUNT_VALUE_AIDS_OFFSET);
+  return count_create_state(memory_context, args_desc, COUNT_VALUE_AIDS_OFFSET);
 }
 
-static void count_value_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
+static void count_value_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(fcinfo, COUNT_VALUE_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(args, COUNT_VALUE_AIDS_OFFSET, list_length(state->contribution_trackers)))
     return;
 
   ListCell *cell = NULL;
@@ -346,16 +346,16 @@ static void count_value_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
   {
     int aid_index = foreach_current_index(cell) + COUNT_VALUE_AIDS_OFFSET;
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
-    if (!PG_ARGISNULL(aid_index))
+    if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
-      if (PG_ARGISNULL(COUNT_VALUE_INDEX))
+      aid_t aid = contribution_tracker->aid_descriptor.make_aid(args[aid_index].value);
+      if (args[COUNT_VALUE_INDEX].isnull)
         /* No contribution since argument is NULL, only keep track of the AID value. */
         contribution_tracker_update_aid(contribution_tracker, aid);
       else
         contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
     }
-    else if (!PG_ARGISNULL(COUNT_VALUE_INDEX))
+    else if (!args[COUNT_VALUE_INDEX].isnull)
     {
       contribution_tracker->unaccounted_for++;
     }
@@ -373,16 +373,16 @@ const AnonAggFuncs g_count_value_funcs = {
 
 static const int COUNT_STAR_AIDS_OFFSET = 1;
 
-static AnonAggState *count_star_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *count_star_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
 {
-  return count_create_state(memory_context, fcinfo, COUNT_STAR_AIDS_OFFSET);
+  return count_create_state(memory_context, args_desc, COUNT_STAR_AIDS_OFFSET);
 }
 
-static void count_star_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
+static void count_star_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(fcinfo, COUNT_STAR_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(args, COUNT_STAR_AIDS_OFFSET, list_length(state->contribution_trackers)))
     return;
 
   ListCell *cell = NULL;
@@ -390,9 +390,9 @@ static void count_star_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
   {
     int aid_index = foreach_current_index(cell) + COUNT_STAR_AIDS_OFFSET;
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
-    if (!PG_ARGISNULL(aid_index))
+    if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
+      aid_t aid = contribution_tracker->aid_descriptor.make_aid(args[aid_index].value);
       contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
     }
     else
@@ -428,7 +428,7 @@ static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
   if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  return count_create_state(memory_context, fcinfo, aids_offset);
+  return count_create_state(memory_context, get_args_desc(fcinfo), aids_offset);
 }
 
 PG_FUNCTION_INFO_V1(anon_count_value_transfn);
@@ -438,7 +438,7 @@ PG_FUNCTION_INFO_V1(anon_count_value_explain_finalfn);
 Datum anon_count_value_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET);
-  count_value_transition(state, fcinfo);
+  count_value_transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_POINTER(state);
 }
 
@@ -462,7 +462,7 @@ PG_FUNCTION_INFO_V1(anon_count_star_explain_finalfn);
 Datum anon_count_star_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET);
-  count_star_transition(state, fcinfo);
+  count_star_transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_POINTER(state);
 }
 

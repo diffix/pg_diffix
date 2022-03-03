@@ -49,31 +49,31 @@ typedef struct LowCountState
   List *aid_trackers;
 } LowCountState;
 
-static AnonAggState *agg_create_state(MemoryContext memory_context, PG_FUNCTION_ARGS)
+static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
   LowCountState *state = (LowCountState *)palloc0(sizeof(LowCountState));
-  state->aid_trackers = create_aid_trackers(fcinfo, AIDS_OFFSET);
+  state->aid_trackers = create_aid_trackers(args_desc, AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
 }
 
-static void agg_transition(AnonAggState *base_state, PG_FUNCTION_ARGS)
+static void agg_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   LowCountState *state = (LowCountState *)base_state;
 
-  Assert(PG_NARGS() == list_length(state->aid_trackers) + AIDS_OFFSET);
+  Assert(num_args == list_length(state->aid_trackers) + AIDS_OFFSET);
 
   ListCell *cell = NULL;
   foreach (cell, state->aid_trackers)
   {
     int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
-    if (!PG_ARGISNULL(aid_index))
+    if (!args[aid_index].isnull)
     {
       AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-      aid_t aid = aid_tracker->aid_descriptor.make_aid(PG_GETARG_DATUM(aid_index));
+      aid_t aid = aid_tracker->aid_descriptor.make_aid(args[aid_index].value);
       aid_tracker_update(aid_tracker, aid);
     }
   }
@@ -188,13 +188,13 @@ static AnonAggState *agg_get_state(PG_FUNCTION_ARGS)
   if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  return agg_create_state(memory_context, fcinfo);
+  return agg_create_state(memory_context, get_args_desc(fcinfo));
 }
 
 Datum lcf_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = agg_get_state(fcinfo);
-  agg_transition(state, fcinfo);
+  agg_transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_POINTER(state);
 }
 
