@@ -1,12 +1,12 @@
 #ifndef PG_DIFFIX_CONTRIBUTION_TRACKER_H
 #define PG_DIFFIX_CONTRIBUTION_TRACKER_H
 
-#include "fmgr.h"
 #include "nodes/pg_list.h"
 
 #include <inttypes.h>
 
 #include "pg_diffix/aggregation/aid.h"
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
 
 #define CONTRIBUTION_INT_FMT PRIi64
@@ -95,7 +95,7 @@ extern void contribution_tracker_update_contribution(
  * Gets or creates the multi-AID aggregation state from the function arguments.
  */
 extern List *create_contribution_trackers(
-    PG_FUNCTION_ARGS,
+    ArgsDescriptor *args_desc,
     int aids_offset,
     const ContributionDescriptor *descriptor);
 

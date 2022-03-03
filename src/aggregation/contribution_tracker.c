@@ -199,16 +199,16 @@ void contribution_tracker_update_contribution(
 }
 
 List *create_contribution_trackers(
-    PG_FUNCTION_ARGS,
+    ArgsDescriptor *args_desc,
     int aids_offset,
     const ContributionDescriptor *descriptor)
 {
-  Assert(PG_NARGS() > aids_offset);
+  Assert(args_desc->num_args > aids_offset);
 
   List *trackers = NIL;
-  for (int arg_index = aids_offset; arg_index < PG_NARGS(); arg_index++)
+  for (int arg_index = aids_offset; arg_index < args_desc->num_args; arg_index++)
   {
-    Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, arg_index);
+    Oid aid_type = args_desc->args[arg_index].type_oid;
     ContributionTrackerState *tracker = contribution_tracker_new(get_aid_descriptor(aid_type), descriptor);
     trackers = lappend(trackers, tracker);
   }

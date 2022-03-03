@@ -9,13 +9,14 @@
  *
  * The `create_state` function must:
  *   - Switch to the provided memory context to ensure adequate lifetime of the state.
- *   - Return a derived struct with its first member of type AnonAggState (not pointer!) and populate it.
- *   - Inspect PG_FUNCTION_ARGS for type info but not values, since it may also be called during finalfunc.
- *     Argument at index 0 should be ignored because it is managed by the wrapper function.
+ *   - Return a derived struct with its first member of type AnonAggState (not pointer!).
+ *   - Inspect ArgsDescriptor for type info. Argument at index 0 should be ignored
+ *     because it is managed by the wrapper function. ArgsDescriptor is short lived
+ *     and must not be cached.
  *   - Initialize aggregator data such as hash tables (in the provided memory context).
  *
  * The `transition` function must:
- *   - Advance the aggregator state for the given input tuple (read PG_FUNCTION_ARGS).
+ *   - Advance the aggregator state for the given input tuple.
  *     Argument at index 0 should be ignored because it is managed by the wrapper function.
  *   - Switch to the state's memory context when attaching data to the state.
  *     If moving any input Datums to the state, they must be copied first with `datumCopy`.
@@ -124,6 +125,19 @@ typedef struct Bucket
   bool merged;    /* Was merged to some other bucket? */
 } Bucket;
 
+/* Describes a single function call argument. */
+typedef struct ArgDescriptor
+{
+  Oid type_oid; /* Type OID of argument */
+} ArgDescriptor;
+
+/* Describes the list of function call arguments. */
+typedef struct ArgsDescriptor
+{
+  int num_args;                              /* Number of arguments in function call */
+  ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
+} ArgsDescriptor;
+
 struct AnonAggFuncs
 {
   /* Get type information of final value. */
@@ -132,12 +146,11 @@ struct AnonAggFuncs
   /*
    * Create an empty state in the given memory context. The implementation is
    * responsible for switching to this memory context when allocating.
-   * PG_FUNCTION_ARGS should be used only for inspecting parameter types.
    */
-  AnonAggState *(*create_state)(MemoryContext memory_context, PG_FUNCTION_ARGS);
+  AnonAggState *(*create_state)(MemoryContext memory_context, ArgsDescriptor *args_desc);
 
   /* Transitions the aggregator state for an input tuple. */
-  void (*transition)(AnonAggState *state, PG_FUNCTION_ARGS);
+  void (*transition)(AnonAggState *state, int num_args, NullableDatum *args);
 
   /* Derive final value from aggregation state and bucket data. */
   Datum (*finalize)(AnonAggState *state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null);
@@ -161,6 +174,11 @@ struct AnonAggState
   const AnonAggFuncs *agg_funcs; /* Aggregator implementation. */
   MemoryContext memory_context;  /* Where this state lives. */
 };
+
+/*
+ * Builds an ArgsDescriptor with metadata from PG_FUNCTION_ARGS.
+ */
+extern ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS);
 
 /*
  * Finds aggregator spec for given OID.
