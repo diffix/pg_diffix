@@ -118,6 +118,7 @@ typedef struct BucketAttribute
 typedef struct BucketDescriptor
 {
   MemoryContext bucket_context;                 /* Memory context where buckets live */
+  int low_count_index;                          /* Index of low count agg, or -1 if none */
   int num_labels;                               /* Number of label attributes */
   int num_aggs;                                 /* Number of aggregate attributes */
   BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
@@ -186,6 +187,11 @@ extern ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS);
  * Returns NULL if the given OID is not an anonymizing aggregator.
  */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
+
+/*
+ * Determines whether the given bucket is low count.
+ */
+extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
 
 /*
  * Merges all anonymizing aggregates from source bucket to destination bucket.

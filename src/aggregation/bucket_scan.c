@@ -105,6 +105,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
   bucket_desc->bucket_context = bucket_state->bucket_context;
+  bucket_desc->low_count_index = plan->low_count_index;
   bucket_desc->num_labels = plan->num_labels;
   bucket_desc->num_aggs = plan->num_aggs;
 
@@ -195,20 +196,6 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   css->ss.ps.ps_ExprContext->ecxt_scantuple = css->ss.ss_ScanTupleSlot;
 }
 
-/*
- * Determines whether the given bucket is low count.
- */
-static bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc, int low_count_index)
-{
-  Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
-  AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
-  Assert(agg_state != NULL);
-  bool is_null = false;
-  Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
-  Assert(!is_null);
-  return DatumGetBool(is_low_count);
-}
-
 static void fill_bucket_list(BucketScanState *bucket_state)
 {
   MemoryContext old_bucket_context = g_current_bucket_context;
@@ -216,12 +203,11 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
   ExprContext *econtext = bucket_state->css.ss.ps.ps_ExprContext;
   MemoryContext per_tuple_memory = econtext->ecxt_per_tuple_memory;
-  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
   PlanState *outer_plan_state = outerPlanState(bucket_state);
 
-  int num_atts = plan->num_labels + plan->num_aggs;
-  int low_count_index = plan->low_count_index;
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
+  int num_atts = bucket_num_atts(bucket_desc);
+  int low_count_index = bucket_desc->low_count_index;
 
   List *buckets = NIL;
   for (;;)
@@ -264,7 +250,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     {
       /* Switch to tuple memory to evaluate low count. */
       MemoryContextSwitchTo(per_tuple_memory);
-      bucket->low_count = eval_low_count(bucket, bucket_desc, low_count_index);
+      bucket->low_count = eval_low_count(bucket, bucket_desc);
       MemoryContextReset(per_tuple_memory);
     }
 
@@ -280,11 +266,11 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
 static void run_hooks(BucketScanState *bucket_state)
 {
-  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
-  bool has_low_count_agg = plan->low_count_index != -1;
+  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
+  bool has_low_count_agg = bucket_desc->low_count_index != -1;
   if (has_low_count_agg)
   {
-    led_hook(bucket_state->buckets, bucket_state->bucket_desc);
+    led_hook(bucket_state->buckets, bucket_desc);
   }
 }
 
