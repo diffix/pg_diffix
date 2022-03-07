@@ -619,6 +619,8 @@ static int find_agg_index(List *tlist, Oid fnoid)
   return -1;
 }
 
+extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
+
 Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 {
   if (!IsA(left_tree, Agg))
@@ -632,18 +634,6 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   bucket_scan->custom_scan.methods = &BucketScanScanMethods;
   bucket_scan->num_labels = num_labels;
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
-
-  /*
-   * Estimate cost.
-   * Buckets are iterated twice: once for hooks, then for finalizing aggregates.
-   */
-  Cost hooks_cost = 2 * left_tree->plan_rows * DEFAULT_CPU_TUPLE_COST;
-  Cost finalization_cost = left_tree->plan_rows * DEFAULT_CPU_TUPLE_COST;
-  Cost startup_cost = left_tree->total_cost + hooks_cost;
-  plan->startup_cost = startup_cost;
-  plan->total_cost = startup_cost + finalization_cost;
-  plan->plan_rows = left_tree->plan_rows;
-  plan->plan_width = left_tree->plan_width;
 
   /* Lift projection and qual up. */
   List *flat_agg_tlist = flatten_agg_tlist(agg);
@@ -661,6 +651,30 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 
   if (expand_buckets && bucket_scan->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
+
+  /* Estimate cost. */
+  double rows = left_tree->plan_rows;
+  Cost gather_cost = rows * cpu_tuple_cost;
+  Cost led_cost = 0;
+  Cost star_bucket_cost = 0;
+  Cost finalization_cost = rows * cpu_tuple_cost;
+
+  if (bucket_scan->low_count_index != -1)
+  {
+    if (num_labels > 2)
+    {
+      Cost led_table_cost = num_labels * rows * cpu_tuple_cost;
+      Cost led_loop_cost = rows * cpu_tuple_cost;
+      led_cost = led_table_cost + led_loop_cost;
+    }
+
+    star_bucket_cost = rows * cpu_tuple_cost;
+  }
+
+  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost + star_bucket_cost;
+  plan->total_cost = plan->startup_cost + finalization_cost;
+  plan->plan_rows = left_tree->plan_rows;
+  plan->plan_width = left_tree->plan_width;
 
   return (Plan *)bucket_scan;
 }
