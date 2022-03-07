@@ -54,6 +54,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 
   MemoryContextDelete(temp_context);
 
+  /* The star bucket must itself be high-count and include at least 2 suppressed buckets. */
   if (star_bucket->low_count || buckets_merged < 2)
     return NULL;
   else

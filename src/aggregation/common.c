@@ -38,7 +38,7 @@ bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   int low_count_index = bucket_desc->low_count_index;
   Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
-  AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
+  AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[low_count_index]);
   Assert(agg_state != NULL);
   bool is_null = false;
   Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);

@@ -68,7 +68,7 @@ typedef struct BucketScanState
   BucketDescriptor *bucket_desc; /* Bucket metadata */
   List *buckets;                 /* List of buckets gathered from child plan */
   int64 repeat_previous_bucket;  /* If greater than zero, previous bucket will be emitted again */
-  int next_bucket_index;         /* Next bucket to emit, starting from 0 if there is a star bucket, otherwise 1 */
+  int next_bucket_index;         /* Next bucket to emit, starting from 0 if there is a star bucket, from 1 otherwise */
   bool input_done;               /* Is the list of buckets populated? */
 } BucketScanState;
 
