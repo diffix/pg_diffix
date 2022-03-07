@@ -6,9 +6,9 @@
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
-/* See AggState definition in SQL. */
-#define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_INT64(index))
-#define PG_RETURN_AGG_STATE(state) PG_RETURN_INT64(state)
+/* See AnonAggState definition in SQL. */
+#define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_POINTER(index))
+#define PG_RETURN_AGG_STATE(state) PG_RETURN_POINTER(state)
 
 /* Memory context of currently executing BucketScan node (if any). */
 extern MemoryContext g_current_bucket_context;
