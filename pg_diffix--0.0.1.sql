@@ -71,7 +71,7 @@ LANGUAGE C STRICT STABLE;
 CREATE TYPE AnonAggState (
   INPUT = diffix.anon_agg_state_input,
   OUTPUT = diffix.anon_agg_state_output,
-  LIKE = int8
+  LIKE = internal
 );
 
 CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, variadic aids "any")
