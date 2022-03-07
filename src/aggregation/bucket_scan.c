@@ -13,6 +13,7 @@
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/led.h"
+#include "pg_diffix/aggregation/star_bucket.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
@@ -67,7 +68,7 @@ typedef struct BucketScanState
   BucketDescriptor *bucket_desc; /* Bucket metadata */
   List *buckets;                 /* List of buckets gathered from child plan */
   int64 repeat_previous_bucket;  /* If greater than zero, previous bucket will be emitted again */
-  int next_bucket_index;         /* Next bucket to emit, starting from 0 */
+  int next_bucket_index;         /* Next bucket to emit, starting from 0 if there is a star bucket, otherwise 1 */
   bool input_done;               /* Is the list of buckets populated? */
 } BucketScanState;
 
@@ -184,7 +185,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
   bucket_state->repeat_previous_bucket = 0;
-  bucket_state->next_bucket_index = 0;
+  bucket_state->next_bucket_index = 1;
   bucket_state->input_done = false;
 
   /* Initialize child plan. */
@@ -209,7 +210,10 @@ static void fill_bucket_list(BucketScanState *bucket_state)
   int num_atts = bucket_num_atts(bucket_desc);
   int low_count_index = bucket_desc->low_count_index;
 
-  List *buckets = NIL;
+  MemoryContext old_context = MemoryContextSwitchTo(bucket_context);
+  List *buckets = list_make1(NULL); /* First item is reserved for star bucket. */
+  MemoryContextSwitchTo(old_context);
+
   for (;;)
   {
     CHECK_FOR_INTERRUPTS();
@@ -225,7 +229,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     slot_getallattrs(outer_slot);
 
     /* Buckets are allocated in longer lived memory. */
-    MemoryContext old_context = MemoryContextSwitchTo(bucket_context);
+    old_context = MemoryContextSwitchTo(bucket_context);
     Bucket *bucket = (Bucket *)palloc0(sizeof(Bucket));
     bucket->values = (Datum *)palloc0(num_atts * sizeof(Datum));
     bucket->is_null = (bool *)palloc0(num_atts * sizeof(bool));
@@ -268,9 +272,16 @@ static void run_hooks(BucketScanState *bucket_state)
 {
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
   bool has_low_count_agg = bucket_desc->low_count_index != -1;
-  if (has_low_count_agg)
+  if (!has_low_count_agg)
+    return;
+
+  led_hook(bucket_state->buckets, bucket_desc);
+
+  Bucket *star_bucket = star_bucket_hook(bucket_state->buckets, bucket_desc);
+  if (star_bucket != NULL)
   {
-    led_hook(bucket_state->buckets, bucket_desc);
+    list_nth_cell(bucket_state->buckets, 0)->ptr_value = star_bucket;
+    bucket_state->next_bucket_index = 0; /* Include star bucket in output. */
   }
 }
 
