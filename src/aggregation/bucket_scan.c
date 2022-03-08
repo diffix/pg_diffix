@@ -280,7 +280,7 @@ static void run_hooks(BucketScanState *bucket_state)
   led_hook(bucket_state->buckets, bucket_desc);
 
   Bucket *star_bucket = NULL;
-  if (g_config.compute_star_bucket)
+  if (g_config.compute_suppress_bin)
     star_bucket = star_bucket_hook(bucket_state->buckets, bucket_desc);
 
   if (star_bucket != NULL)
@@ -673,12 +673,11 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
       led_cost = led_table_cost + led_loop_cost;
     }
 
-    star_bucket_cost = rows * cpu_tuple_cost;
+    if (g_config.compute_suppress_bin)
+      star_bucket_cost = rows * cpu_tuple_cost;
   }
 
-  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost;
-  if (g_config.compute_star_bucket)
-    plan->startup_cost += star_bucket_cost;
+  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost + star_bucket_cost;
 
   plan->total_cost = plan->startup_cost + finalization_cost;
   plan->plan_rows = left_tree->plan_rows;

@@ -37,7 +37,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     {
       if (TypeCategory(att->final_type) == TYPCATEGORY_STRING)
       {
-        star_bucket->values[i] = CStringGetDatum(g_config.text_label_for_star_bucket);
+        star_bucket->values[i] = CStringGetDatum(g_config.text_label_for_suppress_bin);
       }
       else
       {
