@@ -122,39 +122,11 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
   }
 }
 
-static void append_tracker_info(StringInfo string, seed_t bucket_seed, const AidTrackerState *tracker)
-{
-  AidResult result = calculate_aid_result(bucket_seed, tracker);
-
-  appendStringInfo(string, "uniq=%" PRIu32, tracker->aid_set->members);
-
-  appendStringInfo(string, ", thresh=%i, LC=%s",
-                   result.threshold,
-                   result.low_count ? "true" : "false");
-
-  appendStringInfo(string, ", seeds: bkt=%016" PRIx64 ", aid=%016" PRIx64,
-                   bucket_seed, result.aid_seed);
-}
-
 static const char *agg_explain(const AnonAggState *base_state)
 {
-  LowCountState *state = (LowCountState *)base_state;
-
   StringInfoData string;
   initStringInfo(&string);
-
-  seed_t bucket_seed = compute_bucket_seed();
-
-  ListCell *cell;
-  foreach (cell, state->aid_trackers)
-  {
-    if (foreach_current_index(cell) > 0)
-      appendStringInfo(&string, " \n");
-
-    AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-    append_tracker_info(&string, bucket_seed, aid_tracker);
-  }
-
+  appendStringInfo(&string, "Anonymizing low count aggregate");
   return string.data;
 }
 
@@ -174,7 +146,6 @@ const AnonAggFuncs g_low_count_funcs = {
 
 PG_FUNCTION_INFO_V1(lcf_transfn);
 PG_FUNCTION_INFO_V1(lcf_finalfn);
-PG_FUNCTION_INFO_V1(lcf_explain_finalfn);
 
 static const int STATE_INDEX = 0;
 
@@ -204,9 +175,4 @@ Datum lcf_finalfn(PG_FUNCTION_ARGS)
   bool low_count = DatumGetBool(agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null));
   Assert(!is_null);
   PG_RETURN_BOOL(!low_count);
-}
-
-Datum lcf_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  PG_RETURN_TEXT_P(cstring_to_text(agg_explain(agg_get_state(fcinfo))));
 }

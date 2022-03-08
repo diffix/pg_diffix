@@ -466,17 +466,9 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
 
 static const char *count_distinct_explain(const AnonAggState *base_state)
 {
-  CountDistinctState *state = (CountDistinctState *)base_state;
-  int64 fake_min_count = g_config.low_count_min_threshold;
-  CountDistinctResult result = count_distinct_calculate_final(state, fake_min_count);
-
   StringInfoData string;
   initStringInfo(&string);
-
-  /* The portions commented out require us to know `min_count` here, which is TODO. */
-  appendStringInfo(&string, "hc_values=%" PRIi64 ", lc_values=%" PRIi64, /* ", noisy_count=%" PRIi64, */
-                   result.hc_values_count, result.lc_values_count);      /*, result.noisy_count); */
-
+  appendStringInfo(&string, "Anonymizing count(distinct value) aggregate");
   return string.data;
 }
 
@@ -546,7 +538,6 @@ static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
 
 Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 {
@@ -562,10 +553,4 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &dummy_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
-}
-
-Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = count_distinct_get_state(fcinfo);
-  PG_RETURN_TEXT_P(cstring_to_text(count_distinct_explain(state)));
 }

@@ -109,22 +109,10 @@ RETURNS boolean
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.lcf_explain_finalfn(internal, variadic aids "any")
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
 CREATE AGGREGATE diffix.lcf(variadic aids "any") (
   sfunc = diffix.lcf_transfn,
   stype = internal,
   finalfunc = diffix.lcf_finalfn,
-  finalfunc_extra
-);
-
-CREATE AGGREGATE diffix.explain_lcf(variadic aids "any") (
-  sfunc = diffix.lcf_transfn,
-  stype = internal,
-  finalfunc = diffix.lcf_explain_finalfn,
   finalfunc_extra
 );
 
@@ -143,22 +131,10 @@ RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_distinct_explain_finalfn(internal, value "any", variadic aids "any")
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
 CREATE AGGREGATE diffix.anon_count_distinct(value "any", variadic aids "any") (
   sfunc = diffix.anon_count_distinct_transfn,
   stype = internal,
   finalfunc = diffix.anon_count_distinct_finalfn,
-  finalfunc_extra
-);
-
-CREATE AGGREGATE diffix.explain_anon_count_distinct(value "any", variadic aids "any") (
-  sfunc = diffix.anon_count_distinct_transfn,
-  stype = internal,
-  finalfunc = diffix.anon_count_distinct_explain_finalfn,
   finalfunc_extra
 );
 
@@ -177,22 +153,10 @@ RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
 
-CREATE FUNCTION diffix.anon_count_star_explain_finalfn(internal, variadic aids "any")
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
 CREATE AGGREGATE diffix.anon_count_star(variadic aids "any") (
   sfunc = diffix.anon_count_star_transfn,
   stype = internal,
   finalfunc = diffix.anon_count_star_finalfn,
-  finalfunc_extra
-);
-
-CREATE AGGREGATE diffix.explain_anon_row_count(variadic aids "any") (
-  sfunc = diffix.anon_count_star_transfn,
-  stype = internal,
-  finalfunc = diffix.anon_count_star_explain_finalfn,
   finalfunc_extra
 );
 
@@ -210,23 +174,10 @@ CREATE FUNCTION diffix.anon_count_value_finalfn(internal, value "any", variadic 
 RETURNS int8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE;
-
-CREATE FUNCTION diffix.anon_count_value_explain_finalfn(internal, value "any", variadic aids "any")
-RETURNS text
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
-
 CREATE AGGREGATE diffix.anon_count_value(value "any", variadic aids "any") (
   sfunc = diffix.anon_count_value_transfn,
   stype = internal,
   finalfunc = diffix.anon_count_value_finalfn,
-  finalfunc_extra
-);
-
-CREATE AGGREGATE diffix.explain_anon_count_value(value "any", variadic aids "any") (
-  sfunc = diffix.anon_count_value_transfn,
-  stype = internal,
-  finalfunc = diffix.anon_count_value_explain_finalfn,
   finalfunc_extra
 );
 
