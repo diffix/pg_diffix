@@ -18,6 +18,9 @@ typedef struct Oids
   Oid anon_count_star;     /* diffix.anon_count_star(aids...) */
   Oid anon_count_value;    /* diffix.anon_count_value(any, aids...) */
 
+  /* Bucket-specific aggregates */
+  Oid is_suppress_bin; /* diffix.is_suppress_bin(*) */
+
   /* Scalars */
   Oid round_by_nn; /* diffix.round_by(value numeric, amount numeric) */
   Oid round_by_dd; /* diffix.round_by(value double precision, amount double precision) */

@@ -231,6 +231,22 @@ CREATE AGGREGATE diffix.explain_anon_count_value(value "any", variadic aids "any
 );
 
 /* ----------------------------------------------------------------
+ * Bucket-specific aggregates
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION diffix.placeholder_func(anyelement)
+RETURNS anyelement
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE AGGREGATE diffix.is_suppress_bin(*) (
+  sfunc = diffix.placeholder_func,
+  stype = boolean,
+  initcond = FALSE
+);
+
+/* ----------------------------------------------------------------
  * Scalar functions
  * ----------------------------------------------------------------
  */
