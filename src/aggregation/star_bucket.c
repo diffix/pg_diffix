@@ -3,6 +3,7 @@
 #include "utils/memutils.h"
 
 #include "pg_diffix/aggregation/star_bucket.h"
+#include "pg_diffix/oid_cache.h"
 
 Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 {
@@ -23,7 +24,11 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     if (att->tag == BUCKET_ANON_AGG)
     {
       /* Create an empty anon agg state and merge buckets into it. */
-      star_bucket->values[i] = PointerGetDatum(att->agg_funcs->create_state(bucket_context, att->agg_args_desc));
+      star_bucket->values[i] = PointerGetDatum(att->agg.funcs->create_state(bucket_context, att->agg.args_desc));
+    }
+    else if (att->agg.fn_oid == g_oid_cache.is_suppress_bin)
+    {
+      star_bucket->values[i] = BoolGetDatum(true);
     }
     else
     {

@@ -127,8 +127,9 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
     {
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
-      att->agg_funcs = agg_funcs;
-      att->agg_args_desc = build_args_desc(aggref);
+      att->agg.fn_oid = aggref->aggfnoid;
+      att->agg.funcs = agg_funcs;
+      att->agg.args_desc = build_args_desc(aggref);
       att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
@@ -304,7 +305,7 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     if (att->tag == BUCKET_ANON_AGG)
     {
       Assert(DatumGetPointer(bucket->values[i]) != NULL);
-      values[i] = att->agg_funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
+      values[i] = att->agg.funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
     }
     else
     {

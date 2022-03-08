@@ -104,15 +104,19 @@ typedef enum BucketAttributeTag
 /* Describes a bucket label or aggregate. */
 typedef struct BucketAttribute
 {
-  const AnonAggFuncs *agg_funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
-  ArgsDescriptor *agg_args_desc; /* Agg args if tag!=BUCKET_LABEL */
-  BucketAttributeTag tag;        /* Label or aggregate? */
-  int typ_len;                   /* Data type length */
-  bool typ_byval;                /* Data type is by value? */
-  char *resname;                 /* Name of source TargetEntry */
-  Oid final_type;                /* Final type OID */
-  int final_typmod;              /* Final type modifier */
-  Oid final_collid;              /* Final type collation ID */
+  BucketAttributeTag tag; /* Label or aggregate? */
+  struct
+  {
+    Oid fn_oid;                /* Agg function OID */
+    ArgsDescriptor *args_desc; /* Agg arguments descriptor */
+    const AnonAggFuncs *funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+  } agg;                       /* Populated if tag!=BUCKET_LABEL */
+  int typ_len;                 /* Data type length */
+  bool typ_byval;              /* Data type is by value? */
+  char *resname;               /* Name of source TargetEntry */
+  Oid final_type;              /* Final type OID */
+  int final_typmod;            /* Final type modifier */
+  Oid final_collid;            /* Final type collation ID */
 } BucketAttribute;
 
 typedef struct BucketDescriptor

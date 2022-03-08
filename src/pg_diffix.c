@@ -36,3 +36,10 @@ void _PG_fini(void)
   oid_cache_cleanup();
   hooks_cleanup();
 }
+
+PG_FUNCTION_INFO_V1(placeholder_func);
+
+Datum placeholder_func(PG_FUNCTION_ARGS)
+{
+  return PG_GETARG_DATUM(0);
+}

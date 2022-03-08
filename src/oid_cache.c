@@ -26,6 +26,8 @@ void oid_cache_init(void)
   g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
   g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
 
+  g_oid_cache.is_suppress_bin = lookup_function("diffix", "is_suppress_bin", 0, (Oid[]){});
+
   g_oid_cache.round_by_nn = lookup_function("diffix", "round_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
   g_oid_cache.round_by_dd = lookup_function("diffix", "round_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
   g_oid_cache.ceil_by_nn = lookup_function("diffix", "ceil_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
@@ -75,6 +77,8 @@ char *oids_to_string(Oids *oids)
   appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
   appendStringInfo(&string, " :anon_count_star %u", oids->anon_count_star);
   appendStringInfo(&string, " :anon_count_value %u", oids->anon_count_value);
+
+  appendStringInfo(&string, " :is_suppress_bin %u", oids->is_suppress_bin);
 
   appendStringInfo(&string, " :round_by (nn %u) (dd %u)", oids->round_by_nn, oids->round_by_dd);
   appendStringInfo(&string, " :ceil_by (nn %u) (dd %u)", oids->ceil_by_nn, oids->ceil_by_dd);
