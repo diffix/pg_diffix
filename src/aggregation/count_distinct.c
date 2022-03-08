@@ -416,7 +416,7 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
   Oid value_oid = args_desc->args[VALUE_INDEX].type_oid;
   get_typlenbyval(value_oid, &data->typlen, &data->typbyval);
 
-  state->tracker = DistinctTracker_create(CurrentMemoryContext, 128, data);
+  state->tracker = DistinctTracker_create(memory_context, 128, data);
   state->args_desc = copy_args_desc(args_desc);
 
   MemoryContextSwitchTo(old_context);
@@ -461,9 +461,7 @@ static void count_distinct_transition(AnonAggState *base_state, int num_args, Nu
 
   Assert(num_args > AIDS_OFFSET);
   int aids_count = num_args - AIDS_OFFSET;
-
-  // FIXME: cleanup mess with memory context
-  MemoryContext old_context = MemoryContextSwitchTo(state->tracker->ctx);
+  MemoryContext old_context = MemoryContextSwitchTo(base_state->memory_context);
 
   if (!args[VALUE_INDEX].isnull)
   {
@@ -483,8 +481,6 @@ static void count_distinct_transition(AnonAggState *base_state, int num_args, Nu
       }
     }
   }
-
-  // FIXME: cleanup mess with memory context
   MemoryContextSwitchTo(old_context);
 }
 
@@ -519,7 +515,9 @@ static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
   if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  return count_distinct_create_state(memory_context, get_args_desc(fcinfo));
+  AnonAggState *state = count_distinct_create_state(memory_context, get_args_desc(fcinfo));
+  state->memory_context = memory_context;
+  return state;
 }
 
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);

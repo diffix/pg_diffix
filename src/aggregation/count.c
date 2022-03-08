@@ -435,7 +435,9 @@ static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
   if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  return count_create_state(memory_context, get_args_desc(fcinfo), aids_offset);
+  AnonAggState *state = count_create_state(memory_context, get_args_desc(fcinfo), aids_offset);
+  state->memory_context = memory_context;
+  return state;
 }
 
 PG_FUNCTION_INFO_V1(anon_count_value_transfn);
