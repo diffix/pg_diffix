@@ -72,6 +72,19 @@
  *-------------------------------------------------------------------------
  */
 
+/* Describes a single function call argument. */
+typedef struct ArgDescriptor
+{
+  Oid type_oid; /* Type OID of argument */
+} ArgDescriptor;
+
+/* Describes the list of function call arguments. */
+typedef struct ArgsDescriptor
+{
+  int num_args;                              /* Number of arguments in function call */
+  ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
+} ArgsDescriptor;
+
 typedef struct AnonAggFuncs AnonAggFuncs;
 typedef struct AnonAggState AnonAggState;
 
@@ -92,6 +105,7 @@ typedef enum BucketAttributeTag
 typedef struct BucketAttribute
 {
   const AnonAggFuncs *agg_funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+  ArgsDescriptor *agg_args_desc; /* Agg args if tag!=BUCKET_LABEL */
   BucketAttributeTag tag;        /* Label or aggregate? */
   int typ_len;                   /* Data type length */
   bool typ_byval;                /* Data type is by value? */
@@ -104,6 +118,7 @@ typedef struct BucketAttribute
 typedef struct BucketDescriptor
 {
   MemoryContext bucket_context;                 /* Memory context where buckets live */
+  int low_count_index;                          /* Index of low count agg, or -1 if none */
   int num_labels;                               /* Number of label attributes */
   int num_aggs;                                 /* Number of aggregate attributes */
   BucketAttribute attrs[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of grouping labels followed by aggregates */
@@ -124,19 +139,6 @@ typedef struct Bucket
   bool low_count; /* Has low count AIDs? */
   bool merged;    /* Was merged to some other bucket? */
 } Bucket;
-
-/* Describes a single function call argument. */
-typedef struct ArgDescriptor
-{
-  Oid type_oid; /* Type OID of argument */
-} ArgDescriptor;
-
-/* Describes the list of function call arguments. */
-typedef struct ArgsDescriptor
-{
-  int num_args;                              /* Number of arguments in function call */
-  ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
-} ArgsDescriptor;
 
 struct AnonAggFuncs
 {
@@ -185,6 +187,11 @@ extern ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS);
  * Returns NULL if the given OID is not an anonymizing aggregator.
  */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
+
+/*
+ * Determines whether the given bucket is low count.
+ */
+extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
 
 /*
  * Merges all anonymizing aggregates from source bucket to destination bucket.

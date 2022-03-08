@@ -34,6 +34,18 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
   return NULL;
 }
 
+bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc)
+{
+  int low_count_index = bucket_desc->low_count_index;
+  Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
+  AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[low_count_index]);
+  Assert(agg_state != NULL);
+  bool is_null = false;
+  Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
+  Assert(!is_null);
+  return DatumGetBool(is_low_count);
+}
+
 void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc)
 {
   int num_atts = bucket_num_atts(bucket_desc);

@@ -13,6 +13,7 @@
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/led.h"
+#include "pg_diffix/aggregation/star_bucket.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
@@ -67,7 +68,7 @@ typedef struct BucketScanState
   BucketDescriptor *bucket_desc; /* Bucket metadata */
   List *buckets;                 /* List of buckets gathered from child plan */
   int64 repeat_previous_bucket;  /* If greater than zero, previous bucket will be emitted again */
-  int next_bucket_index;         /* Next bucket to emit, starting from 0 */
+  int next_bucket_index;         /* Next bucket to emit, starting from 0 if there is a star bucket, from 1 otherwise */
   bool input_done;               /* Is the list of buckets populated? */
 } BucketScanState;
 
@@ -79,6 +80,22 @@ MemoryContext g_current_bucket_context = NULL;
  *-------------------------------------------------------------------------
  */
 
+static ArgsDescriptor *build_args_desc(Aggref *aggref)
+{
+  List *args = aggref->args;
+  int num_args = list_length(args);
+
+  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  args_desc->num_args = num_args;
+  for (int i = 0; i < num_args; i++)
+  {
+    Node *arg = (Node *)list_nth(args, i);
+    args_desc->args[i].type_oid = exprType(arg);
+  }
+
+  return args_desc;
+}
+
 /*
  * Populates `bucket_desc` field with type metadata.
  */
@@ -89,6 +106,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
   bucket_desc->bucket_context = bucket_state->bucket_context;
+  bucket_desc->low_count_index = plan->low_count_index;
   bucket_desc->num_labels = plan->num_labels;
   bucket_desc->num_aggs = plan->num_aggs;
 
@@ -110,6 +128,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
       att->agg_funcs = agg_funcs;
+      att->agg_args_desc = build_args_desc(aggref);
       att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
@@ -166,7 +185,7 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
   bucket_state->repeat_previous_bucket = 0;
-  bucket_state->next_bucket_index = 0;
+  bucket_state->next_bucket_index = 1;
   bucket_state->input_done = false;
 
   /* Initialize child plan. */
@@ -178,20 +197,6 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   css->ss.ps.ps_ExprContext->ecxt_scantuple = css->ss.ss_ScanTupleSlot;
 }
 
-/*
- * Determines whether the given bucket is low count.
- */
-static bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc, int low_count_index)
-{
-  Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
-  AnonAggState *agg_state = (AnonAggState *)DatumGetInt64(bucket->values[low_count_index]);
-  Assert(agg_state != NULL);
-  bool is_null = false;
-  Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
-  Assert(!is_null);
-  return DatumGetBool(is_low_count);
-}
-
 static void fill_bucket_list(BucketScanState *bucket_state)
 {
   MemoryContext old_bucket_context = g_current_bucket_context;
@@ -199,14 +204,16 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
   ExprContext *econtext = bucket_state->css.ss.ps.ps_ExprContext;
   MemoryContext per_tuple_memory = econtext->ecxt_per_tuple_memory;
-  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
   PlanState *outer_plan_state = outerPlanState(bucket_state);
 
-  int num_atts = plan->num_labels + plan->num_aggs;
-  int low_count_index = plan->low_count_index;
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
+  int num_atts = bucket_num_atts(bucket_desc);
+  int low_count_index = bucket_desc->low_count_index;
 
-  List *buckets = NIL;
+  MemoryContext old_context = MemoryContextSwitchTo(bucket_context);
+  List *buckets = list_make1(NULL); /* First item is reserved for star bucket. */
+  MemoryContextSwitchTo(old_context);
+
   for (;;)
   {
     CHECK_FOR_INTERRUPTS();
@@ -222,7 +229,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     slot_getallattrs(outer_slot);
 
     /* Buckets are allocated in longer lived memory. */
-    MemoryContext old_context = MemoryContextSwitchTo(bucket_context);
+    old_context = MemoryContextSwitchTo(bucket_context);
     Bucket *bucket = (Bucket *)palloc0(sizeof(Bucket));
     bucket->values = (Datum *)palloc0(num_atts * sizeof(Datum));
     bucket->is_null = (bool *)palloc0(num_atts * sizeof(bool));
@@ -247,7 +254,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
     {
       /* Switch to tuple memory to evaluate low count. */
       MemoryContextSwitchTo(per_tuple_memory);
-      bucket->low_count = eval_low_count(bucket, bucket_desc, low_count_index);
+      bucket->low_count = eval_low_count(bucket, bucket_desc);
       MemoryContextReset(per_tuple_memory);
     }
 
@@ -263,11 +270,18 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
 static void run_hooks(BucketScanState *bucket_state)
 {
-  BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
-  bool has_low_count_agg = plan->low_count_index != -1;
-  if (has_low_count_agg)
+  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
+  bool has_low_count_agg = bucket_desc->low_count_index != -1;
+  if (!has_low_count_agg)
+    return;
+
+  led_hook(bucket_state->buckets, bucket_desc);
+
+  Bucket *star_bucket = star_bucket_hook(bucket_state->buckets, bucket_desc);
+  if (star_bucket != NULL)
   {
-    led_hook(bucket_state->buckets, bucket_state->bucket_desc);
+    list_nth_cell(bucket_state->buckets, 0)->ptr_value = star_bucket;
+    bucket_state->next_bucket_index = 0; /* Include star bucket in output. */
   }
 }
 
@@ -605,6 +619,8 @@ static int find_agg_index(List *tlist, Oid fnoid)
   return -1;
 }
 
+extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
+
 Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 {
   if (!IsA(left_tree, Agg))
@@ -618,18 +634,6 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   bucket_scan->custom_scan.methods = &BucketScanScanMethods;
   bucket_scan->num_labels = num_labels;
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
-
-  /*
-   * Estimate cost.
-   * Buckets are iterated twice: once for hooks, then for finalizing aggregates.
-   */
-  Cost hooks_cost = 2 * left_tree->plan_rows * DEFAULT_CPU_TUPLE_COST;
-  Cost finalization_cost = left_tree->plan_rows * DEFAULT_CPU_TUPLE_COST;
-  Cost startup_cost = left_tree->total_cost + hooks_cost;
-  plan->startup_cost = startup_cost;
-  plan->total_cost = startup_cost + finalization_cost;
-  plan->plan_rows = left_tree->plan_rows;
-  plan->plan_width = left_tree->plan_width;
 
   /* Lift projection and qual up. */
   List *flat_agg_tlist = flatten_agg_tlist(agg);
@@ -647,6 +651,30 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 
   if (expand_buckets && bucket_scan->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
+
+  /* Estimate cost. */
+  double rows = left_tree->plan_rows;
+  Cost gather_cost = rows * cpu_tuple_cost;
+  Cost led_cost = 0;
+  Cost star_bucket_cost = 0;
+  Cost finalization_cost = rows * cpu_tuple_cost;
+
+  if (bucket_scan->low_count_index != -1)
+  {
+    if (num_labels > 2)
+    {
+      Cost led_table_cost = num_labels * rows * cpu_tuple_cost;
+      Cost led_loop_cost = rows * cpu_tuple_cost;
+      led_cost = led_table_cost + led_loop_cost;
+    }
+
+    star_bucket_cost = rows * cpu_tuple_cost;
+  }
+
+  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost + star_bucket_cost;
+  plan->total_cost = plan->startup_cost + finalization_cost;
+  plan->plan_rows = left_tree->plan_rows;
+  plan->plan_width = left_tree->plan_width;
 
   return (Plan *)bucket_scan;
 }
