@@ -56,7 +56,7 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
     {
       Assert(!source->is_null[i]);
       Assert(!destination->is_null[i]);
-      att->agg_funcs->merge((AnonAggState *)destination->values[i], (AnonAggState *)source->values[i]);
+      att->agg.funcs->merge((AnonAggState *)destination->values[i], (AnonAggState *)source->values[i]);
     }
   }
 }

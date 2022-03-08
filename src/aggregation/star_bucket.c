@@ -23,7 +23,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     if (att->tag == BUCKET_ANON_AGG)
     {
       /* Create an empty anon agg state and merge buckets into it. */
-      star_bucket->values[i] = PointerGetDatum(att->agg_funcs->create_state(bucket_context, att->agg_args_desc));
+      star_bucket->values[i] = PointerGetDatum(att->agg.funcs->create_state(bucket_context, att->agg.args_desc));
     }
     else
     {
