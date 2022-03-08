@@ -14,6 +14,7 @@
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/led.h"
 #include "pg_diffix/aggregation/star_bucket.h"
+#include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
 
@@ -278,7 +279,10 @@ static void run_hooks(BucketScanState *bucket_state)
 
   led_hook(bucket_state->buckets, bucket_desc);
 
-  Bucket *star_bucket = star_bucket_hook(bucket_state->buckets, bucket_desc);
+  Bucket *star_bucket = NULL;
+  if (g_config.compute_star_bucket)
+    star_bucket = star_bucket_hook(bucket_state->buckets, bucket_desc);
+
   if (star_bucket != NULL)
   {
     list_nth_cell(bucket_state->buckets, 0)->ptr_value = star_bucket;
@@ -672,7 +676,10 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
     star_bucket_cost = rows * cpu_tuple_cost;
   }
 
-  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost + star_bucket_cost;
+  plan->startup_cost = left_tree->total_cost + gather_cost + led_cost;
+  if (g_config.compute_star_bucket)
+    plan->startup_cost += star_bucket_cost;
+
   plan->total_cost = plan->startup_cost + finalization_cost;
   plan->plan_rows = left_tree->plan_rows;
   plan->plan_width = left_tree->plan_width;

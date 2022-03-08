@@ -1,8 +1,11 @@
 #include "postgres.h"
 
+#include "catalog/pg_type.h"
+#include "parser/parse_coerce.h"
 #include "utils/memutils.h"
 
 #include "pg_diffix/aggregation/star_bucket.h"
+#include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 
 Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
@@ -32,11 +35,14 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     }
     else
     {
-      /*
-       * Everything else is NULL.
-       * Todo: test for text type and put * instead.
-       */
-      star_bucket->is_null[i] = true;
+      if (TypeCategory(att->final_type) == TYPCATEGORY_STRING)
+      {
+        star_bucket->values[i] = CStringGetDatum(g_config.text_label_for_star_bucket);
+      }
+      else
+      {
+        star_bucket->is_null[i] = true;
+      }
     }
   }
 

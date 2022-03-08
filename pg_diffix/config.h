@@ -22,6 +22,9 @@ typedef struct DiffixConfig
 
   int top_count_min;
   int top_count_max;
+
+  bool compute_star_bucket;
+  char *text_label_for_star_bucket;
 } DiffixConfig;
 
 /*
