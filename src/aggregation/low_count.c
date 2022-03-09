@@ -124,10 +124,7 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
 
 static const char *agg_explain(const AnonAggState *base_state)
 {
-  StringInfoData string;
-  initStringInfo(&string);
-  appendStringInfo(&string, "Anonymizing low count aggregate");
-  return string.data;
+  return "diffix.lcf";
 }
 
 const AnonAggFuncs g_low_count_funcs = {

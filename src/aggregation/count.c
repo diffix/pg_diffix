@@ -305,10 +305,7 @@ static void count_value_transition(AnonAggState *base_state, int num_args, Nulla
 
 static const char *count_value_explain(const AnonAggState *base_state)
 {
-  StringInfoData string;
-  initStringInfo(&string);
-  appendStringInfo(&string, "Anonymizing count(value) aggregate");
-  return string.data;
+  return "diffix.anon_count_value";
 }
 
 const AnonAggFuncs g_count_value_funcs = {
@@ -353,10 +350,7 @@ static void count_star_transition(AnonAggState *base_state, int num_args, Nullab
 
 static const char *count_star_explain(const AnonAggState *base_state)
 {
-  StringInfoData string;
-  initStringInfo(&string);
-  appendStringInfo(&string, "Anonymizing count(*) aggregate");
-  return string.data;
+  return "diffix.anon_count_star";
 }
 
 const AnonAggFuncs g_count_star_funcs = {

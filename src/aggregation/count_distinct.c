@@ -302,7 +302,6 @@ static void process_lc_values_contributions(List *per_aid_values,
 typedef struct CountDistinctState
 {
   AnonAggState base;
-  int aids_count;
   ArgsDescriptor *args_desc;
   DistinctTracker_hash *tracker;
 } CountDistinctState;
@@ -320,6 +319,7 @@ typedef struct CountDistinctResult
  */
 static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, int64 min_count)
 {
+  int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
 
   seed_t bucket_seed = compute_bucket_seed();
@@ -339,7 +339,7 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
   bool insufficient_data = false;
   CountResultAccumulator result_accumulator = {0};
 
-  for (int aid_index = 0; aid_index < state->aids_count; aid_index++)
+  for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
     Contributors *top_contributors = create_contributors(top_contributors_capacity);
 
@@ -386,7 +386,8 @@ static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
 {
   size_t args_desc_size = sizeof(ArgsDescriptor) + source->num_args * sizeof(ArgDescriptor);
   ArgsDescriptor *dest = palloc(args_desc_size);
-  return memcpy(dest, source, args_desc_size);
+  memcpy(dest, source, args_desc_size);
+  return dest;
 }
 
 /*-------------------------------------------------------------------------
@@ -413,7 +414,6 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
 
   state->tracker = DistinctTracker_create(memory_context, 128, data);
   state->args_desc = copy_args_desc(args_desc);
-  state->aids_count = state->args_desc->num_args - AIDS_OFFSET;
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
@@ -439,8 +439,8 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   Assert(memcmp(dst_state->args_desc, src_state->args_desc, args_desc_size) == 0);
   Assert(DATA(dst_state->tracker)->typbyval == DATA(src_state->tracker)->typbyval);
   Assert(DATA(dst_state->tracker)->typlen == DATA(src_state->tracker)->typlen);
-  Assert(dst_state->aids_count == src_state->aids_count);
 
+  int aids_count = dst_state->args_desc->num_args - AIDS_OFFSET;
   MemoryContext old_context = MemoryContextSwitchTo(dst_base_state->memory_context);
 
   DistinctTracker_iterator src_iterator;
@@ -449,7 +449,7 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   while ((src_entry = DistinctTracker_iterate(src_state->tracker, &src_iterator)) != NULL)
   {
     DistinctTrackerHashEntry *dst_entry =
-        get_distinct_tracker_entry(dst_state->tracker, src_entry->value, src_state->aids_count);
+        get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);
 
     ListCell *dst_cell = NULL;
     const ListCell *src_cell = NULL;
@@ -466,23 +466,21 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
 
 static const char *count_distinct_explain(const AnonAggState *base_state)
 {
-  StringInfoData string;
-  initStringInfo(&string);
-  appendStringInfo(&string, "Anonymizing count(distinct value) aggregate");
-  return string.data;
+  return "diffix.anon_count_distinct";
 }
 
 static void count_distinct_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   CountDistinctState *state = (CountDistinctState *)base_state;
 
-  Assert(num_args - AIDS_OFFSET == state->aids_count);
+  Assert(num_args > AIDS_OFFSET);
+  int aids_count = num_args - AIDS_OFFSET;
   MemoryContext old_context = MemoryContextSwitchTo(base_state->memory_context);
 
   if (!args[VALUE_INDEX].isnull)
   {
     Datum value = args[VALUE_INDEX].value;
-    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(state->tracker, value, state->aids_count);
+    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(state->tracker, value, aids_count);
 
     ListCell *cell;
     foreach (cell, entry->aidvs)
