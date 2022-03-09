@@ -188,43 +188,6 @@ static bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
   return true;
 }
 
-static void append_tracker_info(StringInfo string, seed_t bucket_seed,
-                                const ContributionTrackerState *tracker)
-{
-  CountResult result = count_calculate_result(bucket_seed, tracker);
-
-  appendStringInfo(string, "uniq=%" PRIu32, tracker->contribution_table->members);
-
-  /* Top contributors */
-  uint32 top_length = tracker->top_contributors.length;
-  appendStringInfo(string, ", top=[");
-
-  for (uint32 i = 0; i < top_length; i++)
-  {
-    const Contributor *contributor = &tracker->top_contributors.members[i];
-    appendStringInfo(string, "%" CONTRIBUTION_INT_FMT "x%" PRIu64,
-                     contributor->contribution.integer, contributor->aid);
-
-    if (i == result.noisy_outlier_count - 1)
-      appendStringInfo(string, " | ");
-    else if (i < top_length - 1)
-      appendStringInfo(string, ", ");
-  }
-
-  appendStringInfo(string, "]");
-
-  appendStringInfo(string, ", true=%" PRIi64, result.true_count);
-
-  if (result.not_enough_aidvs)
-    appendStringInfo(string, ", insufficient AIDs");
-  else
-    appendStringInfo(string, ", flat=%.3f, noise=%.3f, SD=%.3f",
-                     result.flattened_count, result.noise, result.noise_sd);
-
-  appendStringInfo(string, ", seeds: bkt=%016" PRIx64 ", aid=%016" PRIx64,
-                   bucket_seed, result.aid_seed);
-}
-
 typedef struct CountState
 {
   AnonAggState base;
@@ -242,7 +205,7 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  CountState *state = (CountState *)palloc0(sizeof(CountState));
+  CountState *state = palloc0(sizeof(CountState));
   state->contribution_trackers = create_contribution_trackers(args_desc, aids_offset, &count_descriptor);
   Assert(args_desc->num_args == list_length(state->contribution_trackers) + aids_offset);
 
@@ -304,28 +267,6 @@ static void count_merge(AnonAggState *dst_base_state, const AnonAggState *src_ba
   }
 }
 
-static const char *count_explain(const AnonAggState *base_state)
-{
-  CountState *state = (CountState *)base_state;
-
-  seed_t bucket_seed = compute_bucket_seed();
-
-  StringInfoData string;
-  initStringInfo(&string);
-
-  ListCell *cell = NULL;
-  foreach (cell, state->contribution_trackers)
-  {
-    if (foreach_current_index(cell) > 0)
-      appendStringInfo(&string, " \n");
-
-    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
-    append_tracker_info(&string, bucket_seed, contribution_tracker);
-  }
-
-  return string.data;
-}
-
 static const int COUNT_VALUE_INDEX = 1;
 static const int COUNT_VALUE_AIDS_OFFSET = 2;
 
@@ -362,13 +303,18 @@ static void count_value_transition(AnonAggState *base_state, int num_args, Nulla
   }
 }
 
+static const char *count_value_explain(const AnonAggState *base_state)
+{
+  return "diffix.anon_count_value";
+}
+
 const AnonAggFuncs g_count_value_funcs = {
     .final_type = count_final_type,
     .create_state = count_value_create_state,
     .transition = count_value_transition,
     .finalize = count_finalize,
     .merge = count_merge,
-    .explain = count_explain,
+    .explain = count_value_explain,
 };
 
 static const int COUNT_STAR_AIDS_OFFSET = 1;
@@ -402,13 +348,18 @@ static void count_star_transition(AnonAggState *base_state, int num_args, Nullab
   }
 }
 
+static const char *count_star_explain(const AnonAggState *base_state)
+{
+  return "diffix.anon_count_star";
+}
+
 const AnonAggFuncs g_count_star_funcs = {
     .final_type = count_final_type,
     .create_state = count_star_create_state,
     .transition = count_star_transition,
     .finalize = count_finalize,
     .merge = count_merge,
-    .explain = count_explain,
+    .explain = count_star_explain,
 };
 
 /*-------------------------------------------------------------------------
@@ -442,7 +393,6 @@ static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
 
 PG_FUNCTION_INFO_V1(anon_count_value_transfn);
 PG_FUNCTION_INFO_V1(anon_count_value_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_value_explain_finalfn);
 
 Datum anon_count_value_transfn(PG_FUNCTION_ARGS)
 {
@@ -460,14 +410,8 @@ Datum anon_count_value_finalfn(PG_FUNCTION_ARGS)
   PG_RETURN_DATUM(result);
 }
 
-Datum anon_count_value_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET))));
-}
-
 PG_FUNCTION_INFO_V1(anon_count_star_transfn);
 PG_FUNCTION_INFO_V1(anon_count_star_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_star_explain_finalfn);
 
 Datum anon_count_star_transfn(PG_FUNCTION_ARGS)
 {
@@ -483,9 +427,4 @@ Datum anon_count_star_finalfn(PG_FUNCTION_ARGS)
   Datum result = count_finalize(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET), NULL, &dummy_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
-}
-
-Datum anon_count_star_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  PG_RETURN_TEXT_P(cstring_to_text(count_explain(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET))));
 }

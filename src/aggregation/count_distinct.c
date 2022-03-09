@@ -382,6 +382,14 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
   return result;
 }
 
+static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
+{
+  size_t args_desc_size = sizeof(ArgsDescriptor) + source->num_args * sizeof(ArgDescriptor);
+  ArgsDescriptor *dest = palloc(args_desc_size);
+  memcpy(dest, source, args_desc_size);
+  return dest;
+}
+
 /*-------------------------------------------------------------------------
  * Aggregation callbacks
  *-------------------------------------------------------------------------
@@ -394,27 +402,15 @@ static void count_distinct_final_type(Oid *type, int32 *typmod, Oid *collid)
   *collid = 0;
 }
 
-static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
-{
-  int num_args = source->num_args;
-  ArgsDescriptor *dest = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
-  dest->num_args = num_args;
-  for (int i = 0; i < num_args; i++)
-  {
-    dest->args[i].type_oid = source->args[i].type_oid;
-  }
-  return dest;
-}
-
 static AnonAggState *count_distinct_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  CountDistinctState *state = (CountDistinctState *)palloc0(sizeof(CountDistinctState));
+  CountDistinctState *state = palloc0(sizeof(CountDistinctState));
 
-  DistinctTrackerData *data = (DistinctTrackerData *)palloc0(sizeof(DistinctTrackerData));
-  Oid value_oid = args_desc->args[VALUE_INDEX].type_oid;
-  get_typlenbyval(value_oid, &data->typlen, &data->typbyval);
+  DistinctTrackerData *data = palloc0(sizeof(DistinctTrackerData));
+  data->typlen = args_desc->args[VALUE_INDEX].typlen;
+  data->typbyval = args_desc->args[VALUE_INDEX].typbyval;
 
   state->tracker = DistinctTracker_create(memory_context, 128, data);
   state->args_desc = copy_args_desc(args_desc);
@@ -435,24 +431,42 @@ static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, B
 
 static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
 {
-  /* TODO */
-  exit(100);
+  CountDistinctState *dst_state = (CountDistinctState *)dst_base_state;
+  const CountDistinctState *src_state = (const CountDistinctState *)src_base_state;
+
+  Assert(dst_state->args_desc->num_args == src_state->args_desc->num_args);
+  size_t args_desc_size = sizeof(ArgsDescriptor) + dst_state->args_desc->num_args * sizeof(ArgDescriptor);
+  Assert(memcmp(dst_state->args_desc, src_state->args_desc, args_desc_size) == 0);
+  Assert(DATA(dst_state->tracker)->typbyval == DATA(src_state->tracker)->typbyval);
+  Assert(DATA(dst_state->tracker)->typlen == DATA(src_state->tracker)->typlen);
+
+  int aids_count = dst_state->args_desc->num_args - AIDS_OFFSET;
+  MemoryContext old_context = MemoryContextSwitchTo(dst_base_state->memory_context);
+
+  DistinctTracker_iterator src_iterator;
+  DistinctTracker_start_iterate(src_state->tracker, &src_iterator);
+  DistinctTrackerHashEntry *src_entry = NULL;
+  while ((src_entry = DistinctTracker_iterate(src_state->tracker, &src_iterator)) != NULL)
+  {
+    DistinctTrackerHashEntry *dst_entry =
+        get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);
+
+    ListCell *dst_cell = NULL;
+    const ListCell *src_cell = NULL;
+    forboth(dst_cell, dst_entry->aidvs, src_cell, src_entry->aidvs)
+    {
+      List **dst_aidv = (List **)&lfirst(dst_cell);
+      const List **src_aidv = (const List **)&lfirst(src_cell);
+      *dst_aidv = list_concat_unique_ptr(*dst_aidv, *src_aidv);
+    }
+  }
+
+  MemoryContextSwitchTo(old_context);
 }
 
 static const char *count_distinct_explain(const AnonAggState *base_state)
 {
-  CountDistinctState *state = (CountDistinctState *)base_state;
-  int64 fake_min_count = g_config.low_count_min_threshold;
-  CountDistinctResult result = count_distinct_calculate_final(state, fake_min_count);
-
-  StringInfoData string;
-  initStringInfo(&string);
-
-  /* The portions commented out require us to know `min_count` here, which is TODO. */
-  appendStringInfo(&string, "hc_values=%" PRIi64 ", lc_values=%" PRIi64, /* ", noisy_count=%" PRIi64, */
-                   result.hc_values_count, result.lc_values_count);      /*, result.noisy_count); */
-
-  return string.data;
+  return "diffix.anon_count_distinct";
 }
 
 static void count_distinct_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
@@ -522,7 +536,6 @@ static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
 PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
 
 Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 {
@@ -538,10 +551,4 @@ Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
   Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &dummy_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
-}
-
-Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = count_distinct_get_state(fcinfo);
-  PG_RETURN_TEXT_P(cstring_to_text(count_distinct_explain(state)));
 }

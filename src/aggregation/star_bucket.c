@@ -38,9 +38,9 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 
   int num_atts = bucket_num_atts(bucket_desc);
 
-  Bucket *star_bucket = (Bucket *)MemoryContextAllocZero(bucket_context, sizeof(Bucket));
-  star_bucket->values = (Datum *)MemoryContextAllocZero(bucket_context, num_atts * sizeof(Datum));
-  star_bucket->is_null = (bool *)MemoryContextAllocZero(bucket_context, num_atts * sizeof(bool));
+  Bucket *star_bucket = MemoryContextAllocZero(bucket_context, sizeof(Bucket));
+  star_bucket->values = MemoryContextAllocZero(bucket_context, num_atts * sizeof(Datum));
+  star_bucket->is_null = MemoryContextAllocZero(bucket_context, num_atts * sizeof(bool));
 
   for (int i = 0; i < num_atts; i++)
   {
