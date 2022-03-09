@@ -75,7 +75,9 @@
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor
 {
-  Oid type_oid; /* Type OID of argument */
+  Oid type_oid;  /* Type OID of argument */
+  int16 typlen;  /* Length of argument type */
+  bool typbyval; /* Whether argument type is by val */
 } ArgDescriptor;
 
 /* Describes the list of function call arguments. */

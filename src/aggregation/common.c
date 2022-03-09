@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "nodes/primnodes.h"
+#include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
@@ -67,7 +68,12 @@ ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
   ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
   args_desc->num_args = num_args;
   for (int i = 0; i < num_args; i++)
-    args_desc->args[i].type_oid = get_fn_expr_argtype(fcinfo->flinfo, i);
+  {
+    ArgDescriptor *arg = &args_desc->args[i];
+    arg->type_oid = get_fn_expr_argtype(fcinfo->flinfo, i);
+    get_typlenbyval(arg->type_oid, &arg->typlen, &arg->typbyval);
+  }
+
   return args_desc;
 }
 
