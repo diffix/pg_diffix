@@ -1,7 +1,5 @@
 #include "postgres.h"
 
-#include "catalog/pg_type.h"
-#include "parser/parse_coerce.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 

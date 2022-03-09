@@ -678,7 +678,6 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   }
 
   plan->startup_cost = left_tree->total_cost + gather_cost + led_cost + star_bucket_cost;
-
   plan->total_cost = plan->startup_cost + finalization_cost;
   plan->plan_rows = left_tree->plan_rows;
   plan->plan_width = left_tree->plan_width;
