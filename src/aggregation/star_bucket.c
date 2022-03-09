@@ -2,11 +2,34 @@
 
 #include "catalog/pg_type.h"
 #include "parser/parse_coerce.h"
+#include "utils/builtins.h"
 #include "utils/memutils.h"
 
 #include "pg_diffix/aggregation/star_bucket.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/utils.h"
+
+static void set_text_label(Bucket *star_bucket, int att_idx, Oid type, MemoryContext context)
+{
+  switch (type)
+  {
+  case CSTRINGOID:
+    star_bucket->values[att_idx] = CStringGetDatum(g_config.text_label_for_suppress_bin);
+    break;
+  /* Postgres codebase indicates these are handled the same way. */
+  case TEXTOID:
+  case VARCHAROID:
+  case BPCHAROID:;
+    MemoryContext old_context = MemoryContextSwitchTo(context);
+    star_bucket->values[att_idx] = PointerGetDatum(cstring_to_text(g_config.text_label_for_suppress_bin));
+    MemoryContextSwitchTo(old_context);
+    break;
+  default:
+    star_bucket->is_null[att_idx] = true;
+    break;
+  }
+}
 
 Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 {
@@ -35,14 +58,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     }
     else
     {
-      if (TypeCategory(att->final_type) == TYPCATEGORY_STRING)
-      {
-        star_bucket->values[i] = CStringGetDatum(g_config.text_label_for_suppress_bin);
-      }
-      else
-      {
-        star_bucket->is_null[i] = true;
-      }
+      set_text_label(star_bucket, i, att->final_type, bucket_context);
     }
   }
 
