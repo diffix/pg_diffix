@@ -264,6 +264,30 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL,                                          /* assign_hook */
       NULL);                                         /* show_hook */
 
+  DefineCustomBoolVariable(
+      "pg_diffix.compute_suppress_bin",                                                 /* name */
+      "Whether the suppress bin should be computed and included in the query results.", /* short_desc */
+      NULL,                                                                             /* long_desc */
+      &g_config.compute_suppress_bin,                                                   /* valueAddr */
+      true,                                                                             /* bootValue */
+      PGC_SUSET,                                                                        /* context */
+      0,                                                                                /* flags */
+      NULL,                                                                             /* check_hook */
+      NULL,                                                                             /* assign_hook */
+      NULL);                                                                            /* show_hook */
+
+  DefineCustomStringVariable(
+      "pg_diffix.text_label_for_suppress_bin",                                    /* name */
+      "Value to use for the text-typed grouping labels in the suppress bin row.", /* short_desc */
+      NULL,                                                                       /* long_desc */
+      &g_config.text_label_for_suppress_bin,                                      /* valueAddr */
+      "*",                                                                        /* bootValue */
+      PGC_SUSET,                                                                  /* context */
+      0,                                                                          /* flags */
+      NULL,                                                                       /* check_hook */
+      NULL,                                                                       /* assign_hook */
+      NULL);                                                                      /* show_hook */
+
   char *config_str = config_to_string(&g_config);
   DEBUG_LOG("Config %s", config_str);
   pfree(config_str);

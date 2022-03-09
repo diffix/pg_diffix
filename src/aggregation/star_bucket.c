@@ -1,9 +1,33 @@
 #include "postgres.h"
 
+#include "utils/builtins.h"
 #include "utils/memutils.h"
 
 #include "pg_diffix/aggregation/star_bucket.h"
+#include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
+#include "pg_diffix/utils.h"
+
+static void set_text_label(Bucket *star_bucket, int att_idx, Oid type, MemoryContext context)
+{
+  switch (type)
+  {
+  case CSTRINGOID:
+    star_bucket->values[att_idx] = CStringGetDatum(g_config.text_label_for_suppress_bin);
+    break;
+  /* Postgres codebase indicates these are handled the same way. */
+  case TEXTOID:
+  case VARCHAROID:
+  case BPCHAROID:;
+    MemoryContext old_context = MemoryContextSwitchTo(context);
+    star_bucket->values[att_idx] = PointerGetDatum(cstring_to_text(g_config.text_label_for_suppress_bin));
+    MemoryContextSwitchTo(old_context);
+    break;
+  default:
+    star_bucket->is_null[att_idx] = true;
+    break;
+  }
+}
 
 Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 {
@@ -22,22 +46,14 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
   {
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
-    {
       /* Create an empty anon agg state and merge buckets into it. */
       star_bucket->values[i] = PointerGetDatum(att->agg.funcs->create_state(bucket_context, att->agg.args_desc));
-    }
+    else if (att->tag == BUCKET_LABEL)
+      set_text_label(star_bucket, i, att->final_type, bucket_context);
     else if (att->agg.fn_oid == g_oid_cache.is_suppress_bin)
-    {
       star_bucket->values[i] = BoolGetDatum(true);
-    }
     else
-    {
-      /*
-       * Everything else is NULL.
-       * Todo: test for text type and put * instead.
-       */
       star_bucket->is_null[i] = true;
-    }
   }
 
   int buckets_merged = 0;
