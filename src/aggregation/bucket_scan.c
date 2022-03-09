@@ -232,9 +232,9 @@ static void fill_bucket_list(BucketScanState *bucket_state)
 
     /* Buckets are allocated in longer lived memory. */
     old_context = MemoryContextSwitchTo(bucket_context);
-    Bucket *bucket = (Bucket *)palloc0(sizeof(Bucket));
-    bucket->values = (Datum *)palloc0(num_atts * sizeof(Datum));
-    bucket->is_null = (bool *)palloc0(num_atts * sizeof(bool));
+    Bucket *bucket = palloc0(sizeof(Bucket));
+    bucket->values = palloc0(num_atts * sizeof(Datum));
+    bucket->is_null = palloc0(num_atts * sizeof(bool));
 
     for (int i = 0; i < num_atts; i++)
     {

@@ -205,7 +205,7 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  CountState *state = (CountState *)palloc0(sizeof(CountState));
+  CountState *state = palloc0(sizeof(CountState));
   state->contribution_trackers = create_contribution_trackers(args_desc, aids_offset, &count_descriptor);
   Assert(args_desc->num_args == list_length(state->contribution_trackers) + aids_offset);
 

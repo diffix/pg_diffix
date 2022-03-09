@@ -18,7 +18,7 @@
 
 static AidTrackerState *aid_tracker_new(AidDescriptor aid_descriptor)
 {
-  AidTrackerState *state = (AidTrackerState *)palloc0(sizeof(AidTrackerState));
+  AidTrackerState *state = palloc0(sizeof(AidTrackerState));
 
   state->aid_descriptor = aid_descriptor;
   state->aid_set = AidTracker_create(CurrentMemoryContext, 128, NULL);

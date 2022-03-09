@@ -123,8 +123,7 @@ static ContributionTrackerState *contribution_tracker_new(
     const ContributionDescriptor *contribution_descriptor)
 {
   uint32 top_capacity = g_config.outlier_count_max + g_config.top_count_max;
-  ContributionTrackerState *state = (ContributionTrackerState *)palloc0(
-      sizeof(ContributionTrackerState) + top_capacity * sizeof(Contributor));
+  ContributionTrackerState *state = palloc0(sizeof(ContributionTrackerState) + top_capacity * sizeof(Contributor));
 
   state->aid_descriptor = aid_descriptor;
   state->contribution_descriptor = *contribution_descriptor;

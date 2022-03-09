@@ -53,7 +53,7 @@ static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescript
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  LowCountState *state = (LowCountState *)palloc0(sizeof(LowCountState));
+  LowCountState *state = palloc0(sizeof(LowCountState));
   state->aid_trackers = create_aid_trackers(args_desc, AIDS_OFFSET);
 
   MemoryContextSwitchTo(old_context);

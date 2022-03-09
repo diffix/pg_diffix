@@ -406,9 +406,9 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  CountDistinctState *state = (CountDistinctState *)palloc0(sizeof(CountDistinctState));
+  CountDistinctState *state = palloc0(sizeof(CountDistinctState));
 
-  DistinctTrackerData *data = (DistinctTrackerData *)palloc0(sizeof(DistinctTrackerData));
+  DistinctTrackerData *data = palloc0(sizeof(DistinctTrackerData));
   data->typlen = args_desc->args[VALUE_INDEX].typlen;
   data->typbyval = args_desc->args[VALUE_INDEX].typbyval;
 

@@ -151,7 +151,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
 
   for (int i = 0; i < num_labels; i++)
   {
-    SiblingsTrackerData *data = (SiblingsTrackerData *)palloc(sizeof(SiblingsTrackerData));
+    SiblingsTrackerData *data = palloc(sizeof(SiblingsTrackerData));
     data->bucket_desc = bucket_desc;
     data->skipped_column = i;
     trackers_per_column[i] = SiblingsTracker_create(temp_context, num_buckets, data);
@@ -178,7 +178,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
       bool found;
       SiblingsTrackerEntry *entry = SiblingsTracker_insert(trackers_per_column[column_idx], bucket, &found);
       if (!found)
-        entry->siblings = (BucketSiblings *)MemoryContextAllocZero(led_context, sizeof(BucketSiblings));
+        entry->siblings = MemoryContextAllocZero(led_context, sizeof(BucketSiblings));
 
       add_sibling(entry->siblings, bucket);
       bucket_siblings[bucket_idx * num_labels + column_idx] = entry->siblings;
@@ -189,7 +189,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   MemoryContextReset(temp_context);
 
   /* Temp storage to stage buckets for merging. */
-  BucketRef *merge_targets = (BucketRef *)MemoryContextAlloc(led_context, num_labels * sizeof(BucketRef));
+  BucketRef *merge_targets = MemoryContextAlloc(led_context, num_labels * sizeof(BucketRef));
   int buckets_merged = 0;
   int total_merges = 0;
 
