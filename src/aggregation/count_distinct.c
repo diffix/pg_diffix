@@ -1,20 +1,13 @@
 #include "postgres.h"
 
-#include "fmgr.h"
-#include "lib/stringinfo.h"
+#include "nodes/execnodes.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
 
-#include "pg_diffix/aggregation/aid.h"
-#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/count.h"
-#include "pg_diffix/aggregation/noise.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/query/anonymization.h"
-
-/* TODO: Implement aggregator methods. */
-const AnonAggFuncs g_count_distinct_funcs = {0};
 
 /*
  * For each unique value we encounter, we keep a set of AID values for each AID instance available.
@@ -53,18 +46,6 @@ static const int STATE_INDEX = 0;
 static const int VALUE_INDEX = 1;
 static const int AIDS_OFFSET = 2;
 
-static DistinctTracker_hash *get_distinct_tracker(PG_FUNCTION_ARGS)
-{
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (DistinctTracker_hash *)PG_GETARG_POINTER(STATE_INDEX);
-
-  DistinctTrackerData *data = (DistinctTrackerData *)palloc0(sizeof(DistinctTrackerData));
-  Oid value_oid = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
-  get_typlenbyval(value_oid, &data->typlen, &data->typbyval);
-
-  return DistinctTracker_create(CurrentMemoryContext, 128, data);
-}
-
 static DistinctTrackerHashEntry *
 get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
@@ -95,92 +76,10 @@ static int compare_datums(const Datum value_a, const Datum value_b)
   return DatumGetInt32(c);
 }
 
-static void set_value_sorting_globals(PG_FUNCTION_ARGS)
+static void set_value_sorting_globals(Oid element_type)
 {
-  Oid element_type = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
   g_compare_values_typentry = lookup_type_cache(element_type, TYPECACHE_CMP_PROC_FINFO);
   g_compare_values_func = &g_compare_values_typentry->cmp_proc_finfo;
-}
-
-PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
-PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
-PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
-
-Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
-{
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
-
-  DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
-
-  if (!PG_ARGISNULL(VALUE_INDEX))
-  {
-    Assert(PG_NARGS() > AIDS_OFFSET);
-
-    Datum value = PG_GETARG_DATUM(VALUE_INDEX);
-    int aids_count = PG_NARGS() - AIDS_OFFSET;
-    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(tracker, value, aids_count);
-
-    ListCell *cell;
-    foreach (cell, entry->aidvs)
-    {
-      int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
-      if (!PG_ARGISNULL(aid_index))
-      {
-        Oid aid_type = get_fn_expr_argtype(fcinfo->flinfo, aid_index);
-        aid_t aid = get_aid_descriptor(aid_type).make_aid(PG_GETARG_DATUM(aid_index));
-        List **aidv = (List **)&lfirst(cell);
-        *aidv = list_append_unique_ptr(*aidv, (void *)aid);
-      }
-    }
-  }
-
-  MemoryContextSwitchTo(old_context);
-
-  PG_RETURN_POINTER(tracker);
-}
-
-typedef struct CountDistinctResult
-{
-  int64 hc_values_count;
-  int64 lc_values_count;
-  int64 noisy_count;
-} CountDistinctResult;
-
-static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS);
-
-Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
-{
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
-
-  set_value_sorting_globals(fcinfo);
-
-  CountDistinctResult result = count_distinct_calculate_final(fcinfo);
-
-  MemoryContextSwitchTo(old_context);
-
-  PG_RETURN_INT64(result.noisy_count);
-}
-
-Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
-{
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext old_context = switch_to_aggregation_context(fcinfo);
-
-  set_value_sorting_globals(fcinfo);
-
-  CountDistinctResult result = count_distinct_calculate_final(fcinfo);
-
-  MemoryContextSwitchTo(old_context);
-
-  StringInfoData string;
-  initStringInfo(&string);
-
-  appendStringInfo(&string, "hc_values=%" PRIi64 ", lc_values=%" PRIi64 ", noisy_count=%" PRIi64,
-                   result.hc_values_count, result.lc_values_count, result.noisy_count);
-
-  PG_RETURN_TEXT_P(cstring_to_text(string.data));
 }
 
 static seed_t seed_from_aidv(const List *aidvs)
@@ -400,17 +299,32 @@ static void process_lc_values_contributions(List *per_aid_values,
   }
 }
 
+typedef struct CountDistinctState
+{
+  AnonAggState base;
+  ArgsDescriptor *args_desc;
+  DistinctTracker_hash *tracker;
+} CountDistinctState;
+
+typedef struct CountDistinctResult
+{
+  int64 hc_values_count;
+  int64 lc_values_count;
+  int64 noisy_count;
+} CountDistinctResult;
+
 /*
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
+static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, int64 min_count)
 {
-  int aids_count = PG_NARGS() - AIDS_OFFSET;
-  int64 min_count = is_global_aggregation(fcinfo) ? 0 : g_config.low_count_min_threshold;
+  int aids_count = state->args_desc->num_args - AIDS_OFFSET;
+  set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
+
   seed_t bucket_seed = compute_bucket_seed();
 
-  DistinctTracker_hash *tracker = get_distinct_tracker(fcinfo);
+  DistinctTracker_hash *tracker = state->tracker;
 
   List *lc_entries = filter_lc_entries(bucket_seed, tracker);
   list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
@@ -466,4 +380,168 @@ static CountDistinctResult count_distinct_calculate_final(PG_FUNCTION_ARGS)
   result.noisy_count = Max(result.noisy_count, min_count);
 
   return result;
+}
+
+/*-------------------------------------------------------------------------
+ * Aggregation callbacks
+ *-------------------------------------------------------------------------
+ */
+
+static void count_distinct_final_type(Oid *type, int32 *typmod, Oid *collid)
+{
+  *type = INT8OID;
+  *typmod = -1;
+  *collid = 0;
+}
+
+static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
+{
+  int num_args = source->num_args;
+  ArgsDescriptor *dest = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  dest->num_args = num_args;
+  for (int i = 0; i < num_args; i++)
+  {
+    dest->args[i].type_oid = source->args[i].type_oid;
+  }
+  return dest;
+}
+
+static AnonAggState *count_distinct_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
+{
+  MemoryContext old_context = MemoryContextSwitchTo(memory_context);
+
+  CountDistinctState *state = (CountDistinctState *)palloc0(sizeof(CountDistinctState));
+
+  DistinctTrackerData *data = (DistinctTrackerData *)palloc0(sizeof(DistinctTrackerData));
+  Oid value_oid = args_desc->args[VALUE_INDEX].type_oid;
+  get_typlenbyval(value_oid, &data->typlen, &data->typbyval);
+
+  state->tracker = DistinctTracker_create(memory_context, 128, data);
+  state->args_desc = copy_args_desc(args_desc);
+
+  MemoryContextSwitchTo(old_context);
+  return &state->base;
+}
+
+static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+{
+  CountDistinctState *state = (CountDistinctState *)base_state;
+
+  bool is_global = bucket_desc->num_labels == 0;
+  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
+  CountDistinctResult result = count_distinct_calculate_final(state, min_count);
+  return Int64GetDatum(result.noisy_count);
+}
+
+static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
+{
+  /* TODO */
+  exit(100);
+}
+
+static const char *count_distinct_explain(const AnonAggState *base_state)
+{
+  CountDistinctState *state = (CountDistinctState *)base_state;
+  int64 fake_min_count = g_config.low_count_min_threshold;
+  CountDistinctResult result = count_distinct_calculate_final(state, fake_min_count);
+
+  StringInfoData string;
+  initStringInfo(&string);
+
+  /* The portions commented out require us to know `min_count` here, which is TODO. */
+  appendStringInfo(&string, "hc_values=%" PRIi64 ", lc_values=%" PRIi64, /* ", noisy_count=%" PRIi64, */
+                   result.hc_values_count, result.lc_values_count);      /*, result.noisy_count); */
+
+  return string.data;
+}
+
+static void count_distinct_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
+{
+  CountDistinctState *state = (CountDistinctState *)base_state;
+
+  Assert(num_args > AIDS_OFFSET);
+  int aids_count = num_args - AIDS_OFFSET;
+  MemoryContext old_context = MemoryContextSwitchTo(base_state->memory_context);
+
+  if (!args[VALUE_INDEX].isnull)
+  {
+    Datum value = args[VALUE_INDEX].value;
+    DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(state->tracker, value, aids_count);
+
+    ListCell *cell;
+    foreach (cell, entry->aidvs)
+    {
+      int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
+      if (!args[aid_index].isnull)
+      {
+        Oid aid_type = state->args_desc->args[aid_index].type_oid;
+        aid_t aid = get_aid_descriptor(aid_type).make_aid(args[aid_index].value);
+        List **aidv = (List **)&lfirst(cell);
+        *aidv = list_append_unique_ptr(*aidv, (void *)aid);
+      }
+    }
+  }
+  MemoryContextSwitchTo(old_context);
+}
+
+const AnonAggFuncs g_count_distinct_funcs = {
+    .final_type = count_distinct_final_type,
+    .create_state = count_distinct_create_state,
+    .transition = count_distinct_transition,
+    .finalize = count_distinct_finalize,
+    .merge = count_distinct_merge,
+    .explain = count_distinct_explain,
+};
+
+/*-------------------------------------------------------------------------
+ * UDFs
+ *-------------------------------------------------------------------------
+ */
+
+static int get_num_labels(PG_FUNCTION_ARGS)
+{
+  AggState *agg_state = castNode(AggState, fcinfo->context);
+  Agg *agg_plan = (Agg *)agg_state->ss.ps.plan;
+  return agg_plan->numCols;
+}
+
+static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
+{
+  if (!PG_ARGISNULL(STATE_INDEX))
+    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
+
+  /* We want all memory allocations to be done per aggregation node. */
+  MemoryContext memory_context;
+  if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
+    FAILWITH("Aggregate called in non-aggregate context");
+
+  AnonAggState *state = count_distinct_create_state(memory_context, get_args_desc(fcinfo));
+  state->memory_context = memory_context;
+  return state;
+}
+
+PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
+PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
+PG_FUNCTION_INFO_V1(anon_count_distinct_explain_finalfn);
+
+Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
+{
+  AnonAggState *state = count_distinct_get_state(fcinfo);
+  count_distinct_transition(state, PG_NARGS(), fcinfo->args);
+  PG_RETURN_POINTER(state);
+}
+
+Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
+{
+  bool is_null = false;
+  BucketDescriptor dummy_bucket_desc = {.num_labels = get_num_labels(fcinfo)};
+  Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &dummy_bucket_desc, &is_null);
+  Assert(!is_null);
+  PG_RETURN_DATUM(result);
+}
+
+Datum anon_count_distinct_explain_finalfn(PG_FUNCTION_ARGS)
+{
+  AnonAggState *state = count_distinct_get_state(fcinfo);
+  PG_RETURN_TEXT_P(cstring_to_text(count_distinct_explain(state)));
 }
