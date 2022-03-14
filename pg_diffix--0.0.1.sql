@@ -12,7 +12,8 @@ GRANT USAGE ON SCHEMA diffix TO PUBLIC;
 CREATE FUNCTION diffix.access_level()
 RETURNS text
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.show_settings()
 RETURNS table(name text, setting text, short_desc text)
@@ -22,7 +23,8 @@ AS $$
     name, setting, short_desc
   FROM pg_settings
   WHERE name LIKE 'pg_diffix.%';
-$$;
+$$
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.show_labels()
 RETURNS table(object text, label text)
@@ -32,7 +34,8 @@ AS $$
     pg_describe_object(classoid, objoid, objsubid), label
   FROM pg_seclabel
   WHERE provider = 'pg_diffix';
-$$;
+$$
+SECURITY INVOKER SET search_path='';
 
 /* ----------------------------------------------------------------
  * Common aggregation interface
@@ -61,12 +64,14 @@ CREATE TYPE AnonAggState;
 CREATE FUNCTION diffix.anon_agg_state_input(cstring)
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT STABLE;
+LANGUAGE C STRICT STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_agg_state_output(AnonAggState)
 RETURNS cstring
 AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT STABLE;
+LANGUAGE C STRICT STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE TYPE AnonAggState (
   INPUT = diffix.anon_agg_state_input,
@@ -77,22 +82,26 @@ CREATE TYPE AnonAggState (
 CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, value "any", variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, value "any", variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 /* ----------------------------------------------------------------
  * lcf(aids...)
@@ -102,12 +111,14 @@ LANGUAGE C STABLE;
 CREATE FUNCTION diffix.lcf_transfn(internal, variadic aids "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.lcf_finalfn(internal, variadic aids "any")
 RETURNS boolean
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE AGGREGATE diffix.lcf(variadic aids "any") (
   sfunc = diffix.lcf_transfn,
@@ -124,12 +135,14 @@ CREATE AGGREGATE diffix.lcf(variadic aids "any") (
 CREATE FUNCTION diffix.anon_count_distinct_transfn(internal, value "any", variadic aids "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_count_distinct_finalfn(internal, value "any", variadic aids "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE AGGREGATE diffix.anon_count_distinct(value "any", variadic aids "any") (
   sfunc = diffix.anon_count_distinct_transfn,
@@ -146,12 +159,14 @@ CREATE AGGREGATE diffix.anon_count_distinct(value "any", variadic aids "any") (
 CREATE FUNCTION diffix.anon_count_star_transfn(internal, variadic aids "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_count_star_finalfn(internal, variadic aids "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE AGGREGATE diffix.anon_count_star(variadic aids "any") (
   sfunc = diffix.anon_count_star_transfn,
@@ -168,12 +183,15 @@ CREATE AGGREGATE diffix.anon_count_star(variadic aids "any") (
 CREATE FUNCTION diffix.anon_count_value_transfn(internal, value "any", variadic aids "any")
 RETURNS internal
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
 
 CREATE FUNCTION diffix.anon_count_value_finalfn(internal, value "any", variadic aids "any")
 RETURNS int8
 AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE;
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path='';
+
 CREATE AGGREGATE diffix.anon_count_value(value "any", variadic aids "any") (
   sfunc = diffix.anon_count_value_transfn,
   stype = internal,
@@ -189,7 +207,8 @@ CREATE AGGREGATE diffix.anon_count_value(value "any", variadic aids "any") (
 CREATE FUNCTION diffix.placeholder_func(anyelement)
 RETURNS anyelement
 AS 'MODULE_PATHNAME'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE AGGREGATE diffix.is_suppress_bin(*) (
   sfunc = diffix.placeholder_func,
@@ -211,7 +230,8 @@ RETURNS numeric AS $$
 		RETURN round(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.round_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -222,7 +242,8 @@ RETURNS double precision AS $$
 		RETURN round(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.ceil_by(value numeric, amount numeric)
 RETURNS numeric AS $$
@@ -233,7 +254,8 @@ RETURNS numeric AS $$
 		RETURN ceil(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.ceil_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -244,7 +266,8 @@ RETURNS double precision AS $$
 		RETURN ceil(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.floor_by(value numeric, amount numeric)
 RETURNS numeric AS $$
@@ -255,7 +278,8 @@ RETURNS numeric AS $$
 		RETURN floor(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
 
 CREATE OR REPLACE FUNCTION diffix.floor_by(value double precision, amount double precision)
 RETURNS double precision AS $$
@@ -266,4 +290,5 @@ RETURNS double precision AS $$
 		RETURN floor(value / amount) * amount;
 	END IF;
   END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT
+SECURITY INVOKER SET search_path='';
