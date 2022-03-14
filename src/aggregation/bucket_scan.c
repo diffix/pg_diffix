@@ -90,8 +90,8 @@ static ArgsDescriptor *build_args_desc(Aggref *aggref)
   args_desc->num_args = num_args;
   for (int i = 0; i < num_args; i++)
   {
-    Node *arg = (Node *)list_nth(args, i);
-    args_desc->args[i].type_oid = exprType(arg);
+    TargetEntry *arg = list_nth_node(TargetEntry, args, i);
+    args_desc->args[i].type_oid = exprType((Node *)arg->expr);
   }
 
   return args_desc;
