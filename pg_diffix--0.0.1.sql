@@ -2,6 +2,10 @@
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
 CREATE SCHEMA diffix;
+
+REVOKE ALL ON SCHEMA diffix FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA diffix FROM PUBLIC;
+
 GRANT USAGE ON SCHEMA diffix TO PUBLIC;
 
 /* ----------------------------------------------------------------
