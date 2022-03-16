@@ -145,7 +145,7 @@ static void verify_bucket_expression(Node *node)
     if (is_allowed_cast(func_expr->funcid))
     {
       Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
-      return verify_bucket_expression(linitial(func_expr->args));
+      verify_bucket_expression(linitial(func_expr->args));
     }
 
     if (!is_allowed_function(func_expr->funcid))
@@ -181,13 +181,13 @@ static void verify_bucket_expression(Node *node)
   {
     CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
     if (is_datetime_to_string_cast(coerce_expr))
-      return verify_bucket_expression((Node *)coerce_expr->arg);
+      verify_bucket_expression((Node *)coerce_expr->arg);
     else
       FAILWITH_LOCATION(coerce_expr->location, "Unsupported cast destination type name.");
   }
   else if (!IsA(node, Var))
   {
-    FAILWITH("Unsupported or unrecognized primitive node type");
+    FAILWITH("Unsupported or unrecognized query node type");
   }
 }
 
