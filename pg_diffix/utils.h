@@ -12,6 +12,14 @@
  *-------------------------------------------------------------------------
  */
 
+/* Calculates the length of an array. */
+#define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
+
+/*-------------------------------------------------------------------------
+ * Hash utils
+ *-------------------------------------------------------------------------
+ */
+
 typedef uint64 hash_t;
 
 static inline hash_t hash_bytes(const void *bytes, size_t size)
@@ -52,9 +60,6 @@ static inline hash_t hash_datum(Datum value, bool typbyval, int16 typlen)
 
   return hash_bytes(data, data_size);
 }
-
-/* Calculates the length of an array. */
-#define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
 
 /*-------------------------------------------------------------------------
  * Compatibility shims
