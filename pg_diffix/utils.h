@@ -68,6 +68,11 @@ static inline List *hash_set_add(List *hash_set, hash_t hash)
 
 extern hash_t hash_set_combine(const List *hash_set);
 
+static inline List *hash_set_union(List *dst_set, const List *src_set)
+{
+  return list_concat_unique_ptr(dst_set, src_set);
+}
+
 /*-------------------------------------------------------------------------
  * Compatibility shims
  *-------------------------------------------------------------------------
