@@ -11,6 +11,7 @@
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
 
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
@@ -453,10 +454,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   {
     Const *const_expr = (Const *)node;
 
-    if (!is_supported_numeric_const(const_expr))
+    if (!is_supported_numeric_type(const_expr->consttype))
       FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
 
-    double const_as_double = const_to_double(const_expr);
+    double const_as_double = numeric_value_to_double(const_expr->consttype, const_expr->constvalue);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');
@@ -530,6 +531,32 @@ static void make_query_anonymizing(Query *query, List *sensitive_relations)
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
 
+static hash_t hash_label(Oid type, Datum value, bool is_null)
+{
+  if (is_null)
+    return hash_bytes_64("NULL", strlen("NULL"));
+
+  if (is_supported_numeric_type(type))
+  {
+    /* Normalize numeric values. */
+    double value_as_double = numeric_value_to_double(type, value);
+    char value_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
+    double_to_shortest_decimal_buf(value_as_double, value_as_string);
+    return hash_bytes_64(value_as_string, strlen(value_as_string));
+  }
+
+  /* Handle all other types by casting to text. */
+  Oid type_output_funcid = InvalidOid;
+  bool is_varlena = false;
+  getTypeOutputInfo(type, &type_output_funcid, &is_varlena);
+
+  char *value_as_string = OidOutputFunctionCall(type_output_funcid, value);
+  hash_t hash = hash_bytes_64(value_as_string, strlen(value_as_string));
+  pfree(value_as_string);
+
+  return hash;
+}
+
 /*-------------------------------------------------------------------------
  * Public API
  *-------------------------------------------------------------------------
@@ -546,7 +573,24 @@ void compile_anonymizing_query(Query *query, List *sensitive_relations)
   prepare_bucket_seeds(query);
 }
 
-seed_t compute_bucket_seed(void)
+seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_desc)
 {
-  return g_sql_seed;
+  List *label_hashes = NIL;
+  for (int i = 0; i < bucket_desc->num_labels; i++)
+  {
+    hash_t label_hash = hash_label(bucket_desc->attrs[i].final_type, bucket->values[i], bucket->is_null[i]);
+    list_append_unique_ptr(label_hashes, (void *)label_hash);
+  }
+
+  seed_t bucket_seed = g_sql_seed;
+  ListCell *cell = NULL;
+  foreach (cell, label_hashes)
+  {
+    hash_t label_hash = (hash_t)lfirst(cell);
+    bucket_seed ^= label_hash;
+  }
+
+  list_free(label_hashes);
+
+  return bucket_seed;
 }

@@ -317,12 +317,10 @@ typedef struct CountDistinctResult
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, int64 min_count)
+static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, seed_t bucket_seed, int64 min_count)
 {
   int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
-
-  seed_t bucket_seed = compute_bucket_seed();
 
   DistinctTracker_hash *tracker = state->tracker;
 
@@ -423,9 +421,10 @@ static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, B
 {
   CountDistinctState *state = (CountDistinctState *)base_state;
 
+  seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
   bool is_global = bucket_desc->num_labels == 0;
   int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
-  CountDistinctResult result = count_distinct_calculate_final(state, min_count);
+  CountDistinctResult result = count_distinct_calculate_final(state, bucket_seed, min_count);
   return Int64GetDatum(result.noisy_count);
 }
 
@@ -512,13 +511,6 @@ const AnonAggFuncs g_count_distinct_funcs = {
  *-------------------------------------------------------------------------
  */
 
-static int get_num_labels(PG_FUNCTION_ARGS)
-{
-  AggState *agg_state = castNode(AggState, fcinfo->context);
-  Agg *agg_plan = (Agg *)agg_state->ss.ps.plan;
-  return agg_plan->numCols;
-}
-
 static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(STATE_INDEX))
@@ -547,8 +539,8 @@ Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
 Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  BucketDescriptor dummy_bucket_desc = {.num_labels = get_num_labels(fcinfo)};
-  Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &dummy_bucket_desc, &is_null);
+  BucketDescriptor empty_bucket_desc = {};
+  Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &empty_bucket_desc, &is_null);
   Assert(!is_null);
   PG_RETURN_DATUM(result);
 }

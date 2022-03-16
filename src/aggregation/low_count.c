@@ -84,7 +84,7 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   LowCountState *state = (LowCountState *)base_state;
 
   bool low_count = false;
-  seed_t bucket_seed = compute_bucket_seed();
+  seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
   ListCell *cell;
   foreach (cell, state->aid_trackers)
@@ -169,7 +169,8 @@ Datum lcf_transfn(PG_FUNCTION_ARGS)
 Datum lcf_finalfn(PG_FUNCTION_ARGS)
 {
   bool is_null = false;
-  bool low_count = DatumGetBool(agg_finalize(agg_get_state(fcinfo), NULL, NULL, &is_null));
+  BucketDescriptor empty_bucket_desc = {};
+  bool low_count = DatumGetBool(agg_finalize(agg_get_state(fcinfo), NULL, &empty_bucket_desc, &is_null));
   Assert(!is_null);
   PG_RETURN_BOOL(!low_count);
 }
