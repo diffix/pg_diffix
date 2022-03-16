@@ -473,12 +473,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
  */
 static void prepare_bucket_seeds(Query *query)
 {
-  g_sql_seed = 0;
-
-  List *seed_material_hashes = NULL;
-  ListCell *cell = NULL;
+  List *seed_material_hash_set = NULL;
 
   List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  ListCell *cell = NULL;
   foreach (cell, grouping_exprs)
   {
     Node *expr = lfirst(cell);
@@ -489,16 +487,12 @@ static void prepare_bucket_seeds(Query *query)
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
     hash_t seed_material_hash = hash_string(collect_context.material);
-    seed_material_hashes = list_append_unique_ptr(seed_material_hashes, (void *)seed_material_hash);
+    seed_material_hash_set = hash_set_add(seed_material_hash_set, seed_material_hash);
   }
 
-  foreach (cell, seed_material_hashes)
-  {
-    hash_t seed_material_hash = (hash_t)lfirst(cell);
-    g_sql_seed ^= seed_material_hash;
-  }
+  g_sql_seed = hash_set_combine(seed_material_hash_set);
 
-  list_free(seed_material_hashes);
+  list_free(seed_material_hash_set);
 }
 
 static void make_query_anonymizing(Query *query, List *sensitive_relations)
@@ -575,22 +569,16 @@ void compile_anonymizing_query(Query *query, List *sensitive_relations)
 
 seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_desc)
 {
-  List *label_hashes = NIL;
+  List *label_hash_set = NIL;
   for (int i = 0; i < bucket_desc->num_labels; i++)
   {
     hash_t label_hash = hash_label(bucket_desc->attrs[i].final_type, bucket->values[i], bucket->is_null[i]);
-    label_hashes = list_append_unique_ptr(label_hashes, (void *)label_hash);
+    label_hash_set = hash_set_add(label_hash_set, label_hash);
   }
 
-  seed_t bucket_seed = g_sql_seed;
-  ListCell *cell = NULL;
-  foreach (cell, label_hashes)
-  {
-    hash_t label_hash = (hash_t)lfirst(cell);
-    bucket_seed ^= label_hash;
-  }
+  seed_t bucket_seed = g_sql_seed ^ hash_set_combine(label_hash_set);
 
-  list_free(label_hashes);
+  list_free(label_hash_set);
 
   return bucket_seed;
 }

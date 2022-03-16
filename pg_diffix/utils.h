@@ -61,6 +61,13 @@ static inline hash_t hash_datum(Datum value, bool typbyval, int16 typlen)
   return hash_bytes(data, data_size);
 }
 
+static inline List *hash_set_add(List *hash_set, hash_t hash)
+{
+  return list_append_unique_ptr(hash_set, (void *)hash);
+}
+
+extern hash_t hash_set_combine(List *hash_set);
+
 /*-------------------------------------------------------------------------
  * Compatibility shims
  *-------------------------------------------------------------------------

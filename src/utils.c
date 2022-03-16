@@ -10,6 +10,18 @@
 
 #include "pg_diffix/utils.h"
 
+hash_t hash_set_combine(List *hash_set)
+{
+  ListCell *cell = NULL;
+  hash_t accumulator = 0;
+  foreach (cell, hash_set)
+  {
+    hash_t hash = (hash_t)lfirst(cell);
+    accumulator ^= hash;
+  }
+  return accumulator;
+}
+
 Oid get_rel_oid(const char *rel_ns_name, const char *rel_name)
 {
   Oid rel_ns = get_namespace_oid(rel_ns_name, false);
