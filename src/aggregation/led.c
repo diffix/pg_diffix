@@ -2,7 +2,6 @@
 
 #include <math.h>
 
-#include "common/hashfn.h"
 #include "nodes/pg_list.h"
 #include "utils/datum.h"
 
@@ -74,7 +73,7 @@ static inline uint32 subset_hash(SiblingsTrackerData *data, BucketRef bucket)
                             : hash_datum(bucket->values[i],
                                          bucket_desc->attrs[i].typ_byval,
                                          bucket_desc->attrs[i].typ_len);
-    hash = hash_combine(hash, label_hash);
+    hash ^= label_hash;
   }
 
   return hash;

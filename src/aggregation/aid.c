@@ -9,19 +9,19 @@ static aid_t make_int4_aid(Datum datum)
 {
   /* Cast to `uint64` for consistent hashing. */
   uint64 aid = DatumGetUInt32(datum);
-  return hash_bytes_64(&aid, sizeof(aid));
+  return hash_bytes(&aid, sizeof(aid));
 }
 
 static aid_t make_int8_aid(Datum datum)
 {
   uint64 aid = DatumGetUInt64(datum);
-  return hash_bytes_64(&aid, sizeof(aid));
+  return hash_bytes(&aid, sizeof(aid));
 }
 
 static aid_t make_text_aid(Datum datum)
 {
   char *str = TextDatumGetCString(datum);
-  return hash_bytes_64((unsigned char *)str, strlen(str));
+  return hash_bytes((unsigned char *)str, strlen(str));
 }
 
 AidDescriptor get_aid_descriptor(Oid aid_type)

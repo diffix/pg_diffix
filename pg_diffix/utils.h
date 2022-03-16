@@ -14,7 +14,7 @@
 
 typedef uint64 hash_t;
 
-static inline hash_t hash_bytes_64(const void *bytes, size_t size)
+static inline hash_t hash_bytes(const void *bytes, size_t size)
 {
   /* Implementation of FNV-1a hash algorithm: http://www.isthe.com/chongo/tech/comp/fnv/index.html */
   const uint64 FNV_PRIME = 1099511628211UL;
@@ -45,7 +45,7 @@ static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
     data_size = datumGetSize(value, false, typlen);
   }
 
-  return hash_bytes_64(data, data_size);
+  return hash_bytes(data, data_size);
 }
 
 /* Calculates the length of an array. */
