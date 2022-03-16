@@ -12,9 +12,17 @@
  *-------------------------------------------------------------------------
  */
 
+/* Calculates the length of an array. */
+#define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
+
+/*-------------------------------------------------------------------------
+ * Hash utils
+ *-------------------------------------------------------------------------
+ */
+
 typedef uint64 hash_t;
 
-static inline hash_t hash_bytes_64(const void *bytes, size_t size)
+static inline hash_t hash_bytes(const void *bytes, size_t size)
 {
   /* Implementation of FNV-1a hash algorithm: http://www.isthe.com/chongo/tech/comp/fnv/index.html */
   const uint64 FNV_PRIME = 1099511628211UL;
@@ -30,7 +38,12 @@ static inline hash_t hash_bytes_64(const void *bytes, size_t size)
   return hash;
 }
 
-static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
+static inline hash_t hash_string(const char *string)
+{
+  return hash_bytes(string, strlen(string));
+}
+
+static inline hash_t hash_datum(Datum value, bool typbyval, int16 typlen)
 {
   const void *data = NULL;
   size_t data_size = 0;
@@ -45,11 +58,15 @@ static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
     data_size = datumGetSize(value, false, typlen);
   }
 
-  return hash_bytes_64(data, data_size);
+  return hash_bytes(data, data_size);
 }
 
-/* Calculates the length of an array. */
-#define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
+static inline List *hash_set_add(List *hash_set, hash_t hash)
+{
+  return list_append_unique_ptr(hash_set, (void *)hash);
+}
+
+extern hash_t hash_set_combine(List *hash_set);
 
 /*-------------------------------------------------------------------------
  * Compatibility shims

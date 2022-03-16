@@ -17,13 +17,13 @@ extern void verify_anonymization_requirements(Query *query);
 extern void verify_anonymizing_query(Query *query);
 
 /*
- * Returns `true` if the given Const represents a supported numeric value.
+ * Returns `true` if the given type represents a supported numeric type.
  */
-extern bool is_supported_numeric_const(const Const *const_expr);
+extern bool is_supported_numeric_type(Oid type);
 
 /*
- * Returns the numeric value of a Const as a `double`.
+ * Returns the numeric value as a `double`.
  */
-extern double const_to_double(const Const *const_expr);
+extern double numeric_value_to_double(Oid type, Datum value);
 
 #endif /* PG_DIFFIX_VALIDATION_H */

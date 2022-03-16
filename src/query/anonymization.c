@@ -11,6 +11,7 @@
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
 
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
@@ -453,10 +454,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   {
     Const *const_expr = (Const *)node;
 
-    if (!is_supported_numeric_const(const_expr))
+    if (!is_supported_numeric_type(const_expr->consttype))
       FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
 
-    double const_as_double = const_to_double(const_expr);
+    double const_as_double = numeric_value_to_double(const_expr->consttype, const_expr->constvalue);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');
@@ -472,12 +473,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
  */
 static void prepare_bucket_seeds(Query *query)
 {
-  g_sql_seed = 0;
-
-  List *seed_material_hashes = NULL;
-  ListCell *cell = NULL;
+  List *seed_material_hash_set = NULL;
 
   List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  ListCell *cell = NULL;
   foreach (cell, grouping_exprs)
   {
     Node *expr = lfirst(cell);
@@ -487,17 +486,13 @@ static void prepare_bucket_seeds(Query *query)
     collect_seed_material(expr, &collect_context);
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
-    hash_t seed_material_hash = hash_bytes_64(collect_context.material, strlen(collect_context.material));
-    seed_material_hashes = list_append_unique_ptr(seed_material_hashes, (void *)seed_material_hash);
+    hash_t seed_material_hash = hash_string(collect_context.material);
+    seed_material_hash_set = hash_set_add(seed_material_hash_set, seed_material_hash);
   }
 
-  foreach (cell, seed_material_hashes)
-  {
-    hash_t seed_material_hash = (hash_t)lfirst(cell);
-    g_sql_seed ^= seed_material_hash;
-  }
+  g_sql_seed = hash_set_combine(seed_material_hash_set);
 
-  list_free(seed_material_hashes);
+  list_free(seed_material_hash_set);
 }
 
 static void make_query_anonymizing(Query *query, List *sensitive_relations)
@@ -530,6 +525,32 @@ static void make_query_anonymizing(Query *query, List *sensitive_relations)
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 }
 
+static hash_t hash_label(Oid type, Datum value, bool is_null)
+{
+  if (is_null)
+    return hash_string("NULL");
+
+  if (is_supported_numeric_type(type))
+  {
+    /* Normalize numeric values. */
+    double value_as_double = numeric_value_to_double(type, value);
+    char value_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
+    double_to_shortest_decimal_buf(value_as_double, value_as_string);
+    return hash_string(value_as_string);
+  }
+
+  /* Handle all other types by casting to text. */
+  Oid type_output_funcid = InvalidOid;
+  bool is_varlena = false;
+  getTypeOutputInfo(type, &type_output_funcid, &is_varlena);
+
+  char *value_as_string = OidOutputFunctionCall(type_output_funcid, value);
+  hash_t hash = hash_string(value_as_string);
+  pfree(value_as_string);
+
+  return hash;
+}
+
 /*-------------------------------------------------------------------------
  * Public API
  *-------------------------------------------------------------------------
@@ -546,7 +567,18 @@ void compile_anonymizing_query(Query *query, List *sensitive_relations)
   prepare_bucket_seeds(query);
 }
 
-seed_t compute_bucket_seed(void)
+seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_desc)
 {
-  return g_sql_seed;
+  List *label_hash_set = NIL;
+  for (int i = 0; i < bucket_desc->num_labels; i++)
+  {
+    hash_t label_hash = hash_label(bucket_desc->attrs[i].final_type, bucket->values[i], bucket->is_null[i]);
+    label_hash_set = hash_set_add(label_hash_set, label_hash);
+  }
+
+  seed_t bucket_seed = g_sql_seed ^ hash_set_combine(label_hash_set);
+
+  list_free(label_hash_set);
+
+  return bucket_seed;
 }

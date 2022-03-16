@@ -221,10 +221,10 @@ static void verify_bin_size(Node *range_expr)
   Assert(IsA(range_node, Const)); /* Checked by prior validations */
   Const *range_const = (Const *)range_node;
 
-  if (!is_supported_numeric_const(range_const))
+  if (!is_supported_numeric_type(range_const->consttype))
     FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization.");
 
-  if (!is_money_style(const_to_double(range_const)))
+  if (!is_money_style(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
     FAILWITH_LOCATION(range_const->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
@@ -266,38 +266,27 @@ static void verify_bucket_expressions(Query *query)
   }
 }
 
-bool is_supported_numeric_const(const Const *const_expr)
+bool is_supported_numeric_type(Oid type)
 {
-  switch (const_expr->consttype)
-  {
-  case INT2OID:
-  case INT4OID:
-  case INT8OID:
-  case FLOAT4OID:
-  case FLOAT8OID:
-  case NUMERICOID:
-    return true;
-  default:
-    return false;
-  }
+  return TypeCategory(type) == TYPCATEGORY_NUMERIC;
 }
 
-double const_to_double(const Const *const_expr)
+double numeric_value_to_double(Oid type, Datum value)
 {
-  switch (const_expr->consttype)
+  switch (type)
   {
   case INT2OID:
-    return DatumGetInt16(const_expr->constvalue);
+    return DatumGetInt16(value);
   case INT4OID:
-    return DatumGetInt32(const_expr->constvalue);
+    return DatumGetInt32(value);
   case INT8OID:
-    return DatumGetInt64(const_expr->constvalue);
+    return DatumGetInt64(value);
   case FLOAT4OID:
-    return DatumGetFloat4(const_expr->constvalue);
+    return DatumGetFloat4(value);
   case FLOAT8OID:
-    return DatumGetFloat8(const_expr->constvalue);
+    return DatumGetFloat8(value);
   case NUMERICOID:
-    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, const_expr->constvalue));
+    return DatumGetFloat8(DirectFunctionCall1(numeric_float8, value));
   default:
     Assert(false);
     return 0.0;
