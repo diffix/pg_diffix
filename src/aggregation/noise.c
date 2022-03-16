@@ -59,7 +59,7 @@ static hash_t crypto_hash_salted_seed(seed_t seed)
 static seed_t prepare_seed(seed_t seed, const char *step_name)
 {
   hash_t salted_seed_hash = crypto_hash_salted_seed(seed);
-  hash_t step_hash = hash_bytes(step_name, strlen(step_name));
+  hash_t step_hash = hash_string(step_name);
   return salted_seed_hash ^ step_hash;
 }
 

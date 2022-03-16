@@ -488,7 +488,7 @@ static void prepare_bucket_seeds(Query *query)
     collect_seed_material(expr, &collect_context);
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
-    hash_t seed_material_hash = hash_bytes(collect_context.material, strlen(collect_context.material));
+    hash_t seed_material_hash = hash_string(collect_context.material);
     seed_material_hashes = list_append_unique_ptr(seed_material_hashes, (void *)seed_material_hash);
   }
 
@@ -534,7 +534,7 @@ static void make_query_anonymizing(Query *query, List *sensitive_relations)
 static hash_t hash_label(Oid type, Datum value, bool is_null)
 {
   if (is_null)
-    return hash_bytes("NULL", strlen("NULL"));
+    return hash_string("NULL");
 
   if (is_supported_numeric_type(type))
   {
@@ -542,7 +542,7 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
     double value_as_double = numeric_value_to_double(type, value);
     char value_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(value_as_double, value_as_string);
-    return hash_bytes(value_as_string, strlen(value_as_string));
+    return hash_string(value_as_string);
   }
 
   /* Handle all other types by casting to text. */
@@ -551,7 +551,7 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
   getTypeOutputInfo(type, &type_output_funcid, &is_varlena);
 
   char *value_as_string = OidOutputFunctionCall(type_output_funcid, value);
-  hash_t hash = hash_bytes(value_as_string, strlen(value_as_string));
+  hash_t hash = hash_string(value_as_string);
   pfree(value_as_string);
 
   return hash;

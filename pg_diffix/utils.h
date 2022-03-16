@@ -30,6 +30,11 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
   return hash;
 }
 
+static inline hash_t hash_string(const void *string)
+{
+  return hash_bytes(string, strlen(string));
+}
+
 static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
 {
   const void *data = NULL;
