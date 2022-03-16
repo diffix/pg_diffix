@@ -35,7 +35,7 @@ static inline hash_t hash_string(const void *string)
   return hash_bytes(string, strlen(string));
 }
 
-static inline uint32 hash_datum(Datum value, bool typbyval, int16 typlen)
+static inline hash_t hash_datum(Datum value, bool typbyval, int16 typlen)
 {
   const void *data = NULL;
   size_t data_size = 0;

@@ -36,7 +36,7 @@ typedef struct DistinctTrackerData
 #define SH_KEY_TYPE Datum
 #define DATA(tb) ((DistinctTrackerData *)tb->private_data)
 #define SH_EQUAL(tb, a, b) datumIsEqual(a, b, DATA(tb)->typbyval, DATA(tb)->typlen)
-#define SH_HASH_KEY(tb, key) hash_datum(key, DATA(tb)->typbyval, DATA(tb)->typlen)
+#define SH_HASH_KEY(tb, key) (uint32) hash_datum(key, DATA(tb)->typbyval, DATA(tb)->typlen)
 #define SH_SCOPE static inline
 #define SH_DECLARE
 #define SH_DEFINE

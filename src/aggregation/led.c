@@ -70,9 +70,9 @@ static inline uint32 subset_hash(SiblingsTrackerData *data, BucketRef bucket)
 
     uint32 label_hash = bucket->is_null[i]
                             ? 0
-                            : hash_datum(bucket->values[i],
-                                         bucket_desc->attrs[i].typ_byval,
-                                         bucket_desc->attrs[i].typ_len);
+                            : (uint32)hash_datum(bucket->values[i],
+                                                 bucket_desc->attrs[i].typ_byval,
+                                                 bucket_desc->attrs[i].typ_len);
     hash ^= label_hash;
   }
 
