@@ -52,7 +52,7 @@ static void verify_query(Query *query)
   NOT_SUPPORTED(query->groupingSets, "GROUPING SETS");
   NOT_SUPPORTED(query->windowClause, "window functions");
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
-  NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT");
+  NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT/EXCEPT");
 
   verify_where(query);
   verify_aggregators(query);
