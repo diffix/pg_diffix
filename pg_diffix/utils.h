@@ -66,7 +66,7 @@ static inline List *hash_set_add(List *hash_set, hash_t hash)
   return list_append_unique_ptr(hash_set, (void *)hash);
 }
 
-extern hash_t hash_set_combine(List *hash_set);
+extern hash_t hash_set_combine(const List *hash_set);
 
 /*-------------------------------------------------------------------------
  * Compatibility shims

@@ -10,7 +10,7 @@
 
 #include "pg_diffix/utils.h"
 
-hash_t hash_set_combine(List *hash_set)
+hash_t hash_set_combine(const List *hash_set)
 {
   ListCell *cell = NULL;
   hash_t accumulator = 0;
