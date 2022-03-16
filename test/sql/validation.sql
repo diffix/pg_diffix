@@ -62,6 +62,31 @@ SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 -- Unsupported queries
 ----------------------------------------------------------------
 
+-- Get rejected because non SELECT queries are unsupported.
+INSERT INTO empty_test_customers VALUES (NULL, NULL,NULL);
+
+-- Get rejected because WITH is unsupported.
+WITH c AS (SELECT 1 FROM empty_test_customers) SELECT 1 FROM empty_test_customers;
+
+-- Get rejected because GROUPING SETS are unsupported.
+SELECT city FROM empty_test_customers GROUP BY GROUPING SETS ((city), ());
+SELECT city FROM empty_test_customers GROUP BY CUBE ((city));
+
+-- Get rejected because UNIONs etc. are unsupported.
+SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
+
+-- Get rejected because SRF functions are unsupported.
+SELECT generate_series(1,4) FROM empty_test_customers;
+
+-- Get rejected because sublinks are unsupported.
+SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
+
+-- Get rejected because DISTINCT is unsupported.
+SELECT DISTINCT city FROM empty_test_customers;
+
+-- Get rejected because window functions are unsupported.
+SELECT avg(discount) OVER (PARTITION BY city) FROM empty_test_customers;
+
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM empty_test_customers;
 SELECT MIN(id) + MAX(id) FROM empty_test_customers;

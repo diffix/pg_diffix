@@ -92,6 +92,32 @@ SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
+-- Get rejected because non SELECT queries are unsupported.
+INSERT INTO empty_test_customers VALUES (NULL, NULL,NULL);
+ERROR:  [PG_DIFFIX] Feature 'non-select query' is not currently supported.
+-- Get rejected because WITH is unsupported.
+WITH c AS (SELECT 1 FROM empty_test_customers) SELECT 1 FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'WITH' is not currently supported.
+-- Get rejected because GROUPING SETS are unsupported.
+SELECT city FROM empty_test_customers GROUP BY GROUPING SETS ((city), ());
+ERROR:  [PG_DIFFIX] Feature 'GROUPING SETS' is not currently supported.
+SELECT city FROM empty_test_customers GROUP BY CUBE ((city));
+ERROR:  [PG_DIFFIX] Feature 'GROUPING SETS' is not currently supported.
+-- Get rejected because UNIONs etc. are unsupported.
+SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'UNION/INTERSECT/EXCEPT' is not currently supported.
+-- Get rejected because SRF functions are unsupported.
+SELECT generate_series(1,4) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'SRF functions' is not currently supported.
+-- Get rejected because sublinks are unsupported.
+SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
+ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
+-- Get rejected because DISTINCT is unsupported.
+SELECT DISTINCT city FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'DISTINCT' is not currently supported.
+-- Get rejected because window functions are unsupported.
+SELECT avg(discount) OVER (PARTITION BY city) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Feature 'window functions' is not currently supported.
 -- Get rejected because aggregators are unsupported.
 SELECT SUM(id) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
