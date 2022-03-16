@@ -30,7 +30,7 @@ static inline hash_t hash_bytes(const void *bytes, size_t size)
   return hash;
 }
 
-static inline hash_t hash_string(const void *string)
+static inline hash_t hash_string(const char *string)
 {
   return hash_bytes(string, strlen(string));
 }
