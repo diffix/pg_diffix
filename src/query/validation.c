@@ -162,32 +162,32 @@ static void verify_bucket_expression(Node *node)
         FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
     }
   }
-
-  if (IsA(node, OpExpr))
+  else if (IsA(node, OpExpr))
   {
     OpExpr *op_expr = (OpExpr *)node;
     FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
   }
-
-  if (IsA(node, Const))
+  else if (IsA(node, Const))
   {
     Const *const_expr = (Const *)node;
     FAILWITH_LOCATION(const_expr->location, "Simple constants are not allowed as bucket expressions.");
   }
-
-  if (IsA(node, RelabelType))
+  else if (IsA(node, RelabelType))
   {
     RelabelType *relabel_expr = (RelabelType *)node;
     verify_bucket_expression((Node *)relabel_expr->arg);
   }
-
-  if (IsA(node, CoerceViaIO))
+  else if (IsA(node, CoerceViaIO))
   {
     CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
     if (is_datetime_to_string_cast(coerce_expr))
       return verify_bucket_expression((Node *)coerce_expr->arg);
     else
       FAILWITH_LOCATION(coerce_expr->location, "Unsupported cast destination type name.");
+  }
+  else if (!IsA(node, Var))
+  {
+    FAILWITH("Unsupported or unrecognized primitive node type");
   }
 }
 

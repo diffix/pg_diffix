@@ -104,6 +104,12 @@ SELECT COUNT(*) FROM empty_test_customers GROUP BY floor(cast(discount AS intege
 SELECT COUNT(*) FROM empty_test_customers GROUP BY substr(city, 1, id);
 SELECT COUNT(*) FROM empty_test_customers GROUP BY substr('aaaa', 1, 2);
 
+-- Get rejected because expression node type is unsupported.
+SELECT COALESCE(discount, 20) FROM empty_test_customers;
+SELECT NULLIF(discount, 20) FROM empty_test_customers;
+SELECT GREATEST(discount, 20) FROM empty_test_customers;
+SELECT LEAST(discount, 20) FROM empty_test_customers;
+
 -- Get rejected because of subqueries
 SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
 FROM (
