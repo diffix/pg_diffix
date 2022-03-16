@@ -268,18 +268,7 @@ static void verify_bucket_expressions(Query *query)
 
 bool is_supported_numeric_type(Oid type)
 {
-  switch (type)
-  {
-  case INT2OID:
-  case INT4OID:
-  case INT8OID:
-  case FLOAT4OID:
-  case FLOAT8OID:
-  case NUMERICOID:
-    return true;
-  default:
-    return false;
-  }
+  return TypeCategory(type) == TYPCATEGORY_NUMERIC;
 }
 
 double numeric_value_to_double(Oid type, Datum value)
