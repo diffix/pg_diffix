@@ -579,7 +579,7 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
   for (int i = 0; i < bucket_desc->num_labels; i++)
   {
     hash_t label_hash = hash_label(bucket_desc->attrs[i].final_type, bucket->values[i], bucket->is_null[i]);
-    list_append_unique_ptr(label_hashes, (void *)label_hash);
+    label_hashes = list_append_unique_ptr(label_hashes, (void *)label_hash);
   }
 
   seed_t bucket_seed = g_sql_seed;
