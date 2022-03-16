@@ -350,7 +350,7 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    if (inner_count_result.not_enough_aidvs)
+    if (inner_count_result.not_enough_aid_values)
     {
       insufficient_data = true;
       break;

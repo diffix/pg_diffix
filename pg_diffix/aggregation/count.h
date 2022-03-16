@@ -19,7 +19,7 @@ typedef struct CountResult
   uint32 noisy_top_count;
   double noise_sd;
   double noise;
-  bool not_enough_aidvs;
+  bool not_enough_aid_values;
 } CountResult;
 
 extern CountResult aggregate_count_contributions(
