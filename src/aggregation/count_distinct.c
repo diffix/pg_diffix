@@ -456,6 +456,16 @@ static const char *count_distinct_explain(const AnonAggState *base_state)
   return "diffix.anon_count_distinct";
 }
 
+static List *add_aid_value_to_set(List *aid_values_set, NullableDatum aid_arg, Oid aid_type)
+{
+  if (!aid_arg.isnull)
+  {
+    aid_t aid_value = get_aid_descriptor(aid_type).make_aid(aid_arg.value);
+    aid_values_set = hash_set_add(aid_values_set, aid_value);
+  }
+  return aid_values_set;
+}
+
 static void count_distinct_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   CountDistinctState *state = (CountDistinctState *)base_state;
@@ -473,15 +483,12 @@ static void count_distinct_transition(AnonAggState *base_state, int num_args, Nu
     foreach (cell, entry->aid_values_sets)
     {
       int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
-      if (!args[aid_index].isnull)
-      {
-        Oid aid_type = state->args_desc->args[aid_index].type_oid;
-        aid_t aid = get_aid_descriptor(aid_type).make_aid(args[aid_index].value);
-        List **aid_values_set = (List **)&lfirst(cell);
-        *aid_values_set = hash_set_add(*aid_values_set, aid);
-      }
+      Oid aid_type = state->args_desc->args[aid_index].type_oid;
+      List **aid_values_set = (List **)&lfirst(cell);
+      *aid_values_set = add_aid_value_to_set(*aid_values_set, args[aid_index], aid_type);
     }
   }
+
   MemoryContextSwitchTo(old_context);
 }
 
