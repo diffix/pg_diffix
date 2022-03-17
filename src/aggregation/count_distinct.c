@@ -477,8 +477,8 @@ static void count_distinct_transition(AnonAggState *base_state, int num_args, Nu
       {
         Oid aid_type = state->args_desc->args[aid_index].type_oid;
         aid_t aid = get_aid_descriptor(aid_type).make_aid(args[aid_index].value);
-        List **src_aid_values_set = (List **)&lfirst(cell);
-        *src_aid_values_set = hash_set_add(*src_aid_values_set, aid);
+        List **aid_values_set = (List **)&lfirst(cell);
+        *aid_values_set = hash_set_add(*aid_values_set, aid);
       }
     }
   }
