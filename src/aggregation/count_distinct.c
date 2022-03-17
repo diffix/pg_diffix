@@ -87,7 +87,7 @@ static bool aid_set_is_high_count(seed_t bucket_seed, const List *aid_values_set
   if (list_length(aid_values_set) < g_config.low_count_min_threshold)
     return false; /* Fewer AID values than minimum threshold, value is low-count. */
 
-  seed_t aid_seed = hash_set_combine(aid_values_set);
+  seed_t aid_seed = hash_set_to_seed(aid_values_set);
 
   seed_t seeds[] = {bucket_seed, aid_seed};
   int threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));

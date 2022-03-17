@@ -3,8 +3,6 @@
 
 #include "pg_diffix/utils.h"
 
-typedef hash_t seed_t;
-
 /*
  * Returns a uniform integer in the positive interval [min, max] for the given seed and step name.
  */

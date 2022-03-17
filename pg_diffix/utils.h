@@ -21,6 +21,7 @@
  */
 
 typedef uint64 hash_t;
+typedef hash_t seed_t;
 
 static inline hash_t hash_bytes(const void *bytes, size_t size)
 {
@@ -66,7 +67,7 @@ static inline List *hash_set_add(List *hash_set, hash_t hash)
   return list_append_unique_ptr(hash_set, (void *)hash);
 }
 
-extern hash_t hash_set_combine(const List *hash_set);
+extern seed_t hash_set_to_seed(const List *hash_set);
 
 static inline List *hash_set_union(List *dst_set, const List *src_set)
 {
