@@ -1,0 +1,102 @@
+LOAD 'pg_diffix';
+SET pg_diffix.session_access_level = 'publish_untrusted';
+----------------------------------------------------------------
+-- Sanity checks
+----------------------------------------------------------------
+SELECT diffix.access_level();
+   access_level    
+-------------------
+ publish_untrusted
+(1 row)
+
+----------------------------------------------------------------
+-- Untrusted mode query restrictions
+----------------------------------------------------------------
+-- Get accepted
+SELECT substring(city, 1, 2) from empty_test_customers;
+ substring 
+-----------
+(0 rows)
+
+SELECT floor(discount) from empty_test_customers;
+ floor 
+-------
+(0 rows)
+
+SELECT ceil(discount) from empty_test_customers;
+ ceil 
+------
+(0 rows)
+
+SELECT round(discount) from empty_test_customers;
+ round 
+-------
+(0 rows)
+
+SELECT discount from empty_test_customers;
+ discount 
+----------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 2) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+SELECT diffix.round_by(discount, 2) from empty_test_customers;
+ round_by 
+----------
+(0 rows)
+
+SELECT diffix.ceil_by(discount, 2) from empty_test_customers;
+ ceil_by 
+---------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 20) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 2.0) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 0.2) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 20.0) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+SELECT diffix.floor_by(discount, 50.0) from empty_test_customers;
+ floor_by 
+----------
+(0 rows)
+
+-- Get rejected because of invalid generalization parameters
+SELECT substring(city, 2, 2) from empty_test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT substring(city, 2, 2) from empty_test_customers;
+                               ^
+SELECT diffix.floor_by(discount, 3) from empty_test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT diffix.floor_by(discount, 3) from empty_test_customer...
+                                         ^
+SELECT diffix.floor_by(discount, 3.0) from empty_test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT diffix.floor_by(discount, 3.0) from empty_test_custom...
+                                         ^
+SELECT diffix.floor_by(discount, 5000000000.1) from empty_test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT diffix.floor_by(discount, 5000000000.1) from empty_te...
+                                         ^
+-- Get rejected because of invalid generalizing functions
+SELECT width_bucket(discount, 2, 200, 5) from empty_test_customers;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT width_bucket(discount, 2, 200, 5) from empty_test_cus...
+               ^

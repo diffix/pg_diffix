@@ -3,6 +3,7 @@
 #include "executor/executor.h"
 #include "miscadmin.h"
 #include "optimizer/planner.h"
+#include "parser/analyze.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -11,6 +12,7 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
+#include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
 planner_hook_type prev_planner_hook = NULL;
@@ -18,6 +20,7 @@ ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
 ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
+post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 
 static void prepare_query(Query *query)
 {
@@ -105,6 +108,15 @@ static void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
     standard_ExecutorEnd(queryDesc);
 }
 
+static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query)
+{
+  if (get_session_access_level() == ACCESS_DIRECT)
+  {
+    return;
+  }
+  verify_command_type(query);
+}
+
 void hooks_init(void)
 {
   prev_planner_hook = planner_hook;
@@ -121,6 +133,9 @@ void hooks_init(void)
 
   prev_ExecutorEnd_hook = ExecutorEnd_hook;
   ExecutorEnd_hook = pg_diffix_ExecutorEnd;
+
+  prev_post_parse_analyze_hook = post_parse_analyze_hook;
+  post_parse_analyze_hook = pg_diffix_prev_post_parse_analyze;
 }
 
 void hooks_cleanup(void)
@@ -130,4 +145,5 @@ void hooks_cleanup(void)
   ExecutorRun_hook = prev_ExecutorRun_hook;
   ExecutorFinish_hook = prev_ExecutorFinish_hook;
   ExecutorEnd_hook = prev_ExecutorEnd_hook;
+  post_parse_analyze_hook = prev_post_parse_analyze_hook;
 }

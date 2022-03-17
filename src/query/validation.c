@@ -27,6 +27,11 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_expressions(Query *query);
 
+void verify_command_type(Query *query)
+{
+  NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
+}
+
 void verify_anonymization_requirements(Query *query)
 {
   /*
@@ -44,7 +49,6 @@ void verify_anonymizing_query(Query *query)
 
 static void verify_query(Query *query)
 {
-  NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
   NOT_SUPPORTED(query->cteList, "WITH");
   NOT_SUPPORTED(query->hasForUpdate, "FOR [KEY] UPDATE/SHARE");
   NOT_SUPPORTED(query->hasSubLinks, "SubLinks");

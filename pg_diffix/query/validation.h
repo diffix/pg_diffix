@@ -4,6 +4,12 @@
 #include "nodes/parsenodes.h"
 
 /*
+ * Verifies that the command type is allowed for `publish_*` access level users.
+ * If requirements are not met, an error is reported and execution is halted.
+ */
+extern void verify_command_type(Query *query);
+
+/*
  * Verifies that a query matches current anonymization restrictions and limitations.
  * If requirements are not met, an error is reported and execution is halted.
  *
