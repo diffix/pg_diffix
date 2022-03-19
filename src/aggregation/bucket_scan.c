@@ -9,6 +9,7 @@
 #include "optimizer/cost.h"
 #include "optimizer/tlist.h"
 #include "utils/datum.h"
+#include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
@@ -54,11 +55,11 @@
 typedef struct BucketScan
 {
   CustomScan custom_scan;
-  int num_labels;       /* Number of grouping labels */
-  int num_aggs;         /* Number of aggregates in child Agg */
-  int low_count_index;  /* Index of low count aggregate */
-  int count_star_index; /* Index of anonymizing count(*) aggregate */
-  bool expand_buckets;  /* Whether to expand implicitly grouped buckets */
+  AnonymizationContext *anon_context; /* Anonymization config for this node. */
+  int num_labels;                     /* Number of grouping labels */
+  int num_aggs;                       /* Number of aggregates in child Agg */
+  int low_count_index;                /* Index of low count aggregate */
+  int count_star_index;               /* Index of anonymizing count(*) aggregate */
 } BucketScan;
 
 /* Executor node */
@@ -84,14 +85,21 @@ MemoryContext g_current_bucket_context = NULL;
 static ArgsDescriptor *build_args_desc(Aggref *aggref)
 {
   List *args = aggref->args;
-  int num_args = list_length(args);
 
-  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  int num_args = 1 + list_length(args); /* First item is AnonAggState. */
+  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
   args_desc->num_args = num_args;
-  for (int i = 0; i < num_args; i++)
+
+  args_desc->args[0].type_oid = g_oid_cache.anon_agg_state;
+  args_desc->args[0].typlen = sizeof(Datum);
+  args_desc->args[0].typbyval = true;
+
+  for (int i = 1; i < num_args; i++)
   {
-    TargetEntry *arg = list_nth_node(TargetEntry, args, i);
-    args_desc->args[i].type_oid = exprType((Node *)arg->expr);
+    TargetEntry *arg_tle = list_nth_node(TargetEntry, args, i - 1);
+    ArgDescriptor *arg_desc = &args_desc->args[i];
+    arg_desc->type_oid = exprType((Node *)arg_tle->expr);
+    get_typlenbyval(arg_desc->type_oid, &arg_desc->typlen, &arg_desc->typbyval);
   }
 
   return args_desc;
@@ -107,6 +115,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
   bucket_desc->bucket_context = bucket_state->bucket_context;
+  bucket_desc->anon_context = plan->anon_context;
   bucket_desc->low_count_index = plan->low_count_index;
   bucket_desc->num_labels = plan->num_labels;
   bucket_desc->num_aggs = plan->num_aggs;
@@ -308,8 +317,10 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
     {
-      Assert(DatumGetPointer(bucket->values[i]) != NULL);
-      values[i] = att->agg.funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
+      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[i]);
+      Assert(agg_state != NULL);
+      Assert(agg_state->agg_funcs == att->agg.funcs);
+      values[i] = att->agg.funcs->finalize(agg_state, bucket, bucket_desc, &is_null[i]);
     }
     else
     {
@@ -374,7 +385,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     /* We do not reset after qual because some values in scan tuple are owned by econtext. */
     if (ExecQual(qual, econtext))
     {
-      if (plan->expand_buckets)
+      if (plan->anon_context->expand_buckets)
       {
         /* Repeat bucket for n-1 times after current one. */
         bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan->count_star_index) - 1;
@@ -471,6 +482,7 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
 /*
  * Returns a new target list for Agg without any projections.
  * First entries are grouping labels, followed by aggregate expressions.
+ * Anonymizing aggregates are updated to have AnonAggState return type.
  */
 static List *flatten_agg_tlist(Agg *agg)
 {
@@ -510,9 +522,17 @@ static List *flatten_agg_tlist(Agg *agg)
   int num_aggrefs = list_length(aggrefs);
   for (int i = 0; i < num_aggrefs; i++)
   {
-    Expr *aggref = (Expr *)list_nth(aggrefs, i);
-    TargetEntry *agg_target_entry = makeTargetEntry(aggref, num_labels + i + 1, NULL, false);
-    TargetEntry *orig_target_entry = tlist_member(aggref, orig_agg_tlist);
+    Aggref *aggref = list_nth_node(Aggref, aggrefs, i);
+
+    if (is_anonymizing_agg(aggref->aggfnoid))
+    {
+      /* Convert to AnonAggState because rewriter has left original aggregate types. */
+      aggref->aggtype = g_oid_cache.anon_agg_state;
+      aggref->aggcollid = 0;
+    }
+
+    TargetEntry *agg_target_entry = makeTargetEntry((Expr *)aggref, num_labels + i + 1, NULL, false);
+    TargetEntry *orig_target_entry = tlist_member((Expr *)aggref, orig_agg_tlist);
 
     if (orig_target_entry != NULL)
       agg_target_entry->resname = orig_target_entry->resname;
@@ -626,7 +646,7 @@ static int find_agg_index(List *tlist, Oid fnoid)
 
 extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
 
-Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
+Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 {
   if (!IsA(left_tree, Agg))
     FAILWITH("Outer plan of BucketScan needs to be an aggregation node.");
@@ -637,6 +657,7 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
   bucket_scan->custom_scan.methods = &BucketScanScanMethods;
+  bucket_scan->anon_context = anon_context;
   bucket_scan->num_labels = num_labels;
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
 
@@ -652,9 +673,8 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 
   bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
   bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_star);
-  bucket_scan->expand_buckets = expand_buckets;
 
-  if (expand_buckets && bucket_scan->count_star_index == -1)
+  if (anon_context->expand_buckets && bucket_scan->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
 
   /* Estimate cost. */

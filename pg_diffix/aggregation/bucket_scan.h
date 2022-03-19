@@ -3,6 +3,8 @@
 
 #include "nodes/plannodes.h"
 
-extern Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets);
+#include "pg_diffix/aggregation/common.h"
+
+extern Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context);
 
 #endif /* PG_DIFFIX_BUCKET_SCAN_H */

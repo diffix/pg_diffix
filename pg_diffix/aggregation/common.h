@@ -1,7 +1,7 @@
 #ifndef PG_DIFFIX_COMMON_H
 #define PG_DIFFIX_COMMON_H
 
-#include "fmgr.h"
+#include "pg_diffix/aggregation/noise.h"
 
 /*-------------------------------------------------------------------------
  *
@@ -121,9 +121,16 @@ typedef struct BucketAttribute
   Oid final_collid;            /* Final type collation ID */
 } BucketAttribute;
 
+typedef struct AnonymizationContext
+{
+  seed_t sql_seed;     /* Static part of bucket seed */
+  bool expand_buckets; /* True if buckets have to be expanded for this query */
+} AnonymizationContext;
+
 typedef struct BucketDescriptor
 {
   MemoryContext bucket_context;                 /* Memory context where buckets live */
+  AnonymizationContext *anon_context;           /* Corresponding query anonymization parameters */
   int low_count_index;                          /* Index of low count agg, or -1 if none */
   int num_labels;                               /* Number of label attributes */
   int num_aggs;                                 /* Number of aggregate attributes */
@@ -184,15 +191,31 @@ struct AnonAggState
 };
 
 /*
- * Builds an ArgsDescriptor with metadata from PG_FUNCTION_ARGS.
+ * Creates an empty AnonAggState state for given AnonAggFuncs.
  */
-extern ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS);
+static inline AnonAggState *create_anon_agg_state(const AnonAggFuncs *agg_funcs,
+                                                  MemoryContext bucket_context,
+                                                  ArgsDescriptor *args_desc)
+{
+  AnonAggState *state = agg_funcs->create_state(bucket_context, args_desc);
+  state->agg_funcs = agg_funcs;
+  state->memory_context = bucket_context;
+  return state;
+}
 
 /*
  * Finds aggregator spec for given OID.
  * Returns NULL if the given OID is not an anonymizing aggregator.
  */
 extern const AnonAggFuncs *find_agg_funcs(Oid oid);
+
+/*
+ * Returns true if the given OID represents an anonymizing aggregator.
+ */
+static inline bool is_anonymizing_agg(Oid oid)
+{
+  return find_agg_funcs(oid) != NULL;
+}
 
 /*
  * Determines whether the given bucket is low count.

@@ -11,6 +11,7 @@
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
 
+#include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
@@ -34,11 +35,16 @@ typedef struct QueryContext
   List *child_contexts; /* `QueryContext`s of subqueries */
 } QueryContext;
 
-static seed_t g_sql_seed = 0; /* Stores the static part of the bucket seed. */
-
-/* AID Utils */
-static QueryContext *build_context(Query *query, List *relations);
 static void append_aid_args(Aggref *aggref, QueryContext *context);
+
+/* Append a junk target entry at the end of query's tlist. */
+static TargetEntry *add_junk_tle(Query *query, Expr *expr, char *resname)
+{
+  AttrNumber resno = list_length(query->targetList) + 1;
+  TargetEntry *target_entry = makeTargetEntry(expr, resno, resname, true);
+  query->targetList = lappend(query->targetList, target_entry);
+  return target_entry;
+}
 
 /*-------------------------------------------------------------------------
  * Implicit grouping
@@ -94,12 +100,10 @@ static void group_implicit_buckets(Query *query)
 }
 
 /*
- * Expand implicit buckets by adding a hidden call to `generate_series(1, anon_count(*))` to the selection list.
+ * Appends junk `count(*)` to target list.
  */
-static void expand_implicit_buckets(Query *query)
+static void add_junk_count_star(Query *query)
 {
-  Const *const_one = makeConst(INT8OID, -1, InvalidOid, SIZEOF_LONG, Int64GetDatum(1), false, FLOAT8PASSBYVAL);
-
   Aggref *count_agg = makeNode(Aggref);
   count_agg->aggfnoid = g_oid_cache.count_star; /* Will be replaced later with anonymizing version. */
   count_agg->aggtype = INT8OID;
@@ -109,21 +113,7 @@ static void expand_implicit_buckets(Query *query)
   count_agg->aggkind = AGGKIND_NORMAL;
   count_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
   count_agg->location = -1;              /* Unknown location. */
-
-  FuncExpr *generate_series = makeNode(FuncExpr);
-  generate_series->funcid = g_oid_cache.generate_series;
-  generate_series->funcresulttype = INT8OID;
-  generate_series->funcretset = true;
-  generate_series->funcvariadic = false;
-  generate_series->args = list_make2(const_one, count_agg);
-  generate_series->location = -1;
-
-  int target_count = list_length(query->targetList);
-  TargetEntry *expand_entry = makeTargetEntry((Expr *)generate_series, target_count + 1, NULL, false);
-  expand_entry->resjunk = true; /* Hide output values. */
-
-  query->targetList = lappend(query->targetList, expand_entry);
-  query->hasTargetSRFs = true;
+  add_junk_tle(query, (Expr *)count_agg, "anon_count_star");
 }
 
 /*-------------------------------------------------------------------------
@@ -131,34 +121,36 @@ static void expand_implicit_buckets(Query *query)
  *-------------------------------------------------------------------------
  */
 
-static void add_low_count_filter(QueryContext *context)
+/*
+ * Appends junk `low_count(aids...)` to target list.
+ */
+static void add_junk_low_count_agg(QueryContext *context)
 {
-  Query *query = context->query;
-
-  Aggref *lcf_agg = makeNode(Aggref);
-
-  lcf_agg->aggfnoid = g_oid_cache.lcf;
-  lcf_agg->aggtype = BOOLOID;
-  lcf_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
-  lcf_agg->aggstar = false;
-  lcf_agg->aggvariadic = false;
-  lcf_agg->aggkind = AGGKIND_NORMAL;
-  lcf_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
-  lcf_agg->location = -1;              /* Unknown location. */
-
-  append_aid_args(lcf_agg, context);
-
-  query->havingQual = make_and_qual(query->havingQual, (Node *)lcf_agg);
-  query->hasAggs = true;
+  Aggref *lc_agg = makeNode(Aggref);
+  lc_agg->aggfnoid = g_oid_cache.low_count;
+  lc_agg->aggtype = BOOLOID;
+  lc_agg->aggtranstype = InvalidOid; /* Will be set by planner. */
+  lc_agg->aggstar = false;
+  lc_agg->aggvariadic = false;
+  lc_agg->aggkind = AGGKIND_NORMAL;
+  lc_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
+  lc_agg->location = -1;              /* Unknown location. */
+  append_aid_args(lc_agg, context);
+  add_junk_tle(context->query, (Expr *)lc_agg, "low_count");
 }
 
 /*-------------------------------------------------------------------------
  * Anonymizing aggregates
  *-------------------------------------------------------------------------
  */
+
 static void rewrite_to_anon_aggregator(Aggref *aggref, QueryContext *context, Oid fnoid)
 {
   aggref->aggfnoid = fnoid;
+  /*
+   * Technically aggref->aggtype will be different, but the translation will happen in BucketScan.
+   * We do this because we want valid expression trees to go through the planner.
+   */
   aggref->aggstar = false;
   aggref->aggdistinct = false;
   append_aid_args(aggref, context);
@@ -471,7 +463,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
  * Computes the SQL part of the bucket seed by combining the unique grouping expressions' seed material hashes.
  * Grouping clause (if any) must be made explicit before calling this.
  */
-static void prepare_bucket_seeds(Query *query)
+static seed_t prepare_bucket_seeds(Query *query)
 {
   List *seed_material_hash_set = NULL;
 
@@ -490,39 +482,11 @@ static void prepare_bucket_seeds(Query *query)
     seed_material_hash_set = hash_set_add(seed_material_hash_set, seed_material_hash);
   }
 
-  g_sql_seed = hash_set_to_seed(seed_material_hash_set);
+  seed_t sql_seed = hash_set_to_seed(seed_material_hash_set);
 
   list_free(seed_material_hash_set);
-}
 
-static void make_query_anonymizing(Query *query, List *sensitive_relations)
-{
-  QueryContext *context = build_context(query, sensitive_relations);
-
-  bool initial_has_aggs = query->hasAggs;
-  bool initial_has_group_clause = query->groupClause != NIL;
-  bool initial_all_targets_constant = !is_not_const((Node *)query->targetList, NULL);
-
-  /* Only simple select queries require implicit grouping. */
-  if (!initial_has_aggs && !initial_has_group_clause)
-  {
-    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
-
-    group_implicit_buckets(query);
-    expand_implicit_buckets(query);
-  }
-
-  query_tree_mutator(
-      query,
-      aggregate_expression_mutator,
-      context,
-      QTW_DONT_COPY_QUERY);
-
-  /* Global aggregates have to be excluded from low-count filtering. */
-  if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))
-    add_low_count_filter(context);
-
-  query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+  return sql_seed;
 }
 
 static hash_t hash_label(Oid type, Datum value, bool is_null)
@@ -551,22 +515,6 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
   return hash;
 }
 
-/*-------------------------------------------------------------------------
- * Public API
- *-------------------------------------------------------------------------
- */
-
-void compile_anonymizing_query(Query *query, List *sensitive_relations)
-{
-  verify_anonymization_requirements(query);
-
-  make_query_anonymizing(query, sensitive_relations);
-
-  verify_anonymizing_query(query);
-
-  prepare_bucket_seeds(query);
-}
-
 seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_desc)
 {
   List *label_hash_set = NIL;
@@ -576,9 +524,217 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
     label_hash_set = hash_set_add(label_hash_set, label_hash);
   }
 
-  seed_t bucket_seed = g_sql_seed ^ hash_set_to_seed(label_hash_set);
+  seed_t bucket_seed = bucket_desc->anon_context->sql_seed ^ hash_set_to_seed(label_hash_set);
 
   list_free(label_hash_set);
 
   return bucket_seed;
+}
+
+/*-------------------------------------------------------------------------
+ * Query rewriting
+ *-------------------------------------------------------------------------
+ */
+
+static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitive_relations)
+{
+  QueryContext *context = build_context(query, sensitive_relations);
+  AnonymizationContext *anon_context = palloc0(sizeof(AnonymizationContext));
+
+  bool initial_has_aggs = query->hasAggs;
+  bool initial_has_group_clause = query->groupClause != NIL;
+  bool initial_all_targets_constant = !is_not_const((Node *)query->targetList, NULL);
+
+  /* Only simple select queries require implicit grouping. */
+  if (!initial_has_aggs && !initial_has_group_clause)
+  {
+    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+    group_implicit_buckets(query);
+    add_junk_count_star(query);
+    anon_context->expand_buckets = true;
+  }
+
+  query_tree_mutator(
+      query,
+      aggregate_expression_mutator,
+      context,
+      QTW_DONT_COPY_QUERY);
+
+  /* Global aggregates have to be excluded from low-count filtering. */
+  if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))
+    add_junk_low_count_agg(context);
+
+  query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+
+  return anon_context;
+}
+
+typedef struct AggrefLink
+{
+  AnonymizationContext *anon_context; /* Reference to anon context */
+  int orig_location;                  /* Original token location */
+  Oid aggref_oid;                     /* Aggref aggfnoid, used for sanity checking */
+} AggrefLink;
+
+struct AnonQueryLinks
+{
+  List *aggref_links; /* List of AggrefLink */
+};
+
+const int AGGREF_LINK_OFFSET = 1000000000; /* Big number to avoid accidental overlap. */
+
+/*
+ * Data (context) used by both link and extract walkers.
+ * Intentionally avoids using the word "context" twice.
+ */
+typedef struct AnonContextWalkerData
+{
+  AnonQueryLinks *links;              /* Where to store added links */
+  AnonymizationContext *anon_context; /* Anon context to associate */
+} AnonContextWalkerData;
+
+static bool link_anon_context_walker(Node *node, AnonContextWalkerData *data)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Aggref))
+  {
+    Aggref *aggref = (Aggref *)node;
+    if (is_anonymizing_agg(aggref->aggfnoid))
+    {
+      int orig_location = aggref->location;
+
+      AggrefLink *link = palloc(sizeof(AggrefLink));
+      link->anon_context = data->anon_context;
+      link->orig_location = orig_location;
+      link->aggref_oid = aggref->aggfnoid;
+
+      int link_index = list_length(data->links->aggref_links);
+      data->links->aggref_links = lappend(data->links->aggref_links, link);
+
+      aggref->location = AGGREF_LINK_OFFSET + link_index; /* Attach the index to aggref. */
+    }
+  }
+
+  return expression_tree_walker(node, link_anon_context_walker, data);
+}
+
+/*
+ * Encodes an AnonContext reference to Aggrefs of anonymizing aggregates
+ * by injecting AGGREF_LINK_OFFSET + AggrefLink's index to aggref->location.
+ */
+static AnonQueryLinks *link_anon_context(Query *query, AnonymizationContext *anon_context)
+{
+  /* Once we support subqueries, this needs to be shared across the tree. */
+  AnonQueryLinks *links = palloc(sizeof(AnonQueryLinks));
+  links->aggref_links = NIL;
+
+  AnonContextWalkerData data = {links, anon_context};
+  expression_tree_walker((Node *)query->targetList, link_anon_context_walker, &data);
+
+  return links;
+}
+
+AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_relations)
+{
+  verify_anonymization_requirements(query);
+
+  AnonymizationContext *anon_context = make_query_anonymizing(query, sensitive_relations);
+
+  verify_anonymizing_query(query);
+
+  anon_context->sql_seed = prepare_bucket_seeds(query);
+
+  return link_anon_context(query, anon_context);
+}
+
+/*-------------------------------------------------------------------------
+ * Plan rewriting
+ *-------------------------------------------------------------------------
+ */
+
+static bool extract_anon_context_walker(Node *node, AnonContextWalkerData *data)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Aggref))
+  {
+    Aggref *aggref = (Aggref *)node;
+    if (is_anonymizing_agg(aggref->aggfnoid) && aggref->location >= AGGREF_LINK_OFFSET)
+    {
+      int link_index = aggref->location - AGGREF_LINK_OFFSET;
+      AggrefLink *link = list_nth(data->links->aggref_links, link_index);
+
+      /* Sanity checks. */
+      if (link->aggref_oid != aggref->aggfnoid)
+        FAILWITH("Mismatched aggregate OIDs during plan rewrite.");
+      if (data->anon_context != NULL && data->anon_context != link->anon_context)
+        FAILWITH("Mismatched anonymizing subqueries in plan.");
+
+      data->anon_context = link->anon_context;
+      aggref->location = link->orig_location;
+    }
+  }
+
+  return expression_tree_walker(node, extract_anon_context_walker, data);
+}
+
+/*
+ * Reverse process of `link_anon_context`. Extracts and returns
+ * the associated AnonymizationContext or NULL if none is found.
+ */
+static AnonymizationContext *extract_anon_context(Plan *plan, AnonQueryLinks *links)
+{
+  AnonContextWalkerData data = {links, NULL};
+  expression_tree_walker((Node *)plan->targetlist, extract_anon_context_walker, &data);
+  return data.anon_context;
+}
+
+static void rewrite_plan_list(List *plans, AnonQueryLinks *links)
+{
+  ListCell *cell;
+  foreach (cell, plans)
+  {
+    Plan *plan = (Plan *)lfirst(cell);
+    plans->elements[foreach_current_index(cell)].ptr_value = rewrite_plan(plan, links);
+  }
+}
+
+Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
+{
+  if (plan == NULL)
+    return NULL;
+
+  plan->lefttree = rewrite_plan(plan->lefttree, links);
+  plan->righttree = rewrite_plan(plan->righttree, links);
+
+  switch (plan->type)
+  {
+  case T_Append:
+    rewrite_plan_list(((Append *)plan)->appendplans, links);
+    break;
+  case T_MergeAppend:
+    rewrite_plan_list(((MergeAppend *)plan)->mergeplans, links);
+    break;
+  case T_SubqueryScan:
+    ((SubqueryScan *)plan)->subplan = rewrite_plan(((SubqueryScan *)plan)->subplan, links);
+    break;
+  case T_CustomScan:
+    rewrite_plan_list(((CustomScan *)plan)->custom_plans, links);
+    break;
+  default:
+    /* Nothing to do. */
+    break;
+  }
+
+  if (IsA(plan, Agg))
+  {
+    AnonymizationContext *anon_context = extract_anon_context(plan, links);
+    if (anon_context != NULL)
+      return make_bucket_scan(plan, anon_context);
+  }
+
+  return plan;
 }

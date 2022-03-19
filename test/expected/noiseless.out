@@ -45,9 +45,10 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
+ *      |     2
  Rome   |     7
  Berlin |     7
-(2 rows)
+(3 rows)
 
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
@@ -93,6 +94,8 @@ SELECT 1, COUNT(*) FROM test_patients;
 SELECT 1, city FROM test_customers;
  ?column? |  city  
 ----------+--------
+        1 | *
+        1 | *
         1 | Rome
         1 | Rome
         1 | Rome
@@ -107,11 +110,13 @@ SELECT 1, city FROM test_customers;
         1 | Berlin
         1 | Berlin
         1 | Berlin
-(14 rows)
+(16 rows)
 
 SELECT city, 'aaaa' FROM test_customers;
   city  | ?column? 
 --------+----------
+ *      | aaaa
+ *      | aaaa
  Rome   | aaaa
  Rome   | aaaa
  Rome   | aaaa
@@ -126,7 +131,7 @@ SELECT city, 'aaaa' FROM test_customers;
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
-(14 rows)
+(16 rows)
 
 ----------------------------------------------------------------
 -- Multi-AID queries
@@ -150,11 +155,29 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 SELECT id FROM test_customers;
  id 
 ----
-(0 rows)
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+(16 rows)
 
 SELECT city FROM test_customers;
   city  
 --------
+ *
+ *
  Rome
  Rome
  Rome
@@ -169,7 +192,7 @@ SELECT city FROM test_customers;
  Berlin
  Berlin
  Berlin
-(14 rows)
+(16 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  

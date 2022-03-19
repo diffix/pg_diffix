@@ -1,11 +1,5 @@
 #include "postgres.h"
 
-#include "fmgr.h"
-#include "lib/stringinfo.h"
-#include "nodes/execnodes.h"
-#include "utils/builtins.h"
-
-#include <inttypes.h>
 #include <math.h>
 
 #include "pg_diffix/aggregation/common.h"
@@ -361,63 +355,3 @@ const AnonAggFuncs g_count_star_funcs = {
     .merge = count_merge,
     .explain = count_star_explain,
 };
-
-/*-------------------------------------------------------------------------
- * UDFs
- *-------------------------------------------------------------------------
- */
-
-static const int STATE_INDEX = 0;
-
-static AnonAggState *count_get_state(PG_FUNCTION_ARGS, int aids_offset)
-{
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext memory_context;
-  if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
-    FAILWITH("Aggregate called in non-aggregate context");
-
-  AnonAggState *state = count_create_state(memory_context, get_args_desc(fcinfo), aids_offset);
-  state->memory_context = memory_context;
-  return state;
-}
-
-PG_FUNCTION_INFO_V1(anon_count_value_transfn);
-PG_FUNCTION_INFO_V1(anon_count_value_finalfn);
-
-Datum anon_count_value_transfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET);
-  count_value_transition(state, PG_NARGS(), fcinfo->args);
-  PG_RETURN_POINTER(state);
-}
-
-Datum anon_count_value_finalfn(PG_FUNCTION_ARGS)
-{
-  bool is_null = false;
-  BucketDescriptor empty_bucket_desc = {};
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_VALUE_AIDS_OFFSET), NULL, &empty_bucket_desc, &is_null);
-  Assert(!is_null);
-  PG_RETURN_DATUM(result);
-}
-
-PG_FUNCTION_INFO_V1(anon_count_star_transfn);
-PG_FUNCTION_INFO_V1(anon_count_star_finalfn);
-
-Datum anon_count_star_transfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET);
-  count_star_transition(state, PG_NARGS(), fcinfo->args);
-  PG_RETURN_POINTER(state);
-}
-
-Datum anon_count_star_finalfn(PG_FUNCTION_ARGS)
-{
-  bool is_null = false;
-  BucketDescriptor empty_bucket_desc = {};
-  Datum result = count_finalize(count_get_state(fcinfo, COUNT_STAR_AIDS_OFFSET), NULL, &empty_bucket_desc, &is_null);
-  Assert(!is_null);
-  PG_RETURN_DATUM(result);
-}

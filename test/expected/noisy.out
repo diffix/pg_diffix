@@ -41,8 +41,8 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |    14
- Berlin |    15
+ Rome   |     8
+ Berlin |    25
 (2 rows)
 
 ----------------------------------------------------------------
@@ -85,12 +85,6 @@ SELECT 1, city FROM test_customers;
         1 | Rome
         1 | Rome
         1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
         1 | Berlin
         1 | Berlin
         1 | Berlin
@@ -106,7 +100,17 @@ SELECT 1, city FROM test_customers;
         1 | Berlin
         1 | Berlin
         1 | Berlin
-(29 rows)
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+        1 | Berlin
+(33 rows)
 
 SELECT city, 'aaaa' FROM test_customers;
   city  | ?column? 
@@ -119,12 +123,6 @@ SELECT city, 'aaaa' FROM test_customers;
  Rome   | aaaa
  Rome   | aaaa
  Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
@@ -140,7 +138,17 @@ SELECT city, 'aaaa' FROM test_customers;
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
-(29 rows)
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+ Berlin | aaaa
+(33 rows)
 
 ----------------------------------------------------------------
 -- Multi-AID queries
@@ -148,7 +156,8 @@ SELECT city, 'aaaa' FROM test_customers;
 SELECT city FROM test_patients GROUP BY 1;
  city 
 ------
-(0 rows)
+ *
+(1 row)
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
  count | count | count 
@@ -162,7 +171,34 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 SELECT id FROM test_customers;
  id 
 ----
-(0 rows)
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+(27 rows)
 
 SELECT city FROM test_customers;
   city  
@@ -175,12 +211,6 @@ SELECT city FROM test_customers;
  Rome
  Rome
  Rome
- Rome
- Rome
- Rome
- Rome
- Rome
- Rome
  Berlin
  Berlin
  Berlin
@@ -196,7 +226,17 @@ SELECT city FROM test_customers;
  Berlin
  Berlin
  Berlin
-(29 rows)
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+ Berlin
+(33 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  

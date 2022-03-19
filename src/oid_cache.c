@@ -3,6 +3,7 @@
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
 #include "parser/parse_func.h"
+#include "utils/lsyscache.h"
 
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/utils.h"
@@ -21,10 +22,12 @@ void oid_cache_init(void)
   g_oid_cache.count_star = lookup_function(NULL, "count", 0, (Oid[]){});
   g_oid_cache.count_value = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
 
-  g_oid_cache.lcf = lookup_function("diffix", "lcf", -1, (Oid[]){});
+  g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
   g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
   g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
+
+  g_oid_cache.anon_agg_state = get_func_rettype(g_oid_cache.anon_count_star);
 
   g_oid_cache.is_suppress_bin = lookup_function("diffix", "is_suppress_bin", 0, (Oid[]){});
 
@@ -73,10 +76,12 @@ char *oids_to_string(Oids *oids)
   appendStringInfo(&string, " :count_star %u", oids->count_star);
   appendStringInfo(&string, " :count_value %u", oids->count_value);
 
-  appendStringInfo(&string, " :lcf %u", oids->lcf);
+  appendStringInfo(&string, " :low_count %u", oids->low_count);
   appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
   appendStringInfo(&string, " :anon_count_star %u", oids->anon_count_star);
   appendStringInfo(&string, " :anon_count_value %u", oids->anon_count_value);
+
+  appendStringInfo(&string, " :anon_agg_state %u", oids->anon_agg_state);
 
   appendStringInfo(&string, " :is_suppress_bin %u", oids->is_suppress_bin);
 

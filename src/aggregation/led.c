@@ -165,13 +165,10 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
       led_context,
       num_buckets * num_labels * sizeof(BucketSiblings *));
 
-  ListCell *cell;
-
-  /* Fill hash table & associate siblings. */
-  foreach (cell, buckets)
+  /* Fill hash table & associate siblings. Skip star bucket (bucket #0). */
+  for (int bucket_idx = 1; bucket_idx < num_buckets; bucket_idx++)
   {
-    int bucket_idx = foreach_current_index(cell);
-    BucketRef bucket = (BucketRef)lfirst(cell);
+    BucketRef bucket = (BucketRef)list_nth(buckets, bucket_idx);
     for (int column_idx = 0; column_idx < num_labels; column_idx++)
     {
       bool found;
@@ -193,14 +190,12 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   int total_merges = 0;
 
   /* LED bucket loop */
-  foreach (cell, buckets)
+  for (int bucket_idx = 1; bucket_idx < num_buckets; bucket_idx++)
   {
-    BucketRef bucket = (BucketRef)lfirst(cell);
+    BucketRef bucket = (BucketRef)list_nth(buckets, bucket_idx);
 
     if (!bucket->low_count)
       continue;
-
-    int bucket_idx = foreach_current_index(cell);
 
     bool has_unknown_column = false;
     int isolating_columns = 0;
