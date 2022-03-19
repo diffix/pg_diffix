@@ -1,5 +1,9 @@
 #include "postgres.h"
 
+#ifndef typeof
+#define typeof __typeof__ /* To make copyObject happy. */
+#endif
+
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
@@ -565,6 +569,9 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitiv
     add_junk_low_count_agg(context);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
+
+  /* Create a copy because planner may overwrite this. */
+  anon_context->group_clause = (List *)copyObject(query->groupClause);
 
   return anon_context;
 }

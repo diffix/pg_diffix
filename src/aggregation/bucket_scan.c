@@ -484,17 +484,25 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
  * First entries are grouping labels, followed by aggregate expressions.
  * Anonymizing aggregates are updated to have AnonAggState return type.
  */
-static List *flatten_agg_tlist(Agg *agg)
+static List *flatten_agg_tlist(Agg *agg, List *group_clause)
 {
   List *child_tlist = outerPlan(agg)->targetlist;
   List *orig_agg_tlist = agg->plan.targetlist;
   List *flat_agg_tlist = NIL;
-  int num_labels = agg->numCols;
+
+  int num_labels = list_length(group_clause);
+  AttrNumber *grouping_cols = extract_grouping_cols(group_clause, orig_agg_tlist);
 
   /* Add grouping labels to target list. */
   for (int i = 0; i < num_labels; i++)
   {
-    AttrNumber label_var_attno = agg->grpColIdx[i];
+    TargetEntry *label_tle = list_nth_node(TargetEntry, orig_agg_tlist, grouping_cols[i] - 1);
+    Assert(label_tle->resno == grouping_cols[i]);
+
+    if (!IsA(label_tle->expr, Var))
+      FAILWITH("Unexpected grouping expression in plan.");
+
+    AttrNumber label_var_attno = ((Var *)label_tle->expr)->varattno;
     TargetEntry *child_target_entry = list_nth_node(TargetEntry, child_tlist, label_var_attno - 1);
 
     Var *label_var = makeVarFromTargetEntry(OUTER_VAR, child_target_entry);
@@ -513,6 +521,8 @@ static List *flatten_agg_tlist(Agg *agg)
 
     flat_agg_tlist = lappend(flat_agg_tlist, label_target_entry);
   }
+
+  pfree(grouping_cols);
 
   /* Add aggregates to target list. */
   List *aggrefs = NIL;
@@ -584,7 +594,9 @@ static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *co
     Var *var = (Var *)node;
     TargetEntry *label_tle = find_var_target_entry(context->flat_agg_tlist, var->varattno);
     /* Vars can only point to grouping labels, and they should have been exported by Agg. */
-    Assert(label_tle != NULL);
+    if (label_tle == NULL)
+      FAILWITH("Expression does not point to a grouping label.");
+
     return (Node *)makeVarFromTargetEntry(INDEX_VAR, label_tle);
   }
 
@@ -652,7 +664,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
     FAILWITH("Outer plan of BucketScan needs to be an aggregation node.");
 
   Agg *agg = (Agg *)left_tree;
-  int num_labels = agg->numCols;
+  int num_labels = list_length(anon_context->group_clause);
 
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
@@ -662,7 +674,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
 
   /* Lift projection and qual up. */
-  List *flat_agg_tlist = flatten_agg_tlist(agg);
+  List *flat_agg_tlist = flatten_agg_tlist(agg, anon_context->group_clause);
   bucket_scan->num_aggs = list_length(flat_agg_tlist) - num_labels;
   RewriteProjectionContext context = {flat_agg_tlist, num_labels};
   plan->targetlist = project_agg_tlist(agg->plan.targetlist, &context);

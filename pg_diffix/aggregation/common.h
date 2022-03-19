@@ -1,6 +1,8 @@
 #ifndef PG_DIFFIX_COMMON_H
 #define PG_DIFFIX_COMMON_H
 
+#include "nodes/pg_list.h"
+
 #include "pg_diffix/aggregation/noise.h"
 
 /*-------------------------------------------------------------------------
@@ -123,6 +125,7 @@ typedef struct BucketAttribute
 
 typedef struct AnonymizationContext
 {
+  List *group_clause;  /* Original (unoptimized) group clause */
   seed_t sql_seed;     /* Static part of bucket seed */
   bool expand_buckets; /* True if buckets have to be expanded for this query */
 } AnonymizationContext;
