@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_collation.h"
+#include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
@@ -26,6 +27,31 @@ static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_expressions(Query *query);
+
+void verify_utility_command(Node *utility_stmt)
+{
+  if (get_session_access_level() != ACCESS_DIRECT && !superuser())
+  {
+    switch (utility_stmt->type)
+    {
+    case T_DoStmt:
+    case T_NotifyStmt:
+    case T_ListenStmt:
+    case T_UnlistenStmt:
+    case T_TransactionStmt:
+    case T_ExplainStmt:
+    case T_VariableSetStmt:
+    case T_VariableShowStmt:
+    case T_DiscardStmt:
+    case T_LockStmt:
+    case T_CheckPointStmt:
+    case T_DeclareCursorStmt:
+      break;
+    default:
+      FAILWITH("Statement requires either SUPERUSER or direct access level.");
+    }
+  }
+}
 
 void verify_anonymization_requirements(Query *query)
 {

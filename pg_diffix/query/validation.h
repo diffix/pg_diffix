@@ -4,6 +4,12 @@
 #include "nodes/parsenodes.h"
 
 /*
+ * Verifies that the utility statement is one of the allowed ones for restricted access users.
+ * If requirements are not met, an error is reported and execution is halted.
+ */
+extern void verify_utility_command(Node *utility_stmt);
+
+/*
  * Verifies that a query matches current anonymization restrictions and limitations.
  * If requirements are not met, an error is reported and execution is halted.
  *
