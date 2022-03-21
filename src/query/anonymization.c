@@ -590,6 +590,17 @@ struct AnonQueryLinks
 
 const int AGGREF_LINK_OFFSET = 1000000000; /* Big number to avoid accidental overlap. */
 
+static int link_index_to_location(int link_index)
+{
+  return AGGREF_LINK_OFFSET + link_index;
+}
+
+static int location_to_link_index(int location)
+{
+  Assert(location >= AGGREF_LINK_OFFSET);
+  return location - AGGREF_LINK_OFFSET;
+}
+
 /*
  * Data (context) used by both link and extract walkers.
  * Intentionally avoids using the word "context" twice.
@@ -610,17 +621,15 @@ static bool link_anon_context_walker(Node *node, AnonContextWalkerData *data)
     Aggref *aggref = (Aggref *)node;
     if (is_anonymizing_agg(aggref->aggfnoid))
     {
-      int orig_location = aggref->location;
-
       AggrefLink *link = palloc(sizeof(AggrefLink));
       link->anon_context = data->anon_context;
-      link->orig_location = orig_location;
+      link->orig_location = aggref->location;
       link->aggref_oid = aggref->aggfnoid;
 
       int link_index = list_length(data->links->aggref_links);
       data->links->aggref_links = lappend(data->links->aggref_links, link);
 
-      aggref->location = AGGREF_LINK_OFFSET + link_index; /* Attach the index to aggref. */
+      aggref->location = link_index_to_location(link_index); /* Attach the index to aggref. */
     }
   }
 
@@ -671,7 +680,7 @@ static bool extract_anon_context_walker(Node *node, AnonContextWalkerData *data)
     Aggref *aggref = (Aggref *)node;
     if (is_anonymizing_agg(aggref->aggfnoid) && aggref->location >= AGGREF_LINK_OFFSET)
     {
-      int link_index = aggref->location - AGGREF_LINK_OFFSET;
+      int link_index = location_to_link_index(aggref->location);
       AggrefLink *link = list_nth(data->links->aggref_links, link_index);
 
       /* Sanity checks. */
