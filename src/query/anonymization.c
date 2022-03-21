@@ -490,7 +490,7 @@ static void prepare_bucket_seeds(Query *query)
     seed_material_hash_set = hash_set_add(seed_material_hash_set, seed_material_hash);
   }
 
-  g_sql_seed = hash_set_combine(seed_material_hash_set);
+  g_sql_seed = hash_set_to_seed(seed_material_hash_set);
 
   list_free(seed_material_hash_set);
 }
@@ -576,7 +576,7 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
     label_hash_set = hash_set_add(label_hash_set, label_hash);
   }
 
-  seed_t bucket_seed = g_sql_seed ^ hash_set_combine(label_hash_set);
+  seed_t bucket_seed = g_sql_seed ^ hash_set_to_seed(label_hash_set);
 
   list_free(label_hash_set);
 

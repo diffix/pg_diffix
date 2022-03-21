@@ -15,9 +15,9 @@
  */
 typedef struct DistinctTrackerHashEntry
 {
-  Datum value; /* Unique value */
-  List *aidvs; /* List of AID sets (represented as Lists), one for each AID instance */
-  char status; /* Required for hash table */
+  Datum value;           /* Unique value */
+  List *aid_values_sets; /* List of AID sets, one for each AID instance */
+  char status;           /* Required for hash table */
 } DistinctTrackerHashEntry;
 
 /* Metadata needed for hashing and equality checks on the unique values. */
@@ -53,11 +53,11 @@ get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
   if (!found)
   {
-    entry->aidvs = NIL;
+    entry->aid_values_sets = NIL;
     entry->value = datumCopy(value, DATA(tracker)->typbyval, DATA(tracker)->typlen);
     for (int i = 0; i < aids_count; i++)
     {
-      entry->aidvs = lappend(entry->aidvs, NIL);
+      entry->aid_values_sets = lappend(entry->aid_values_sets, NIL);
     }
   }
   return entry;
@@ -82,38 +82,26 @@ static void set_value_sorting_globals(Oid element_type)
   g_compare_values_func = &g_compare_values_typentry->cmp_proc_finfo;
 }
 
-static seed_t seed_from_aidv(const List *aidvs)
+static bool aid_set_is_high_count(seed_t bucket_seed, const List *aid_values_set)
 {
-  seed_t seed = 0;
-  ListCell *cell;
-  foreach (cell, aidvs)
-  {
-    aid_t aid = (aid_t)lfirst(cell);
-    seed ^= aid;
-  }
-  return seed;
-}
-
-static bool aid_set_is_high_count(seed_t bucket_seed, const List *aidvs)
-{
-  if (list_length(aidvs) < g_config.low_count_min_threshold)
+  if (list_length(aid_values_set) < g_config.low_count_min_threshold)
     return false; /* Fewer AID values than minimum threshold, value is low-count. */
 
-  seed_t aid_seed = seed_from_aidv(aidvs);
+  seed_t aid_seed = hash_set_to_seed(aid_values_set);
 
   seed_t seeds[] = {bucket_seed, aid_seed};
   int threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
 
-  return list_length(aidvs) >= threshold;
+  return list_length(aid_values_set) >= threshold;
 }
 
-static bool aid_sets_are_high_count(seed_t bucket_seed, const List *aidvs)
+static bool aid_sets_are_high_count(seed_t bucket_seed, const List *aid_values_sets)
 {
   ListCell *cell;
-  foreach (cell, aidvs)
+  foreach (cell, aid_values_sets)
   {
-    const List *aidv = (const List *)lfirst(cell);
-    if (!aid_set_is_high_count(bucket_seed, aidv))
+    const List *aid_values_set = (const List *)lfirst(cell);
+    if (!aid_set_is_high_count(bucket_seed, aid_values_set))
       return false;
   }
   return true;
@@ -129,7 +117,7 @@ static List *filter_lc_entries(seed_t bucket_seed, DistinctTracker_hash *tracker
   DistinctTrackerHashEntry *entry = NULL;
   while ((entry = DistinctTracker_iterate(tracker, &it)) != NULL)
   {
-    if (!aid_sets_are_high_count(bucket_seed, entry->aidvs))
+    if (!aid_sets_are_high_count(bucket_seed, entry->aid_values_sets))
       lc_entries = lappend(lc_entries, entry);
   }
 
@@ -205,13 +193,13 @@ static List *transpose_lc_values_per_aid(List *lc_entries, int aid_index, uint32
   foreach (lc_entry_cell, lc_entries)
   {
     const DistinctTrackerHashEntry *entry = (const DistinctTrackerHashEntry *)lfirst(lc_entry_cell);
-    const List *aidvs = (const List *)list_nth(entry->aidvs, aid_index);
+    const List *aid_values_set = (const List *)list_nth(entry->aid_values_sets, aid_index);
 
-    if (aidvs != NIL) /* Count unique value only if it has at least one associated AID value. */
+    if (aid_values_set != NIL) /* Count unique value only if it has at least one associated AID value. */
       (*lc_values_true_count)++;
 
     ListCell *aidv_cell;
-    foreach (aidv_cell, aidvs)
+    foreach (aidv_cell, aid_values_set)
     {
       aid_t aid = (aid_t)lfirst(aidv_cell);
       per_aid_values = associate_value_with_aid(per_aid_values, aid, entry->value);
@@ -362,7 +350,7 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    if (inner_count_result.not_enough_aidvs)
+    if (inner_count_result.not_enough_aid_values)
     {
       insufficient_data = true;
       break;
@@ -452,11 +440,11 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
 
     ListCell *dst_cell = NULL;
     const ListCell *src_cell = NULL;
-    forboth(dst_cell, dst_entry->aidvs, src_cell, src_entry->aidvs)
+    forboth(dst_cell, dst_entry->aid_values_sets, src_cell, src_entry->aid_values_sets)
     {
-      List **dst_aidv = (List **)&lfirst(dst_cell);
-      const List **src_aidv = (const List **)&lfirst(src_cell);
-      *dst_aidv = list_concat_unique_ptr(*dst_aidv, *src_aidv);
+      List **dst_aid_values_set = (List **)&lfirst(dst_cell);
+      const List **src_aid_values_set = (const List **)&lfirst(src_cell);
+      *dst_aid_values_set = hash_set_union(*dst_aid_values_set, *src_aid_values_set);
     }
   }
 
@@ -466,6 +454,16 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
 static const char *count_distinct_explain(const AnonAggState *base_state)
 {
   return "diffix.anon_count_distinct";
+}
+
+static List *add_aid_value_to_set(List *aid_values_set, NullableDatum aid_arg, Oid aid_type)
+{
+  if (!aid_arg.isnull)
+  {
+    aid_t aid_value = get_aid_descriptor(aid_type).make_aid(aid_arg.value);
+    aid_values_set = hash_set_add(aid_values_set, aid_value);
+  }
+  return aid_values_set;
 }
 
 static void count_distinct_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
@@ -482,18 +480,15 @@ static void count_distinct_transition(AnonAggState *base_state, int num_args, Nu
     DistinctTrackerHashEntry *entry = get_distinct_tracker_entry(state->tracker, value, aids_count);
 
     ListCell *cell;
-    foreach (cell, entry->aidvs)
+    foreach (cell, entry->aid_values_sets)
     {
       int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
-      if (!args[aid_index].isnull)
-      {
-        Oid aid_type = state->args_desc->args[aid_index].type_oid;
-        aid_t aid = get_aid_descriptor(aid_type).make_aid(args[aid_index].value);
-        List **aidv = (List **)&lfirst(cell);
-        *aidv = list_append_unique_ptr(*aidv, (void *)aid);
-      }
+      Oid aid_type = state->args_desc->args[aid_index].type_oid;
+      List **aid_values_set = (List **)&lfirst(cell);
+      *aid_values_set = add_aid_value_to_set(*aid_values_set, args[aid_index], aid_type);
     }
   }
+
   MemoryContextSwitchTo(old_context);
 }
 

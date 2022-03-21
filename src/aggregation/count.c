@@ -97,7 +97,7 @@ CountResult aggregate_count_contributions(
 
   if (distinct_contributors < g_config.outlier_count_min + g_config.top_count_min)
   {
-    result.not_enough_aidvs = true;
+    result.not_enough_aid_values = true;
     return result;
   }
 
@@ -145,7 +145,7 @@ static CountResult count_calculate_result(seed_t bucket_seed, const Contribution
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
 {
-  Assert(result->not_enough_aidvs == false);
+  Assert(result->not_enough_aid_values == false);
   Assert(result->flattening >= 0);
 
   if (result->flattening > accumulator->max_flattening)
@@ -227,7 +227,7 @@ static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDesc
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
     CountResult result = count_calculate_result(bucket_seed, contribution_tracker);
 
-    if (result.not_enough_aidvs)
+    if (result.not_enough_aid_values)
       return Int64GetDatum(min_count);
 
     accumulate_count_result(&result_accumulator, &result);
