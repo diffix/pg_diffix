@@ -3,6 +3,7 @@
 #include "executor/executor.h"
 #include "miscadmin.h"
 #include "optimizer/planner.h"
+#include "parser/analyze.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -11,13 +12,35 @@
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
+#include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
+post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
 ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
+
+#if PG_MAJORVERSION_NUM == 13
+static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
+{
+  if (query->commandType == CMD_UTILITY)
+    verify_utility_command(query->utilityStmt);
+
+  if (prev_post_parse_analyze_hook)
+    prev_post_parse_analyze_hook(pstate, query);
+}
+#elif PG_MAJORVERSION_NUM >= 14
+static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query, JumbleState *jstate)
+{
+  if (query->commandType == CMD_UTILITY)
+    verify_utility_command(query->utilityStmt);
+
+  if (prev_post_parse_analyze_hook)
+    prev_post_parse_analyze_hook(pstate, query, jstate);
+}
+#endif
 
 static AnonQueryLinks *prepare_query(Query *query)
 {
@@ -111,6 +134,9 @@ static void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 
 void hooks_init(void)
 {
+  prev_post_parse_analyze_hook = post_parse_analyze_hook;
+  post_parse_analyze_hook = pg_diffix_post_parse_analyze;
+
   prev_planner_hook = planner_hook;
   planner_hook = pg_diffix_planner;
 
@@ -129,6 +155,7 @@ void hooks_init(void)
 
 void hooks_cleanup(void)
 {
+  post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;
   ExecutorStart_hook = prev_ExecutorStart_hook;
   ExecutorRun_hook = prev_ExecutorRun_hook;

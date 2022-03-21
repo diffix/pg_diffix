@@ -46,3 +46,14 @@ SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE empty_test_times IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_times.cid IS 'aid';
+
+-- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
+DO $$
+BEGIN
+  CREATE ROLE diffix_test WITH NOSUPERUSER;
+EXCEPTION WHEN duplicate_object THEN
+END
+$$;
+
+GRANT CONNECT ON DATABASE contrib_regression TO diffix_test;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO diffix_test;
