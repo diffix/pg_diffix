@@ -226,7 +226,7 @@ static inline bool is_anonymizing_agg(Oid oid)
 extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
 
 /*
- * Merges all anonymizing aggregates from source bucket to destination bucket.
+ * Merges all anonymizing aggregator states from source bucket to destination bucket.
  */
 extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
 

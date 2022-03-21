@@ -144,7 +144,7 @@ static void add_junk_low_count_agg(QueryContext *context)
 }
 
 /*-------------------------------------------------------------------------
- * Anonymizing aggregates
+ * Anonymizing aggregators
  *-------------------------------------------------------------------------
  */
 
@@ -637,7 +637,7 @@ static bool link_anon_context_walker(Node *node, AnonContextWalkerData *data)
 }
 
 /*
- * Encodes an AnonContext reference to Aggrefs of anonymizing aggregates
+ * Encodes an AnonContext reference to Aggrefs of anonymizing aggregators
  * by injecting AGGREF_LINK_OFFSET + AggrefLink's index to aggref->location.
  */
 static AnonQueryLinks *link_anon_context(Query *query, AnonymizationContext *anon_context)

@@ -43,10 +43,10 @@
  *
  *   Projection/filtering:
  *
- *   Because we need to consider aggregate merging, anonymizing aggregates are left unfinalized
- *   until after cross-bucket processing completes. Once we're ready to emit tuples, we move
- *   labels and finalized aggregates to the scan slot. Expressions of the Agg node are moved
- *   to the BucketScan and label/aggregate references are rewritten to INDEX_VARs.
+ *   Because we need to consider aggregate merging, anonymizing aggregator states are left
+ *   unfinalized until after cross-bucket processing completes. Once we're ready to emit tuples,
+ *   we move labels and finalized aggregates to the scan slot. Expressions of the Agg node are
+ *   moved to the BucketScan and label/aggregate references are rewritten to INDEX_VARs.
  *
  *-------------------------------------------------------------------------
  */
@@ -55,7 +55,7 @@
 typedef struct BucketScan
 {
   CustomScan custom_scan;
-  AnonymizationContext *anon_context; /* Anonymization config for this node. */
+  AnonymizationContext *anon_context; /* Anonymization config for this node */
   int num_labels;                     /* Number of grouping labels */
   int num_aggs;                       /* Number of aggregates in child Agg */
   int low_count_index;                /* Index of low count aggregate */
@@ -145,7 +145,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
     if (agg_funcs != NULL)
     {
-      /* For anonymizing aggregate we describe finalized type. */
+      /* For anonymizing aggregators we describe finalized type. */
       agg_funcs->final_type(&att->final_type, &att->final_typmod, &att->final_collid);
     }
     else
@@ -482,7 +482,7 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
 /*
  * Returns a new target list for Agg without any projections.
  * First entries are grouping labels, followed by aggregate expressions.
- * Anonymizing aggregates are updated to have AnonAggState return type.
+ * Anonymizing aggregators are updated to have AnonAggState return type.
  */
 static List *flatten_agg_tlist(Agg *agg, List *group_clause)
 {

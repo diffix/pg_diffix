@@ -53,11 +53,11 @@ SECURITY INVOKER SET search_path = '';
  * As a raw value, it cannot be used in expressions as it does not support any operators/functions.
  * Projections of original aggregates are delayed until after finalization in the BucketScan node.
  *
- * However, an AnonAggState retrieved by a direct call to anonymizing aggregates may be inspected in the query output.
+ * However, an AnonAggState retrieved by a direct call to anonymizing aggregators may be inspected in the query output.
  * Serialization is handled by `anon_agg_state_output`, which forwards it to the aggregate's explain implementation.
  * The parse function `anon_agg_state_input` is a stub which will always throw an error.
  *
- * If anonymizing aggregates are invoked directly by SQL in a non-anonymizing query, then the AnonAggState
+ * If anonymizing aggregators are invoked directly by SQL in a non-anonymizing query, then the AnonAggState
  * will be allocated in the aggregation context of the current Agg node. Passing an AnonAggState up
  * (for example from a subquery) outside of the intended scope may result in memory corruption.
  *
@@ -108,14 +108,14 @@ LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 /* ----------------------------------------------------------------
- * Anonymizing aggregates
+ * Anonymizing aggregators
  * ----------------------------------------------------------------
  */
 
 /*
  * Aggregates sharing the same inputs and transition functions can get merged
  * into a single transition calculation. We mark finalfunc_modify=read_write
- * to force a unique state for each anonymizing aggregate invocation.
+ * to force a unique state for each anonymizing aggregator.
  */
 
 CREATE AGGREGATE diffix.low_count(variadic aids "any") (
