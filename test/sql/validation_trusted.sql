@@ -1,4 +1,6 @@
 LOAD 'pg_diffix';
+
+SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'publish_trusted';
 
 ----------------------------------------------------------------
@@ -159,7 +161,11 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN empty_test_customers GRO
 SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
 
 -- Get rejected because of non-datetime cast to text
-SELECT cast(id AS text) FROM test_customers GROUP BY 1;
-SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
-SELECT substring(cast(id AS text), 1, 1) FROM test_customers GROUP BY 1;
-SELECT substring(cast(id AS varchar), 1, 1) FROM test_customers GROUP BY 1;
+SELECT cast(id AS text) FROM empty_test_customers GROUP BY 1;
+SELECT cast(id AS varchar) FROM empty_test_customers GROUP BY 1;
+SELECT substring(cast(id AS text), 1, 1) FROM empty_test_customers GROUP BY 1;
+SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_customers GROUP BY 1;
+
+-- Get rejected because of disallowed utility statement
+COPY test_customers TO STDOUT;
+ALTER TABLE empty_test_customers DROP COLUMN id;

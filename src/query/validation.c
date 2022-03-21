@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_collation.h"
+#include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
@@ -27,9 +28,29 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_expressions(Query *query);
 
-void verify_command_type(Query *query)
+void verify_command(Query *query)
 {
-  NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
+  if (query->commandType == CMD_UTILITY && get_session_access_level() != ACCESS_DIRECT && !superuser())
+  {
+    switch (query->utilityStmt->type)
+    {
+    case T_DoStmt:
+    case T_NotifyStmt:
+    case T_ListenStmt:
+    case T_UnlistenStmt:
+    case T_TransactionStmt:
+    case T_ExplainStmt:
+    case T_VariableSetStmt:
+    case T_VariableShowStmt:
+    case T_DiscardStmt:
+    case T_LockStmt:
+    case T_CheckPointStmt:
+    case T_DeclareCursorStmt:
+      break;
+    default:
+      FAILWITH("Statement requires either SUPERUSER or direct access level.");
+    }
+  }
 }
 
 void verify_anonymization_requirements(Query *query)
@@ -49,6 +70,7 @@ void verify_anonymizing_query(Query *query)
 
 static void verify_query(Query *query)
 {
+  NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
   NOT_SUPPORTED(query->cteList, "WITH");
   NOT_SUPPORTED(query->hasForUpdate, "FOR [KEY] UPDATE/SHARE");
   NOT_SUPPORTED(query->hasSubLinks, "SubLinks");

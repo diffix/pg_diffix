@@ -1,4 +1,5 @@
 LOAD 'pg_diffix';
+SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'publish_trusted';
 ----------------------------------------------------------------
 -- Sanity checks
@@ -226,19 +227,24 @@ ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supp
 SELECT COUNT(*) FROM empty_test_customers WHERE city = 'London';
 ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
 -- Get rejected because of non-datetime cast to text
-SELECT cast(id AS text) FROM test_customers GROUP BY 1;
+SELECT cast(id AS text) FROM empty_test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
-LINE 1: SELECT cast(id AS text) FROM test_customers GROUP BY 1;
+LINE 1: SELECT cast(id AS text) FROM empty_test_customers GROUP BY 1...
                ^
-SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
+SELECT cast(id AS varchar) FROM empty_test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
-LINE 1: SELECT cast(id AS varchar) FROM test_customers GROUP BY 1;
+LINE 1: SELECT cast(id AS varchar) FROM empty_test_customers GROUP B...
                ^
-SELECT substring(cast(id AS text), 1, 1) FROM test_customers GROUP BY 1;
+SELECT substring(cast(id AS text), 1, 1) FROM empty_test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
-LINE 1: SELECT substring(cast(id AS text), 1, 1) FROM test_customers...
+LINE 1: SELECT substring(cast(id AS text), 1, 1) FROM empty_test_cus...
                ^
-SELECT substring(cast(id AS varchar), 1, 1) FROM test_customers GROUP BY 1;
+SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
-LINE 1: SELECT substring(cast(id AS varchar), 1, 1) FROM test_custom...
+LINE 1: SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_...
                ^
+-- Get rejected because of disallowed utility statement
+COPY test_customers TO STDOUT;
+ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
+ALTER TABLE empty_test_customers DROP COLUMN id;
+ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.

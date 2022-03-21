@@ -4,10 +4,12 @@
 #include "nodes/parsenodes.h"
 
 /*
- * Verifies that the command type is allowed for `publish_*` access level users.
+ * Verifies that the command is allowed. SUPERUSER can issue any command, for other users it depends on their
+ * `pg_diffix.access_level` setting.
+ *
  * If requirements are not met, an error is reported and execution is halted.
  */
-extern void verify_command_type(Query *query);
+extern void verify_command(Query *query);
 
 /*
  * Verifies that a query matches current anonymization restrictions and limitations.
