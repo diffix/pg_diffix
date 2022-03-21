@@ -42,7 +42,7 @@ static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query, Jumbl
 }
 #endif
 
-static void prepare_query(Query *query)
+static AnonQueryLinks *prepare_query(Query *query)
 {
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
@@ -51,7 +51,7 @@ static void prepare_query(Query *query)
   if (get_session_access_level() == ACCESS_DIRECT)
   {
     DEBUG_LOG("Direct query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
-    return;
+    return NULL;
   }
 
   List *sensitive_relations = gather_sensitive_relations(query);
@@ -60,7 +60,7 @@ static void prepare_query(Query *query)
   if (sensitive_relations == NIL)
   {
     DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
-    return;
+    return NULL;
   }
 
   /* At this point we have an anonymizing query. */
@@ -69,9 +69,11 @@ static void prepare_query(Query *query)
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
 
-  compile_anonymizing_query(query, sensitive_relations);
+  AnonQueryLinks *links = compile_anonymizing_query(query, sensitive_relations);
 
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+
+  return links;
 }
 
 static PlannedStmt *pg_diffix_planner(
@@ -81,13 +83,15 @@ static PlannedStmt *pg_diffix_planner(
     ParamListInfo boundParams)
 {
   DEBUG_LOG("STATEMENT: %s", query_string);
-  prepare_query(parse);
+  AnonQueryLinks *links = prepare_query(parse);
 
   PlannedStmt *plan;
   if (prev_planner_hook)
     plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
   else
     plan = standard_planner(parse, query_string, cursorOptions, boundParams);
+
+  plan->planTree = rewrite_plan(plan->planTree, links);
 
   return plan;
 }

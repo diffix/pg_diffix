@@ -1,8 +1,6 @@
 #include "postgres.h"
 
-#include "nodes/execnodes.h"
 #include "utils/builtins.h"
-#include "utils/lsyscache.h"
 #include "utils/typcache.h"
 
 #include "pg_diffix/aggregation/count.h"
@@ -42,7 +40,6 @@ typedef struct DistinctTrackerData
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-static const int STATE_INDEX = 0;
 static const int VALUE_INDEX = 1;
 static const int AIDS_OFFSET = 2;
 
@@ -500,42 +497,3 @@ const AnonAggFuncs g_count_distinct_funcs = {
     .merge = count_distinct_merge,
     .explain = count_distinct_explain,
 };
-
-/*-------------------------------------------------------------------------
- * UDFs
- *-------------------------------------------------------------------------
- */
-
-static AnonAggState *count_distinct_get_state(PG_FUNCTION_ARGS)
-{
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext memory_context;
-  if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
-    FAILWITH("Aggregate called in non-aggregate context");
-
-  AnonAggState *state = count_distinct_create_state(memory_context, get_args_desc(fcinfo));
-  state->memory_context = memory_context;
-  return state;
-}
-
-PG_FUNCTION_INFO_V1(anon_count_distinct_transfn);
-PG_FUNCTION_INFO_V1(anon_count_distinct_finalfn);
-
-Datum anon_count_distinct_transfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = count_distinct_get_state(fcinfo);
-  count_distinct_transition(state, PG_NARGS(), fcinfo->args);
-  PG_RETURN_POINTER(state);
-}
-
-Datum anon_count_distinct_finalfn(PG_FUNCTION_ARGS)
-{
-  bool is_null = false;
-  BucketDescriptor empty_bucket_desc = {};
-  Datum result = count_distinct_finalize(count_distinct_get_state(fcinfo), NULL, &empty_bucket_desc, &is_null);
-  Assert(!is_null);
-  PG_RETURN_DATUM(result);
-}

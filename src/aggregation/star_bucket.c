@@ -3,10 +3,10 @@
 #include "utils/builtins.h"
 #include "utils/memutils.h"
 
+#include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/star_bucket.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/utils.h"
 
 static void set_text_label(Bucket *star_bucket, int att_idx, Oid type, MemoryContext context)
 {
@@ -47,7 +47,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
       /* Create an empty anon agg state and merge buckets into it. */
-      star_bucket->values[i] = PointerGetDatum(att->agg.funcs->create_state(bucket_context, att->agg.args_desc));
+      star_bucket->values[i] = PointerGetDatum(create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
     else if (att->tag == BUCKET_LABEL)
       set_text_label(star_bucket, i, att->final_type, bucket_context);
     else if (att->agg.fn_oid == g_oid_cache.is_suppress_bin)
@@ -57,10 +57,11 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
   }
 
   int buckets_merged = 0;
-  ListCell *cell;
-  foreach (cell, buckets)
+
+  int num_buckets = list_length(buckets);
+  for (int i = 1; i < num_buckets; i++)
   {
-    Bucket *bucket = (Bucket *)lfirst(cell);
+    Bucket *bucket = (Bucket *)list_nth(buckets, i);
     if (bucket->low_count && !bucket->merged)
     {
       buckets_merged++;

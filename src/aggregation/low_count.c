@@ -1,11 +1,5 @@
 #include "postgres.h"
 
-#include "fmgr.h"
-#include "lib/stringinfo.h"
-#include "utils/builtins.h"
-
-#include <inttypes.h>
-
 #include "pg_diffix/aggregation/aid_tracker.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
@@ -135,42 +129,3 @@ const AnonAggFuncs g_low_count_funcs = {
     .merge = agg_merge,
     .explain = agg_explain,
 };
-
-/*-------------------------------------------------------------------------
- * UDFs
- *-------------------------------------------------------------------------
- */
-
-PG_FUNCTION_INFO_V1(lcf_transfn);
-PG_FUNCTION_INFO_V1(lcf_finalfn);
-
-static const int STATE_INDEX = 0;
-
-static AnonAggState *agg_get_state(PG_FUNCTION_ARGS)
-{
-  if (!PG_ARGISNULL(STATE_INDEX))
-    return (AnonAggState *)PG_GETARG_POINTER(STATE_INDEX);
-
-  /* We want all memory allocations to be done per aggregation node. */
-  MemoryContext memory_context;
-  if (AggCheckCallContext(fcinfo, &memory_context) != AGG_CONTEXT_AGGREGATE)
-    FAILWITH("Aggregate called in non-aggregate context");
-
-  return agg_create_state(memory_context, get_args_desc(fcinfo));
-}
-
-Datum lcf_transfn(PG_FUNCTION_ARGS)
-{
-  AnonAggState *state = agg_get_state(fcinfo);
-  agg_transition(state, PG_NARGS(), fcinfo->args);
-  PG_RETURN_POINTER(state);
-}
-
-Datum lcf_finalfn(PG_FUNCTION_ARGS)
-{
-  bool is_null = false;
-  BucketDescriptor empty_bucket_desc = {};
-  bool low_count = DatumGetBool(agg_finalize(agg_get_state(fcinfo), NULL, &empty_bucket_desc, &is_null));
-  Assert(!is_null);
-  PG_RETURN_BOOL(!low_count);
-}

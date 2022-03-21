@@ -1,5 +1,6 @@
 #include "postgres.h"
 
+#include "fmgr.h"
 #include "nodes/primnodes.h"
 #include "utils/lsyscache.h"
 
@@ -41,6 +42,7 @@ bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc)
   Assert(low_count_index >= bucket_desc->num_labels && low_count_index < bucket_num_atts(bucket_desc));
   AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[low_count_index]);
   Assert(agg_state != NULL);
+  Assert(agg_state->agg_funcs == &g_low_count_funcs);
   bool is_null = false;
   Datum is_low_count = g_low_count_funcs.finalize(agg_state, bucket, bucket_desc, &is_null);
   Assert(!is_null);
@@ -62,10 +64,10 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
   }
 }
 
-ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
+static ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
 {
   int num_args = PG_NARGS();
-  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
   args_desc->num_args = num_args;
   for (int i = 0; i < num_args; i++)
   {
@@ -95,12 +97,7 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (unlikely(agg_funcs == NULL))
     FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
-  ArgsDescriptor *args_desc = get_args_desc(fcinfo);
-  AnonAggState *state = agg_funcs->create_state(bucket_context, args_desc);
-  state->agg_funcs = agg_funcs;
-  state->memory_context = bucket_context;
-
-  return state;
+  return create_anon_agg_state(agg_funcs, bucket_context, get_args_desc(fcinfo));
 }
 
 Datum anon_agg_state_input(PG_FUNCTION_ARGS)

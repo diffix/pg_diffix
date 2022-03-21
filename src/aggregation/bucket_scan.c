@@ -9,6 +9,7 @@
 #include "optimizer/cost.h"
 #include "optimizer/tlist.h"
 #include "utils/datum.h"
+#include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
@@ -42,10 +43,10 @@
  *
  *   Projection/filtering:
  *
- *   Because we need to consider aggregate merging, anonymizing aggregates are left unfinalized
- *   until after cross-bucket processing completes. Once we're ready to emit tuples, we move
- *   labels and finalized aggregates to the scan slot. Expressions of the Agg node are moved
- *   to the BucketScan and label/aggregate references are rewritten to INDEX_VARs.
+ *   Because we need to consider aggregate merging, anonymizing aggregator states are left
+ *   unfinalized until after cross-bucket processing completes. Once we're ready to emit tuples,
+ *   we move labels and finalized aggregates to the scan slot. Expressions of the Agg node are
+ *   moved to the BucketScan and label/aggregate references are rewritten to INDEX_VARs.
  *
  *-------------------------------------------------------------------------
  */
@@ -54,11 +55,11 @@
 typedef struct BucketScan
 {
   CustomScan custom_scan;
-  int num_labels;       /* Number of grouping labels */
-  int num_aggs;         /* Number of aggregates in child Agg */
-  int low_count_index;  /* Index of low count aggregate */
-  int count_star_index; /* Index of anonymizing count(*) aggregate */
-  bool expand_buckets;  /* Whether to expand implicitly grouped buckets */
+  AnonymizationContext *anon_context; /* Anonymization config for this node */
+  int num_labels;                     /* Number of grouping labels */
+  int num_aggs;                       /* Number of aggregates in child Agg */
+  int low_count_index;                /* Index of low count aggregate */
+  int count_star_index;               /* Index of anonymizing count(*) aggregate */
 } BucketScan;
 
 /* Executor node */
@@ -84,14 +85,21 @@ MemoryContext g_current_bucket_context = NULL;
 static ArgsDescriptor *build_args_desc(Aggref *aggref)
 {
   List *args = aggref->args;
-  int num_args = list_length(args);
 
-  ArgsDescriptor *args_desc = palloc(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  int num_args = 1 + list_length(args); /* First item is AnonAggState. */
+  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
   args_desc->num_args = num_args;
-  for (int i = 0; i < num_args; i++)
+
+  args_desc->args[0].type_oid = g_oid_cache.anon_agg_state;
+  args_desc->args[0].typlen = sizeof(Datum);
+  args_desc->args[0].typbyval = true;
+
+  for (int i = 1; i < num_args; i++)
   {
-    TargetEntry *arg = list_nth_node(TargetEntry, args, i);
-    args_desc->args[i].type_oid = exprType((Node *)arg->expr);
+    TargetEntry *arg_tle = list_nth_node(TargetEntry, args, i - 1);
+    ArgDescriptor *arg_desc = &args_desc->args[i];
+    arg_desc->type_oid = exprType((Node *)arg_tle->expr);
+    get_typlenbyval(arg_desc->type_oid, &arg_desc->typlen, &arg_desc->typbyval);
   }
 
   return args_desc;
@@ -107,6 +115,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
   bucket_desc->bucket_context = bucket_state->bucket_context;
+  bucket_desc->anon_context = plan->anon_context;
   bucket_desc->low_count_index = plan->low_count_index;
   bucket_desc->num_labels = plan->num_labels;
   bucket_desc->num_aggs = plan->num_aggs;
@@ -136,7 +145,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
 
     if (agg_funcs != NULL)
     {
-      /* For anonymizing aggregate we describe finalized type. */
+      /* For anonymizing aggregators we describe finalized type. */
       agg_funcs->final_type(&att->final_type, &att->final_typmod, &att->final_collid);
     }
     else
@@ -308,8 +317,10 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
     {
-      Assert(DatumGetPointer(bucket->values[i]) != NULL);
-      values[i] = att->agg.funcs->finalize((AnonAggState *)bucket->values[i], bucket, bucket_desc, &is_null[i]);
+      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[i]);
+      Assert(agg_state != NULL);
+      Assert(agg_state->agg_funcs == att->agg.funcs);
+      values[i] = att->agg.funcs->finalize(agg_state, bucket, bucket_desc, &is_null[i]);
     }
     else
     {
@@ -374,7 +385,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     /* We do not reset after qual because some values in scan tuple are owned by econtext. */
     if (ExecQual(qual, econtext))
     {
-      if (plan->expand_buckets)
+      if (plan->anon_context->expand_buckets)
       {
         /* Repeat bucket for n-1 times after current one. */
         bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan->count_star_index) - 1;
@@ -471,18 +482,27 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
 /*
  * Returns a new target list for Agg without any projections.
  * First entries are grouping labels, followed by aggregate expressions.
+ * Anonymizing aggregators are updated to have AnonAggState return type.
  */
-static List *flatten_agg_tlist(Agg *agg)
+static List *flatten_agg_tlist(Agg *agg, List *group_clause)
 {
   List *child_tlist = outerPlan(agg)->targetlist;
   List *orig_agg_tlist = agg->plan.targetlist;
   List *flat_agg_tlist = NIL;
-  int num_labels = agg->numCols;
+
+  int num_labels = list_length(group_clause);
+  AttrNumber *grouping_cols = extract_grouping_cols(group_clause, orig_agg_tlist);
 
   /* Add grouping labels to target list. */
   for (int i = 0; i < num_labels; i++)
   {
-    AttrNumber label_var_attno = agg->grpColIdx[i];
+    TargetEntry *label_tle = list_nth_node(TargetEntry, orig_agg_tlist, grouping_cols[i] - 1);
+    Assert(label_tle->resno == grouping_cols[i]);
+
+    if (!IsA(label_tle->expr, Var))
+      FAILWITH("Unexpected grouping expression in plan.");
+
+    AttrNumber label_var_attno = ((Var *)label_tle->expr)->varattno;
     TargetEntry *child_target_entry = list_nth_node(TargetEntry, child_tlist, label_var_attno - 1);
 
     Var *label_var = makeVarFromTargetEntry(OUTER_VAR, child_target_entry);
@@ -502,6 +522,8 @@ static List *flatten_agg_tlist(Agg *agg)
     flat_agg_tlist = lappend(flat_agg_tlist, label_target_entry);
   }
 
+  pfree(grouping_cols);
+
   /* Add aggregates to target list. */
   List *aggrefs = NIL;
   gather_aggrefs_walker((Node *)agg->plan.targetlist, &aggrefs);
@@ -510,9 +532,17 @@ static List *flatten_agg_tlist(Agg *agg)
   int num_aggrefs = list_length(aggrefs);
   for (int i = 0; i < num_aggrefs; i++)
   {
-    Expr *aggref = (Expr *)list_nth(aggrefs, i);
-    TargetEntry *agg_target_entry = makeTargetEntry(aggref, num_labels + i + 1, NULL, false);
-    TargetEntry *orig_target_entry = tlist_member(aggref, orig_agg_tlist);
+    Aggref *aggref = list_nth_node(Aggref, aggrefs, i);
+
+    if (is_anonymizing_agg(aggref->aggfnoid))
+    {
+      /* Convert to AnonAggState because rewriter has left original aggregate types. */
+      aggref->aggtype = g_oid_cache.anon_agg_state;
+      aggref->aggcollid = 0;
+    }
+
+    TargetEntry *agg_target_entry = makeTargetEntry((Expr *)aggref, num_labels + i + 1, NULL, false);
+    TargetEntry *orig_target_entry = tlist_member((Expr *)aggref, orig_agg_tlist);
 
     if (orig_target_entry != NULL)
       agg_target_entry->resname = orig_target_entry->resname;
@@ -564,7 +594,9 @@ static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *co
     Var *var = (Var *)node;
     TargetEntry *label_tle = find_var_target_entry(context->flat_agg_tlist, var->varattno);
     /* Vars can only point to grouping labels, and they should have been exported by Agg. */
-    Assert(label_tle != NULL);
+    if (label_tle == NULL)
+      FAILWITH("Expression does not point to a grouping label.");
+
     return (Node *)makeVarFromTargetEntry(INDEX_VAR, label_tle);
   }
 
@@ -626,22 +658,23 @@ static int find_agg_index(List *tlist, Oid fnoid)
 
 extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
 
-Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
+Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 {
   if (!IsA(left_tree, Agg))
     FAILWITH("Outer plan of BucketScan needs to be an aggregation node.");
 
   Agg *agg = (Agg *)left_tree;
-  int num_labels = agg->numCols;
+  int num_labels = list_length(anon_context->group_clause);
 
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
   bucket_scan->custom_scan.methods = &BucketScanScanMethods;
+  bucket_scan->anon_context = anon_context;
   bucket_scan->num_labels = num_labels;
   Plan *plan = &bucket_scan->custom_scan.scan.plan;
 
   /* Lift projection and qual up. */
-  List *flat_agg_tlist = flatten_agg_tlist(agg);
+  List *flat_agg_tlist = flatten_agg_tlist(agg, anon_context->group_clause);
   bucket_scan->num_aggs = list_length(flat_agg_tlist) - num_labels;
   RewriteProjectionContext context = {flat_agg_tlist, num_labels};
   plan->targetlist = project_agg_tlist(agg->plan.targetlist, &context);
@@ -652,9 +685,8 @@ Plan *make_bucket_scan(Plan *left_tree, bool expand_buckets)
 
   bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
   bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_star);
-  bucket_scan->expand_buckets = expand_buckets;
 
-  if (expand_buckets && bucket_scan->count_star_index == -1)
+  if (anon_context->expand_buckets && bucket_scan->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
 
   /* Estimate cost. */
