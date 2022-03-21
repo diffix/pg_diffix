@@ -22,6 +22,7 @@ ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
+#if PG_MAJORVERSION_NUM == 13
 static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query)
 {
   verify_command(query);
@@ -29,6 +30,15 @@ static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query)
   if (prev_post_parse_analyze_hook)
     prev_post_parse_analyze_hook(pstate, query);
 }
+#elif PG_MAJORVERSION_NUM >= 14
+static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query, JumbleState *jstate)
+{
+  verify_command(query);
+
+  if (prev_post_parse_analyze_hook)
+    prev_post_parse_analyze_hook(pstate, query, jstate);
+}
+#endif
 
 static void prepare_query(Query *query)
 {
