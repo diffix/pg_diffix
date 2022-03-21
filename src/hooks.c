@@ -23,17 +23,19 @@ ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
 #if PG_MAJORVERSION_NUM == 13
-static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query)
+static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
-  verify_command(query);
+  if (query->commandType == CMD_UTILITY)
+    verify_utility_command(query->utilityStmt);
 
   if (prev_post_parse_analyze_hook)
     prev_post_parse_analyze_hook(pstate, query);
 }
 #elif PG_MAJORVERSION_NUM >= 14
-static void pg_diffix_prev_post_parse_analyze(ParseState *pstate, Query *query, JumbleState *jstate)
+static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query, JumbleState *jstate)
 {
-  verify_command(query);
+  if (query->commandType == CMD_UTILITY)
+    verify_utility_command(query->utilityStmt);
 
   if (prev_post_parse_analyze_hook)
     prev_post_parse_analyze_hook(pstate, query, jstate);
@@ -129,7 +131,7 @@ static void pg_diffix_ExecutorEnd(QueryDesc *queryDesc)
 void hooks_init(void)
 {
   prev_post_parse_analyze_hook = post_parse_analyze_hook;
-  post_parse_analyze_hook = pg_diffix_prev_post_parse_analyze;
+  post_parse_analyze_hook = pg_diffix_post_parse_analyze;
 
   prev_planner_hook = planner_hook;
   planner_hook = pg_diffix_planner;

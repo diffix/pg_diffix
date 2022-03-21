@@ -4,12 +4,10 @@
 #include "nodes/parsenodes.h"
 
 /*
- * Verifies that the command is allowed. SUPERUSER can issue any command, for other users it depends on their
- * `pg_diffix.access_level` setting.
- *
+ * Verifies that the utility statement is one of the allowed ones for restricted access users.
  * If requirements are not met, an error is reported and execution is halted.
  */
-extern void verify_command(Query *query);
+extern void verify_utility_command(Node *utility_stmt);
 
 /*
  * Verifies that a query matches current anonymization restrictions and limitations.

@@ -28,11 +28,11 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_bucket_expressions(Query *query);
 
-void verify_command(Query *query)
+void verify_utility_command(Node *utility_stmt)
 {
-  if (query->commandType == CMD_UTILITY && get_session_access_level() != ACCESS_DIRECT && !superuser())
+  if (get_session_access_level() != ACCESS_DIRECT && !superuser())
   {
-    switch (query->utilityStmt->type)
+    switch (utility_stmt->type)
     {
     case T_DoStmt:
     case T_NotifyStmt:
