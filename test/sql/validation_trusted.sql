@@ -169,3 +169,12 @@ SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_customers GROUP BY 1
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ALTER TABLE empty_test_customers DROP COLUMN id;
+
+-- Get rejected because of accessing pg_catalog tables with sensitive stats
+SELECT * FROM pg_stats;
+SELECT * FROM pg_statistic;
+SELECT * FROM pg_stat_user_functions;
+SELECT * FROM pg_stat_user_indexes;
+
+-- Get accepted as a safe discovery command
+\dt empty_test_customers

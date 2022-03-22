@@ -248,3 +248,20 @@ COPY test_customers TO STDOUT;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
 ALTER TABLE empty_test_customers DROP COLUMN id;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
+-- Get rejected because of accessing pg_catalog tables with sensitive stats
+SELECT * FROM pg_stats;
+ERROR:  permission denied for schema pg_catalog
+SELECT * FROM pg_statistic;
+ERROR:  permission denied for table pg_statistic
+SELECT * FROM pg_stat_user_functions;
+ERROR:  permission denied for schema pg_catalog
+SELECT * FROM pg_stat_user_indexes;
+ERROR:  permission denied for schema pg_catalog
+-- Get accepted as a safe discovery command
+\dt empty_test_customers
+                List of relations
+ Schema |         Name         | Type  |  Owner   
+--------+----------------------+-------+----------
+ public | empty_test_customers | table | postgres
+(1 row)
+

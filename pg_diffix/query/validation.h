@@ -23,6 +23,12 @@ extern void verify_anonymization_requirements(Query *query);
 extern void verify_anonymizing_query(Query *query);
 
 /*
+ * Returns `true` if the given list of `RangeTblEntry` from `ExecutorCheckPerms` does only safe access to `pg_catalog`
+ * relations.
+ */
+extern bool verify_safe_pg_catalog_access(List *rangeTabls);
+
+/*
  * Returns `true` if the given type represents a supported numeric type.
  */
 extern bool is_supported_numeric_type(Oid type);

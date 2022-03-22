@@ -4,6 +4,7 @@
 #include "miscadmin.h"
 #include "optimizer/planner.h"
 #include "parser/analyze.h"
+#include "utils/acl.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
@@ -17,6 +18,7 @@
 
 post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;
+ExecutorCheckPerms_hook_type prev_ExecutorCheckPerms_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
 ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
@@ -104,6 +106,24 @@ static void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
     standard_ExecutorStart(queryDesc, eflags);
 }
 
+static bool pg_diffix_ExecutorCheckPerms(List *rangeTabls, bool should_abort)
+{
+  if (get_session_access_level() != ACCESS_DIRECT && !superuser())
+  {
+    if (!verify_safe_pg_catalog_access(rangeTabls))
+    {
+      if (should_abort)
+        aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_SCHEMA, "pg_catalog");
+      else
+        return false;
+    }
+  }
+
+  if (prev_ExecutorCheckPerms_hook)
+    return prev_ExecutorCheckPerms_hook(rangeTabls, should_abort);
+  return true;
+}
+
 static void pg_diffix_ExecutorRun(
     QueryDesc *queryDesc,
     ScanDirection direction,
@@ -140,6 +160,9 @@ void hooks_init(void)
   prev_planner_hook = planner_hook;
   planner_hook = pg_diffix_planner;
 
+  prev_ExecutorCheckPerms_hook = ExecutorCheckPerms_hook;
+  ExecutorCheckPerms_hook = pg_diffix_ExecutorCheckPerms;
+
   prev_ExecutorStart_hook = ExecutorStart_hook;
   ExecutorStart_hook = pg_diffix_ExecutorStart;
 
@@ -157,6 +180,7 @@ void hooks_cleanup(void)
 {
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;
+  ExecutorCheckPerms_hook = prev_ExecutorCheckPerms_hook;
   ExecutorStart_hook = prev_ExecutorStart_hook;
   ExecutorRun_hook = prev_ExecutorRun_hook;
   ExecutorFinish_hook = prev_ExecutorFinish_hook;
