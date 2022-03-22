@@ -159,13 +159,24 @@ table can have zero, one or more AID columns.
 SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';
 ```
 
-Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. Superusers can not be labeled and
-always have full access rights to all data. The value of the custom variable `pg_diffix.default_access_level`
+Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. The value of the custom variable `pg_diffix.default_access_level`
 determines the access level for unlabeled regular users.
 
 ```SQL
 SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
 ```
+
+In addition to the restricted access to sensitive data, users marked with anonymization labels other than `direct` will
+have restricted access to various data and features built into PostgreSQL, as those might leak sensitive information.
+Among others, those users will not be able to:
+
+1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones.
+2. Access data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, except several allowlisted ones useful for discovery commands like `\dt` in `psql`.
+3. Access a selected subset of less frequently used PostgreSQL query features like `EXISTS` OR `NULLIF`.
+
+None of these restrictions apply to superusers.
+
+**NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 
 ### System settings
 
