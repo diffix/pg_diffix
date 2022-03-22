@@ -171,7 +171,7 @@ have restricted access to various data and features built into PostgreSQL, as th
 Among others, those users will not be able to:
 
 1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones.
-2. Access data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, except several allowlisted ones useful for discovery commands like `\dt` in `psql`.
+2. Access data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, or `pg_class`.
 3. Access a selected subset of less frequently used PostgreSQL query features like `EXISTS` OR `NULLIF`.
 
 None of these restrictions apply to superusers.

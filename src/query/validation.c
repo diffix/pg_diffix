@@ -69,7 +69,7 @@ void verify_anonymizing_query(Query *query)
   verify_bucket_expressions(query);
 }
 
-bool verify_safe_pg_catalog_access(List *range_tables)
+bool verify_no_pg_catalog_access(List *range_tables)
 {
   ListCell *cell;
   foreach (cell, range_tables)
@@ -78,20 +78,7 @@ bool verify_safe_pg_catalog_access(List *range_tables)
     if (rte->relid != 0)
     {
       const char *namespace_name = get_namespace_name(get_rel_namespace(rte->relid));
-      const char *rel_name = get_rel_name(rte->relid);
-      bool is_pg_catalog = strcmp(namespace_name, "pg_catalog") == 0;
-      bool is_safe_pg_catalog_rel =
-          /* Required to handle `\dt`. */
-          strcmp(rel_name, "pg_class") == 0 || strcmp(rel_name, "pg_namespace") == 0 ||
-          /* Required to handle `\d table`. */
-          strcmp(rel_name, "pg_attrdef") == 0 || strcmp(rel_name, "pg_am") == 0 || strcmp(rel_name, "pg_attribute") == 0 ||
-          strcmp(rel_name, "pg_collation") == 0 || strcmp(rel_name, "pg_type") == 0 || strcmp(rel_name, "pg_roles") == 0 ||
-          strcmp(rel_name, "pg_policy") == 0 || strcmp(rel_name, "pg_authid") == 0 || strcmp(rel_name, "pg_db_role_setting") == 0 ||
-          strcmp(rel_name, "pg_statistic_ext") == 0 || strcmp(rel_name, "pg_publication") == 0 ||
-          strcmp(rel_name, "pg_publication_rel") == 0 || strcmp(rel_name, "pg_inherits") == 0 ||
-          strcmp(rel_name, "pg_index") == 0 || strcmp(rel_name, "pg_constraint") == 0;
-
-      if (is_pg_catalog && !is_safe_pg_catalog_rel)
+      if (strcmp(namespace_name, "pg_catalog") == 0)
         return false;
     }
   }

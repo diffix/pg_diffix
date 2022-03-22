@@ -257,22 +257,5 @@ SELECT * FROM pg_stat_user_functions;
 ERROR:  permission denied for schema pg_catalog
 SELECT * FROM pg_stat_user_indexes;
 ERROR:  permission denied for schema pg_catalog
--- Get accepted as a safe discovery commands
-\dt empty_test_customers
-                List of relations
- Schema |         Name         | Type  |  Owner   
---------+----------------------+-------+----------
- public | empty_test_customers | table | postgres
-(1 row)
-
-\d empty_test_customers
-         Table "public.empty_test_customers"
-  Column  |  Type   | Collation | Nullable | Default 
-----------+---------+-----------+----------+---------
- id       | integer |           | not null | 
- name     | text    |           |          | 
- city     | text    |           |          | 
- discount | real    |           |          | 
-Indexes:
-    "empty_test_customers_pkey" PRIMARY KEY, btree (id)
-
+SELECT * FROM pg_class;
+ERROR:  permission denied for schema pg_catalog
