@@ -176,5 +176,6 @@ SELECT * FROM pg_statistic;
 SELECT * FROM pg_stat_user_functions;
 SELECT * FROM pg_stat_user_indexes;
 
--- Get accepted as a safe discovery command
+-- Get accepted as a safe discovery commands
 \dt empty_test_customers
+\d empty_test_customers
