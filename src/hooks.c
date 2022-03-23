@@ -106,11 +106,11 @@ static void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
     standard_ExecutorStart(queryDesc, eflags);
 }
 
-static bool pg_diffix_ExecutorCheckPerms(List *rangeTabls, bool should_abort)
+static bool pg_diffix_ExecutorCheckPerms(List *range_tables, bool should_abort)
 {
   if (get_session_access_level() != ACCESS_DIRECT && !superuser())
   {
-    if (!verify_safe_pg_catalog_access(rangeTabls))
+    if (!verify_safe_pg_catalog_access(range_tables))
     {
       if (should_abort)
         aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_SCHEMA, "pg_catalog");
@@ -120,7 +120,7 @@ static bool pg_diffix_ExecutorCheckPerms(List *rangeTabls, bool should_abort)
   }
 
   if (prev_ExecutorCheckPerms_hook)
-    return prev_ExecutorCheckPerms_hook(rangeTabls, should_abort);
+    return prev_ExecutorCheckPerms_hook(range_tables, should_abort);
   return true;
 }
 
