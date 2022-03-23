@@ -236,7 +236,9 @@ static void verify_bucket_expression(Node *node)
       FAILWITH_LOCATION(coerce_expr->location, "Unsupported cast destination type name.");
   }
   else if (IsA(node, Var))
+  {
     verify_non_system_column((Var *)node);
+  }
   else
   {
     FAILWITH("Unsupported or unrecognized query node type");
