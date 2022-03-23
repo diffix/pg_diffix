@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_collation.h"
+#include "catalog/pg_inherits.h"
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
@@ -118,7 +119,11 @@ static void verify_rtable(Query *query)
     NOT_SUPPORTED(range_table->rtekind == RTE_SUBQUERY, "Subqueries in anonymizing queries");
     NOT_SUPPORTED(range_table->rtekind == RTE_JOIN, "JOINs in anonymizing queries");
 
-    if (range_table->rtekind != RTE_RELATION)
+    if (range_table->rtekind == RTE_RELATION)
+    {
+      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries.");
+    }
+    else
       FAILWITH("Unsupported FROM clause.");
   }
 }
