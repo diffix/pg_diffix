@@ -9,6 +9,7 @@
 #include "regex/regex.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
+#include "utils/lsyscache.h"
 #include "utils/memutils.h"
 
 #include "pg_diffix/auth.h"
@@ -66,6 +67,22 @@ void verify_anonymization_requirements(Query *query)
 void verify_anonymizing_query(Query *query)
 {
   verify_bucket_expressions(query);
+}
+
+bool verify_pg_catalog_access(List *range_tables)
+{
+  ListCell *cell;
+  foreach (cell, range_tables)
+  {
+    RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
+    if (rte->relid != 0)
+    {
+      const char *namespace_name = get_namespace_name(get_rel_namespace(rte->relid));
+      if (strcmp(namespace_name, "pg_catalog") == 0)
+        return false;
+    }
+  }
+  return true;
 }
 
 static void verify_query(Query *query)
