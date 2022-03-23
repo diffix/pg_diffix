@@ -177,3 +177,6 @@ SELECT * FROM pg_stat_user_functions;
 SELECT * FROM pg_stat_user_indexes;
 SELECT * FROM pg_class;
 
+-- Get rejected because attempt to use system columns
+SELECT ctid FROM empty_test_customers;
+SELECT tableoid FROM empty_test_customers;

@@ -259,3 +259,12 @@ SELECT * FROM pg_stat_user_indexes;
 ERROR:  permission denied for schema pg_catalog
 SELECT * FROM pg_class;
 ERROR:  permission denied for schema pg_catalog
+-- Get rejected because attempt to use system columns
+SELECT ctid FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in bucket expressions.
+LINE 1: SELECT ctid FROM empty_test_customers;
+               ^
+SELECT tableoid FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in bucket expressions.
+LINE 1: SELECT tableoid FROM empty_test_customers;
+               ^
