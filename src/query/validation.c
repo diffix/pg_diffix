@@ -121,7 +121,10 @@ static void verify_rtable(Query *query)
 
     if (range_table->rtekind == RTE_RELATION)
     {
-      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries.");
+      bool has_inheritance = has_subclass(range_table->relid) || has_superclass(range_table->relid);
+      NOT_SUPPORTED(has_inheritance, "Inheritance in anonymizing queries.");
+      bool has_row_security = DatumGetBool(DirectFunctionCall1(row_security_active, range_table->relid));
+      NOT_SUPPORTED(has_row_security, "Row level security in anonymizing queries.");
     }
     else
       FAILWITH("Unsupported FROM clause.");
