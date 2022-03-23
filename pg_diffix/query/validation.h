@@ -26,7 +26,7 @@ extern void verify_anonymizing_query(Query *query);
  * Returns `true` if the given list of `RangeTblEntry` from `ExecutorCheckPerms` does not access `pg_catalog`
  * relations.
  */
-extern bool verify_no_pg_catalog_access(List *rangeTabls);
+extern bool verify_pg_catalog_access(List *rangeTabls);
 
 /*
  * Returns `true` if the given type represents a supported numeric type.

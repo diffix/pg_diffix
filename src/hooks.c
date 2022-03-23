@@ -110,7 +110,7 @@ static bool pg_diffix_ExecutorCheckPerms(List *range_tables, bool should_abort)
 {
   if (get_session_access_level() != ACCESS_DIRECT && !superuser())
   {
-    if (!verify_no_pg_catalog_access(range_tables))
+    if (!verify_pg_catalog_access(range_tables))
     {
       if (should_abort)
         aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_SCHEMA, "pg_catalog");

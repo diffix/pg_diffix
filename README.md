@@ -166,9 +166,8 @@ determines the access level for unlabeled regular users.
 SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
 ```
 
-In addition to the restricted access to sensitive data, users marked with anonymization labels other than `direct` will
-have restricted access to various data and features built into PostgreSQL, as those might leak sensitive information.
-Among others, those users will not be able to:
+At access levels other than `direct`, various data and features built into PostgreSQL are restricted, as they might leak
+sensitive information. Among others, the following is not allowed:
 
 1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones.
 2. Access data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, or `pg_class`.

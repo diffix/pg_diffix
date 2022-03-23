@@ -69,7 +69,7 @@ void verify_anonymizing_query(Query *query)
   verify_bucket_expressions(query);
 }
 
-bool verify_no_pg_catalog_access(List *range_tables)
+bool verify_pg_catalog_access(List *range_tables)
 {
   ListCell *cell;
   foreach (cell, range_tables)
