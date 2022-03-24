@@ -48,9 +48,9 @@ SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
 ALTER TABLE subclass INHERIT superclass;
 -- No-op. Repeated to test the error on conflicting configuration
 SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive';
-ERROR:  [PG_DIFFIX] Labelling tables with inheritance as 'sensitive'. This isn't supported, anonymizing queries will be rejected.
+ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
 SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive';
-ERROR:  [PG_DIFFIX] Labelling tables with inheritance as 'sensitive'. This isn't supported, anonymizing queries will be rejected.
+ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$
 BEGIN

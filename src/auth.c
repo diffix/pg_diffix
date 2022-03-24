@@ -137,7 +137,7 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
 static void verify_pg_features(Oid relation_id)
 {
   if (has_subclass(relation_id) || has_superclass(relation_id))
-    FAILWITH("Labelling tables with inheritance as 'sensitive'. This isn't supported, anonymizing queries will be rejected.");
+    FAILWITH("Anonymization over tables using inheritance is not supported.");
 }
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
@@ -150,15 +150,14 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
-    if (object->classId == DatabaseRelationId || object->classId == NamespaceRelationId)
-    {
-      return;
-    }
-    else if (object->classId == RelationRelationId && object->objectSubId == 0)
-    {
+    if (is_sensitive_label(seclabel) && object->classId == RelationRelationId && object->objectSubId == 0)
       verify_pg_features(object->objectId);
+
+    if ((object->classId == DatabaseRelationId ||
+         object->classId == NamespaceRelationId ||
+         object->classId == RelationRelationId) &&
+        object->objectSubId == 0)
       return;
-    }
 
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
