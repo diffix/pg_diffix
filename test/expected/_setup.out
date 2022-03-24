@@ -27,8 +27,6 @@ CREATE TABLE empty_test_times (cid INTEGER PRIMARY key, birthday DATE, lunchtime
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (y INTEGER) INHERITS (superclass);
 INSERT INTO subclass VALUES (1, 2);
-CREATE TABLE row_security_policed (x INTEGER);
-ALTER TABLE row_security_policed ENABLE ROW LEVEL SECURITY;
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -47,8 +45,6 @@ SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN superclass.x IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE row_security_policed IS 'sensitive';
-SECURITY LABEL FOR pg_diffix ON COLUMN row_security_policed.x IS 'aid';
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$
 BEGIN

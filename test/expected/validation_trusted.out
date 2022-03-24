@@ -264,6 +264,3 @@ SELECT x, y FROM subclass;
 ERROR:  [PG_DIFFIX] Feature 'Inheritance in anonymizing queries.' is not currently supported.
 SELECT x FROM superclass;
 ERROR:  [PG_DIFFIX] Feature 'Inheritance in anonymizing queries.' is not currently supported.
--- Get rejected because of row security policy
-SELECT x FROM row_security_policed;
-ERROR:  [PG_DIFFIX] Feature 'Row level security in anonymizing queries.' is not currently supported.

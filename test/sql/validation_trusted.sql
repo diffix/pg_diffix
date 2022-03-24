@@ -180,6 +180,3 @@ SELECT * FROM pg_class;
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
 SELECT x FROM superclass;
-
--- Get rejected because of row security policy
-SELECT x FROM row_security_policed;
