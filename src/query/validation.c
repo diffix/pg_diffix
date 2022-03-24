@@ -125,7 +125,9 @@ static void verify_rtable(Query *query)
       NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries.");
     }
     else
+    {
       FAILWITH("Unsupported FROM clause.");
+    }
   }
 }
 

@@ -33,7 +33,7 @@ INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London'
 CREATE TABLE empty_test_times (cid INTEGER PRIMARY key, birthday DATE, lunchtime TIME, last_seen TIMESTAMP);
 
 CREATE TABLE superclass (x INTEGER);
-CREATE TABLE subclass (y INTEGER) INHERITS (superclass);
+CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
 
 -- Config tables.
@@ -54,6 +54,13 @@ SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN superclass.x IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive';
 SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
+
+ALTER TABLE subclass INHERIT superclass;
+
+-- No-op. Repeated to test the error on conflicting configuration
+SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive';
+
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$
