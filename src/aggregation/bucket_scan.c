@@ -180,6 +180,11 @@ static void init_scan_slot(BucketScanState *bucket_state, EState *estate)
   }
 
   ExecInitScanTupleSlot(estate, scan_state, scan_tupdesc, &TTSOpsVirtual);
+
+  /* Mark slot as ready because we will always populate it before use. */
+  TupleTableSlot *scan_slot = scan_state->ss_ScanTupleSlot;
+  scan_slot->tts_flags &= ~TTS_FLAG_EMPTY;
+  scan_slot->tts_nvalid = num_atts;
 }
 
 static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
