@@ -180,3 +180,7 @@ SELECT * FROM pg_class;
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
 SELECT x FROM superclass;
+
+-- Get rejected because attempt to use system columns
+SELECT ctid FROM empty_test_customers;
+SELECT tableoid FROM empty_test_customers;

@@ -28,6 +28,7 @@ static void verify_query(Query *query);
 static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
+static void verify_non_system_column(Var *var);
 static void verify_bucket_expressions(Query *query);
 
 void verify_utility_command(Node *utility_stmt)
@@ -185,6 +186,12 @@ static Node *unwrap_cast(Node *node)
   return node;
 }
 
+static void verify_non_system_column(Var *var)
+{
+  if (var->varattno < 0)
+    FAILWITH_LOCATION(var->location, "System columns are not allowed in bucket expressions.");
+}
+
 static void verify_bucket_expression(Node *node)
 {
   if (IsA(node, FuncExpr))
@@ -233,7 +240,11 @@ static void verify_bucket_expression(Node *node)
     else
       FAILWITH_LOCATION(coerce_expr->location, "Unsupported cast destination type name.");
   }
-  else if (!IsA(node, Var))
+  else if (IsA(node, Var))
+  {
+    verify_non_system_column((Var *)node);
+  }
+  else
   {
     FAILWITH("Unsupported or unrecognized query node type");
   }
