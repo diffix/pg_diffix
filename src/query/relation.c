@@ -72,6 +72,7 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
       SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, namespace_oid);
       *relations = lappend(*relations, rel_data);
     }
+    return false;
   }
   else if (IsA(node, Query))
   {
@@ -81,9 +82,12 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
         gather_sensitive_relations_walker,
         relations,
         QTW_EXAMINE_RTES_BEFORE);
+    return query_tree_walker(query, gather_sensitive_relations_walker, relations, 0);
   }
-
-  return false;
+  else
+  {
+    return expression_tree_walker(node, gather_sensitive_relations_walker, relations);
+  }
 }
 
 List *gather_sensitive_relations(Query *query)
