@@ -3,14 +3,9 @@
 
 #include "nodes/pg_list.h"
 
-#include <inttypes.h>
-
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
-
-#define CONTRIBUTION_INT_FMT PRIi64
-#define CONTRIBUTION_REAL_FMT "f"
 
 typedef union contribution_t
 {

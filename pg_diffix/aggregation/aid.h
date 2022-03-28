@@ -1,8 +1,6 @@
 #ifndef PG_DIFFIX_AID_H
 #define PG_DIFFIX_AID_H
 
-#include <inttypes.h>
-
 #include "pg_diffix/utils.h"
 
 typedef hash_t aid_t;
