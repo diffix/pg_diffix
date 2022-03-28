@@ -1,5 +1,6 @@
 #include "postgres.h"
 
+#include "catalog/pg_inherits.h"
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "utils/acl.h"
@@ -133,6 +134,12 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
       "Anonymization label `%s` not supported on objects of type `%s`", \
       seclabel, getObjectTypeDescription(object))
 
+static void verify_pg_features(Oid relation_id)
+{
+  if (has_subclass(relation_id) || has_superclass(relation_id))
+    FAILWITH("Anonymization over tables using inheritance is not supported.");
+}
+
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
 {
   if (!superuser())
@@ -143,11 +150,15 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
+    if (is_sensitive_label(seclabel) && object->classId == RelationRelationId && object->objectSubId == 0)
+      verify_pg_features(object->objectId);
+
     if ((object->classId == DatabaseRelationId ||
          object->classId == NamespaceRelationId ||
          object->classId == RelationRelationId) &&
         object->objectSubId == 0)
       return;
+
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
   else if (is_aid_label(seclabel))

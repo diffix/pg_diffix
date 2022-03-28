@@ -166,16 +166,23 @@ determines the access level for unlabeled regular users.
 SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
 ```
 
+### Restricted features and extensions
+
 At access levels other than `direct`, various data and features built into PostgreSQL are restricted, as they might leak
 sensitive information. Among others, the following is not allowed:
 
 1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones.
 2. Access data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, or `pg_class`.
 3. Access a selected subset of less frequently used PostgreSQL query features like `EXISTS` OR `NULLIF`.
+4. Inheritance involving a sensitive table.
 
-None of these restrictions apply to superusers.
+Most of these restrictions do not apply to superusers.
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
+
+Row level security (RLS) can be enabled and used on sensitive tables. It is advised that the active policies are vetted from the point of view of anonymity.
+
+It is also strongly advised to vet any other extensions which are enabled alongside `pg_diffix`, as well as any user-defined functions and aggregate functions.
 
 ### System settings
 
