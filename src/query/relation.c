@@ -76,13 +76,7 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
   }
   else if (IsA(node, Query))
   {
-    Query *query = (Query *)node;
-    range_table_walker(
-        query->rtable,
-        gather_sensitive_relations_walker,
-        relations,
-        QTW_EXAMINE_RTES_BEFORE);
-    return query_tree_walker(query, gather_sensitive_relations_walker, relations, 0);
+    return query_tree_walker((Query *)node, gather_sensitive_relations_walker, relations, QTW_EXAMINE_RTES_BEFORE);
   }
   else
   {
