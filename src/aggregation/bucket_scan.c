@@ -51,16 +51,26 @@
  *-------------------------------------------------------------------------
  */
 
-/* Plan node */
-typedef struct BucketScan
+typedef struct BucketScanData
 {
-  CustomScan custom_scan;
-  AnonymizationContext *anon_context; /* Anonymization config for this node */
-  int num_labels;                     /* Number of grouping labels */
-  int num_aggs;                       /* Number of aggregates in child Agg */
-  int low_count_index;                /* Index of low count aggregate */
-  int count_star_index;               /* Index of anonymizing count(*) aggregate */
-} BucketScan;
+  ExtensibleNode extensible;
+  AnonymizationContext anon_context; /* Anonymization config for plan node */
+  int num_labels;                    /* Number of grouping labels */
+  int num_aggs;                      /* Number of aggregates in child Agg */
+  int low_count_index;               /* Index of low count aggregate */
+  int count_star_index;              /* Index of anonymizing count(*) aggregate */
+} BucketScanData;
+
+#define BUCKET_SCAN_DATA_NAME CppAsString(BucketScanData)
+
+/* Plan node */
+typedef CustomScan BucketScan;
+
+static inline BucketScanData *get_plan_data(BucketScan *plan)
+{
+  Assert(list_length(plan->custom_private) == 1);
+  return linitial(plan->custom_private);
+}
 
 /* Executor node */
 typedef struct BucketScanState
@@ -111,14 +121,16 @@ static ArgsDescriptor *build_args_desc(Aggref *aggref)
 static void init_bucket_descriptor(BucketScanState *bucket_state)
 {
   BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
-  int num_atts = plan->num_labels + plan->num_aggs;
+  BucketScanData *plan_data = get_plan_data(plan);
+
+  int num_atts = plan_data->num_labels + plan_data->num_aggs;
 
   BucketDescriptor *bucket_desc = palloc0(sizeof(BucketDescriptor) + num_atts * sizeof(BucketAttribute));
   bucket_desc->bucket_context = bucket_state->bucket_context;
-  bucket_desc->anon_context = plan->anon_context;
-  bucket_desc->low_count_index = plan->low_count_index;
-  bucket_desc->num_labels = plan->num_labels;
-  bucket_desc->num_aggs = plan->num_aggs;
+  bucket_desc->anon_context = &plan_data->anon_context;
+  bucket_desc->low_count_index = plan_data->low_count_index;
+  bucket_desc->num_labels = plan_data->num_labels;
+  bucket_desc->num_aggs = plan_data->num_aggs;
 
   List *outer_tlist = outerPlan(plan)->targetlist;
   TupleDesc outer_tupdesc = outerPlanState(bucket_state)->ps_ResultTupleDesc;
@@ -133,7 +145,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
     att->resname = tle->resname;
 
     const AnonAggFuncs *agg_funcs = NULL;
-    if (i >= plan->num_labels)
+    if (i >= plan_data->num_labels)
     {
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
@@ -365,6 +377,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
   }
 
   BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
+  BucketScanData *plan_data = get_plan_data(plan);
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
   ExprContext *econtext = css->ss.ps.ps_ExprContext;
   ProjectionInfo *proj_info = css->ss.ps.ps_ProjInfo;
@@ -390,10 +403,10 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     /* We do not reset after qual because some values in scan tuple are owned by econtext. */
     if (ExecQual(qual, econtext))
     {
-      if (plan->anon_context->expand_buckets)
+      if (plan_data->anon_context.expand_buckets)
       {
         /* Repeat bucket for n-1 times after current one. */
-        bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan->count_star_index) - 1;
+        bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan_data->count_star_index) - 1;
       }
 
       return ExecProject(proj_info);
@@ -668,19 +681,21 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   if (!IsA(left_tree, Agg))
     FAILWITH("Outer plan of BucketScan needs to be an aggregation node.");
 
-  Agg *agg = (Agg *)left_tree;
-  int num_labels = list_length(anon_context->group_clause);
-
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
-  bucket_scan->custom_scan.methods = &BucketScanScanMethods;
-  bucket_scan->anon_context = anon_context;
-  bucket_scan->num_labels = num_labels;
-  Plan *plan = &bucket_scan->custom_scan.scan.plan;
+  Plan *plan = &bucket_scan->scan.plan;
+  bucket_scan->methods = &BucketScanScanMethods;
+
+  /* Attach data to plan. */
+  BucketScanData *plan_data = (BucketScanData *)newNode(sizeof(BucketScanData), T_ExtensibleNode);
+  bucket_scan->custom_private = list_make1(plan_data);
+  plan_data->extensible.extnodename = BUCKET_SCAN_DATA_NAME;
+  plan_data->anon_context = *anon_context; /* Copy by value to avoid managing another custom node. */
+  int num_labels = plan_data->num_labels = list_length(anon_context->group_clause);
 
   /* Lift projection and qual up. */
+  Agg *agg = (Agg *)left_tree;
   List *flat_agg_tlist = flatten_agg_tlist(agg, anon_context->group_clause);
-  bucket_scan->num_aggs = list_length(flat_agg_tlist) - num_labels;
   RewriteProjectionContext context = {flat_agg_tlist, num_labels};
   plan->targetlist = project_agg_tlist(agg->plan.targetlist, &context);
   plan->qual = project_agg_qual(agg->plan.qual, &context);
@@ -688,10 +703,12 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   agg->plan.targetlist = flat_agg_tlist;
   agg->plan.qual = NIL;
 
-  bucket_scan->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
-  bucket_scan->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_star);
+  /* Rest of data after flattening agg tlist. */
+  plan_data->num_aggs = list_length(flat_agg_tlist) - num_labels;
+  plan_data->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
+  plan_data->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_star);
 
-  if (anon_context->expand_buckets && bucket_scan->count_star_index == -1)
+  if (anon_context->expand_buckets && plan_data->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");
 
   /* Estimate cost. */
@@ -701,7 +718,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   Cost star_bucket_cost = 0;
   Cost finalization_cost = rows * cpu_tuple_cost;
 
-  if (bucket_scan->low_count_index != -1)
+  if (plan_data->low_count_index != -1)
   {
     if (num_labels > 2)
     {
@@ -720,4 +737,86 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   plan->plan_width = left_tree->plan_width;
 
   return (Plan *)bucket_scan;
+}
+
+/*-------------------------------------------------------------------------
+ * Custom nodes
+ *-------------------------------------------------------------------------
+ */
+
+/* Subset of macros from outfuncs.c & copyfuncs.c. */
+
+#define WRITE_INT_FIELD(fldname) \
+  appendStringInfo(str, " :" CppAsString(fldname) " %d", node->fldname)
+
+#define WRITE_NODE_FIELD(fldname)                              \
+  (appendStringInfoString(str, " :" CppAsString(fldname) " "), \
+   outNode(str, node->fldname))
+
+#define WRITE_BOOL_FIELD(fldname) \
+  appendStringInfo(str, " :" CppAsString(fldname) " %s", booltostr(node->fldname))
+
+#define WRITE_SEED_FIELD(fldname) \
+  appendStringInfo(str, " :" CppAsString(fldname) " %" INT64_MODIFIER "x", node->fldname)
+
+#define booltostr(x) ((x) ? "true" : "false")
+
+#define COPY_SCALAR_FIELD(fldname) \
+  (dst->fldname = src->fldname)
+
+#define COPY_NODE_FIELD(fldname) \
+  (dst->fldname = copyObjectImpl(src->fldname))
+
+static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode *src_node)
+{
+  BucketScanData *dst = (BucketScanData *)dst_node;
+  const BucketScanData *src = (const BucketScanData *)src_node;
+
+  COPY_SCALAR_FIELD(num_labels);
+  COPY_SCALAR_FIELD(num_aggs);
+  COPY_SCALAR_FIELD(low_count_index);
+  COPY_SCALAR_FIELD(count_star_index);
+
+  COPY_NODE_FIELD(anon_context.group_clause);
+  COPY_SCALAR_FIELD(anon_context.sql_seed);
+  COPY_SCALAR_FIELD(anon_context.expand_buckets);
+}
+
+static bool bucket_scan_data_equal(const ExtensibleNode *a, const ExtensibleNode *b)
+{
+  FAILWITH("Node function not supported.");
+  return false;
+}
+
+static void bucket_scan_data_out(struct StringInfoData *str, const ExtensibleNode *raw_node)
+{
+  BucketScanData *node = (BucketScanData *)raw_node;
+
+  WRITE_INT_FIELD(num_labels);
+  WRITE_INT_FIELD(num_aggs);
+  WRITE_INT_FIELD(low_count_index);
+  WRITE_INT_FIELD(count_star_index);
+
+  WRITE_SEED_FIELD(anon_context.sql_seed);
+  WRITE_BOOL_FIELD(anon_context.expand_buckets);
+  WRITE_NODE_FIELD(anon_context.group_clause);
+}
+
+static void bucket_scan_data_read(ExtensibleNode *node)
+{
+  FAILWITH("Node function not supported.");
+}
+
+static const ExtensibleNodeMethods g_bucket_scan_data_methods = {
+    .extnodename = BUCKET_SCAN_DATA_NAME,
+    .node_size = sizeof(BucketScanData),
+    .nodeCopy = bucket_scan_data_copy,
+    .nodeEqual = bucket_scan_data_equal,
+    .nodeOut = bucket_scan_data_out,
+    .nodeRead = bucket_scan_data_read,
+};
+
+void register_bucket_scan_nodes(void)
+{
+  RegisterExtensibleNodeMethods(&g_bucket_scan_data_methods);
 }
