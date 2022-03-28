@@ -72,18 +72,16 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
       SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, namespace_oid);
       *relations = lappend(*relations, rel_data);
     }
+    return false;
   }
   else if (IsA(node, Query))
   {
-    Query *query = (Query *)node;
-    range_table_walker(
-        query->rtable,
-        gather_sensitive_relations_walker,
-        relations,
-        QTW_EXAMINE_RTES_BEFORE);
+    return query_tree_walker((Query *)node, gather_sensitive_relations_walker, relations, QTW_EXAMINE_RTES_BEFORE);
   }
-
-  return false;
+  else
+  {
+    return expression_tree_walker(node, gather_sensitive_relations_walker, relations);
+  }
 }
 
 List *gather_sensitive_relations(Query *query)

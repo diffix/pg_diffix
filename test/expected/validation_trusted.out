@@ -113,6 +113,10 @@ ERROR:  [PG_DIFFIX] Feature 'SRF functions' is not currently supported.
 -- Get rejected because sublinks are unsupported.
 SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
 ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
+SELECT EXISTS (SELECT * FROM empty_test_customers WHERE discount < 10);
+ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
+SELECT 1 WHERE EXISTS (SELECT * FROM empty_test_customers);
+ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Feature 'DISTINCT' is not currently supported.

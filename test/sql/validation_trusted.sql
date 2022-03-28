@@ -82,6 +82,8 @@ SELECT generate_series(1,4) FROM empty_test_customers;
 
 -- Get rejected because sublinks are unsupported.
 SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
+SELECT EXISTS (SELECT * FROM empty_test_customers WHERE discount < 10);
+SELECT 1 WHERE EXISTS (SELECT * FROM empty_test_customers);
 
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM empty_test_customers;
