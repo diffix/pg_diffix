@@ -180,7 +180,7 @@ Most of these restrictions do not apply to superusers.
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 
-Row level security (RLS) can be enabled and used on sensitive tables, however it is advised, that the active policies are vetted from the point of view of anonymity.
+Row level security (RLS) can be enabled and used on sensitive tables. It is advised that the active policies are vetted from the point of view of anonymity.
 
 It is also strongly advised to vet any other extensions which are enabled alongside `pg_diffix`, as well as any user-defined functions and aggregate functions.
 
