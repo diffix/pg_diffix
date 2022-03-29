@@ -7,7 +7,6 @@
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
-#include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
@@ -21,6 +20,7 @@
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
+#include "pg_diffix/query/node_functions.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
@@ -707,93 +707,6 @@ static AnonymizationContext *extract_anon_context(Plan *plan, AnonQueryLinks *li
   AnonContextWalkerData data = {links, NULL};
   expression_tree_walker((Node *)plan->targetlist, extract_anon_context_walker, &data);
   return data.anon_context;
-}
-
-static void mutate_plan_list(List *plans, Plan *(*mutator)(), void *context)
-{
-  ListCell *cell;
-  foreach (cell, plans)
-  {
-    Plan *plan = (Plan *)lfirst(cell);
-    plans->elements[foreach_current_index(cell)].ptr_value = mutator(plan, context);
-  }
-}
-
-static bool walk_plan_list(List *plans, bool (*walker)(), void *context)
-{
-  ListCell *cell;
-  foreach (cell, plans)
-  {
-    Plan *plan = (Plan *)lfirst(cell);
-    if (walker(plan, context))
-      return true;
-  }
-}
-
-static Plan *mutate_plan(Plan *plan, Plan *(*mutator)(), void *context)
-{
-  if (plan == NULL)
-    return NULL;
-
-  plan->lefttree = mutator(plan->lefttree, context);
-  plan->righttree = mutator(plan->righttree, context);
-
-  switch (plan->type)
-  {
-  case T_Append:
-    mutate_plan_list(((Append *)plan)->appendplans, mutator, context);
-    break;
-  case T_MergeAppend:
-    mutate_plan_list(((MergeAppend *)plan)->mergeplans, mutator, context);
-    break;
-  case T_SubqueryScan:
-    ((SubqueryScan *)plan)->subplan = mutator(((SubqueryScan *)plan)->subplan, context);
-    break;
-  case T_CustomScan:
-    mutate_plan_list(((CustomScan *)plan)->custom_plans, mutator, context);
-    break;
-  default:
-    /* Nothing to do. */
-    break;
-  }
-
-  return plan;
-}
-
-static bool walk_plan(Plan *plan, bool (*walker)(), void *context)
-{
-  if (plan == NULL)
-    return false;
-
-  if (walker(plan->lefttree, context))
-    return true;
-  if (walker(plan->righttree, context))
-    return true;
-
-  switch (plan->type)
-  {
-  case T_Append:
-    if (walk_plan_list(((Append *)plan)->appendplans, walker, context))
-      return true;
-    break;
-  case T_MergeAppend:
-    if (walk_plan_list(((MergeAppend *)plan)->mergeplans, walker, context))
-      return true;
-    break;
-  case T_SubqueryScan:
-    if (walker(((SubqueryScan *)plan)->subplan, context))
-      return true;
-    break;
-  case T_CustomScan:
-    if (walk_plan_list(((CustomScan *)plan)->custom_plans, walker, context))
-      return true;
-    break;
-  default:
-    /* Nothing to do. */
-    break;
-  }
-
-  return false;
 }
 
 bool censor_plan_rows(Plan *plan, bool *is_anonymizing_descendant)
