@@ -175,7 +175,7 @@ sensitive information. Among others, the following restrictions are imposed:
 2. Data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, or `pg_class` is not accessible (unless superuser).
 3. Selected subset of less frequently used PostgreSQL query features like `EXISTS` or `NULLIF` are disabled.
 4. Inheritance involving a sensitive table is not allowed.
-5. Some of the output of `EXPLAIN` for queries involving a sensitive table is censored.
+5. Some of the output of `EXPLAIN` for queries involving a sensitive table is censored (unless superuser).
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 

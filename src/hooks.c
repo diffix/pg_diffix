@@ -24,6 +24,12 @@ ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
 ExecutorFinish_hook_type prev_ExecutorFinish_hook = NULL;
 ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
 
+/* Other means of learning this are troublesome at the planner/executor stages. */
+static bool is_explain(const char *query_string)
+{
+  return strncasecmp(query_string, "explain ", 8) == 0;
+}
+
 #if PG_MAJORVERSION_NUM == 13
 static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query)
 {
@@ -95,8 +101,11 @@ static PlannedStmt *pg_diffix_planner(
 
   plan->planTree = rewrite_plan(plan->planTree, links);
 
-  bool is_anonymizing_descendant = false;
-  censor_plan_rows(plan->planTree, &is_anonymizing_descendant);
+  if (is_explain(query_string) && !superuser())
+  {
+    bool is_anonymizing_descendant = false;
+    censor_plan_rows(plan->planTree, &is_anonymizing_descendant);
+  }
 
   return plan;
 }
@@ -133,8 +142,11 @@ static void pg_diffix_ExecutorRun(
     uint64 count,
     bool execute_once)
 {
-  bool is_anonymizing_descendant = false;
-  censor_instrumentation(queryDesc->planstate, &is_anonymizing_descendant);
+  if (is_explain(queryDesc->sourceText) && !superuser())
+  {
+    bool is_anonymizing_descendant = false;
+    censor_instrumentation(queryDesc->planstate, &is_anonymizing_descendant);
+  }
 
   if (prev_ExecutorRun_hook)
     prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
