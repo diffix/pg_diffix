@@ -32,7 +32,6 @@ typedef struct QueryContext
 {
   Query *query;         /* Current query/subquery */
   List *aid_references; /* `AidReference`s in scope */
-  List *child_contexts; /* `QueryContext`s of subqueries */
 } QueryContext;
 
 static void append_aid_args(Aggref *aggref, QueryContext *context);
@@ -263,71 +262,10 @@ static void gather_relation_aids(
   }
 }
 
-/* Search for an existing column reference in the target list of a query. */
-static AttrNumber get_var_attnum(List *target_list, Index rte_index, AttrNumber attnum)
-{
-  ListCell *cell = NULL;
-  foreach (cell, target_list)
-  {
-    TargetEntry *tle = lfirst_node(TargetEntry, cell);
-    if (IsA(tle->expr, Var))
-    {
-      Var *var_expr = (Var *)tle->expr;
-      if (var_expr->varno == rte_index && var_expr->varattno == attnum)
-        return tle->resno;
-    }
-  }
-  return InvalidAttrNumber;
-}
-
-/*
- * Appends missing AID references of the subquery to its target list for use in parent query.
- * References to the exported AIDs are added to `aid_references`.
- */
-static void gather_subquery_aids(
-    RangeTblEntry *parent_rte,
-    const QueryContext *child_context,
-    Index rte_index,
-    List **aid_references)
-{
-  Query *subquery = child_context->query;
-  AttrNumber next_attnum = list_length(subquery->targetList) + 1;
-
-  ListCell *cell;
-  foreach (cell, child_context->aid_references)
-  {
-    AidReference *child_aid_ref = (AidReference *)lfirst(cell);
-
-    AttrNumber attnum = get_var_attnum(subquery->targetList, child_aid_ref->rte_index, child_aid_ref->aid_attnum);
-    if (attnum == InvalidAttrNumber) /* AID not referenced in subquery. */
-    {
-      /* Export AID from subquery. */
-      attnum = next_attnum++;
-      TargetEntry *aid_target = make_aid_target(child_aid_ref, attnum, true);
-      subquery->targetList = lappend(subquery->targetList, aid_target);
-      /* Update parent range table entry. */
-      parent_rte->eref->colnames = lappend(parent_rte->eref->colnames, makeString(aid_target->resname));
-    }
-
-    /* Path to AID from parent query. */
-    AidReference *parent_aid_ref = palloc(sizeof(AidReference));
-    parent_aid_ref->relation = child_aid_ref->relation;
-    parent_aid_ref->aid_column = child_aid_ref->aid_column;
-    parent_aid_ref->rte_index = rte_index;
-    parent_aid_ref->aid_attnum = attnum;
-
-    *aid_references = lappend(*aid_references, parent_aid_ref);
-  }
-}
-
-/*
- * Collects and prepares AIDs for use in the current query's scope.
- * Subqueries are rewritten to export all their AIDs.
- */
+/* Collects and prepares AIDs for use in the current query's scope. */
 static QueryContext *build_context(Query *query, List *relations)
 {
   List *aid_references = NIL;
-  List *child_contexts = NIL;
 
   ListCell *cell;
   foreach (cell, query->rtable)
@@ -341,17 +279,10 @@ static QueryContext *build_context(Query *query, List *relations)
       if (relation != NULL)
         gather_relation_aids(relation, rte_index, rte, &aid_references);
     }
-    else if (rte->rtekind == RTE_SUBQUERY)
-    {
-      QueryContext *child_context = build_context(rte->subquery, relations);
-      child_contexts = lappend(child_contexts, child_context);
-      gather_subquery_aids(rte, child_context, rte_index, &aid_references);
-    }
   }
 
   QueryContext *context = palloc(sizeof(QueryContext));
   context->query = query;
-  context->child_contexts = child_contexts;
   context->aid_references = aid_references;
   return context;
 }
