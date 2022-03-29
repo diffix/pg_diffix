@@ -71,6 +71,12 @@ static AnonQueryLinks *prepare_query(Query *query)
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
 
+  /*
+   * Since we cannot easily validate cross-dependent parameters using GUC,
+   * we verify those here and fail if they are misconfigured.
+   */
+  config_validate();
+
   AnonQueryLinks *links = compile_anonymizing_query(query, sensitive_relations);
 
   DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));

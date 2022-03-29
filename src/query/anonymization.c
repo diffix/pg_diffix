@@ -654,7 +654,7 @@ AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_relation
 
   AnonymizationContext *anon_context = make_query_anonymizing(query, sensitive_relations);
 
-  verify_anonymizing_query(query);
+  verify_bucket_expressions(query);
 
   anon_context->sql_seed = prepare_bucket_seeds(query);
 
