@@ -2,8 +2,10 @@
 
 #include "executor/executor.h"
 #include "miscadmin.h"
+#include "nodes/value.h"
 #include "optimizer/planner.h"
 #include "parser/analyze.h"
+#include "tcop/utility.h"
 #include "utils/acl.h"
 
 #include "pg_diffix/auth.h"
@@ -18,6 +20,7 @@
 
 post_parse_analyze_hook_type prev_post_parse_analyze_hook = NULL;
 planner_hook_type prev_planner_hook = NULL;
+ProcessUtility_hook_type prev_ProcessUtility_hook = NULL;
 ExecutorCheckPerms_hook_type prev_ExecutorCheckPerms_hook = NULL;
 ExecutorStart_hook_type prev_ExecutorStart_hook = NULL;
 ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
@@ -98,6 +101,65 @@ static PlannedStmt *pg_diffix_planner(
   return plan;
 }
 
+static DefElem *make_costs_false_defelem()
+{
+  Value *false_value = makeString("false");
+  DefElem *def_elem = makeNode(DefElem);
+
+  def_elem->defnamespace = NULL;
+  def_elem->defname = "costs";
+  def_elem->arg = (Node *)false_value;
+  def_elem->defaction = DEFELEM_UNSPEC;
+  def_elem->location = -1;
+  return def_elem;
+}
+
+static void do_process_utility(PlannedStmt *pstmt)
+{
+  if (!superuser() && get_session_access_level() != ACCESS_DIRECT &&
+      pstmt->commandType == CMD_UTILITY && IsA(pstmt->utilityStmt, ExplainStmt))
+  {
+    ExplainStmt *explain = (ExplainStmt *)pstmt->utilityStmt;
+    if (gather_sensitive_relations((Query *)explain->query) != NIL)
+    {
+      verify_explain_options(explain);
+      /* Unless given a conflicting `COSTS true` (verified above), set `COSTS false`, which censors the `EXPLAIN`. */
+      explain->options = lappend(explain->options, make_costs_false_defelem());
+    }
+  }
+}
+
+#if PG_MAJORVERSION_NUM == 13
+static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
+                                     const char *queryString,
+                                     ProcessUtilityContext context,
+                                     ParamListInfo params,
+                                     QueryEnvironment *queryEnv,
+                                     DestReceiver *dest, QueryCompletion *qc)
+{
+  do_process_utility(pstmt);
+  if (prev_ProcessUtility_hook)
+    prev_ProcessUtility_hook(pstmt, queryString, context, params, queryEnv, dest, qc);
+  else
+    standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
+}
+#else
+static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
+                                     const char *queryString,
+                                     bool readOnlyTree,
+                                     ProcessUtilityContext context,
+                                     ParamListInfo params,
+                                     QueryEnvironment *queryEnv,
+                                     DestReceiver *dest, QueryCompletion *qc)
+{
+  do_process_utility(pstmt);
+  if (prev_ProcessUtility_hook)
+    prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc);
+  else
+    standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc);
+}
+#endif
+
 static void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
   if (prev_ExecutorStart_hook)
@@ -160,6 +222,9 @@ void hooks_init(void)
   prev_planner_hook = planner_hook;
   planner_hook = pg_diffix_planner;
 
+  prev_ProcessUtility_hook = ProcessUtility_hook;
+  ProcessUtility_hook = pg_diffix_ProcessUtility;
+
   prev_ExecutorCheckPerms_hook = ExecutorCheckPerms_hook;
   ExecutorCheckPerms_hook = pg_diffix_ExecutorCheckPerms;
 
@@ -180,6 +245,7 @@ void hooks_cleanup(void)
 {
   post_parse_analyze_hook = prev_post_parse_analyze_hook;
   planner_hook = prev_planner_hook;
+  ProcessUtility_hook = prev_ProcessUtility_hook;
   ExecutorCheckPerms_hook = prev_ExecutorCheckPerms_hook;
   ExecutorStart_hook = prev_ExecutorStart_hook;
   ExecutorRun_hook = prev_ExecutorRun_hook;

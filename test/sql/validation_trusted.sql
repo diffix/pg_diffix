@@ -186,3 +186,19 @@ SELECT x FROM superclass;
 -- Get rejected because attempt to use system columns
 SELECT ctid FROM empty_test_customers;
 SELECT tableoid FROM empty_test_customers;
+
+-- EXPLAIN is censored
+EXPLAIN SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (COSTS false) SELECT city FROM test_customers LIMIT 4;
+
+-- EXPLAIN is blocked
+EXPLAIN ANALYZE SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (ANALYZE true) SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (COSTS) SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (COSTS true) SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (VERBOSE) SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (VERBOSE true) SELECT city FROM test_customers LIMIT 4;
+
+-- EXPLAIN is left intact for non-anonymizing queries
+EXPLAIN SELECT name FROM test_products LIMIT 4;
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true, VERBOSE true) SELECT name FROM test_products LIMIT 4;
