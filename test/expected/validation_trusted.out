@@ -301,15 +301,9 @@ EXPLAIN (COSTS false) SELECT city FROM test_customers LIMIT 4;
 -- EXPLAIN is blocked
 EXPLAIN ANALYZE SELECT city FROM test_customers LIMIT 4;
 ERROR:  [PG_DIFFIX] EXPLAIN ANALYZE is not allowed for queries involving sensitive tables
-EXPLAIN (ANALYZE true) SELECT city FROM test_customers LIMIT 4;
-ERROR:  [PG_DIFFIX] EXPLAIN ANALYZE is not allowed for queries involving sensitive tables
 EXPLAIN (COSTS) SELECT city FROM test_customers LIMIT 4;
-ERROR:  [PG_DIFFIX] Explicit 'COSTS true' for EXPLAIN is not allowed for queries involving sensitive tables
-EXPLAIN (COSTS true) SELECT city FROM test_customers LIMIT 4;
-ERROR:  [PG_DIFFIX] Explicit 'COSTS true' for EXPLAIN is not allowed for queries involving sensitive tables
+ERROR:  [PG_DIFFIX] COSTS option is not allowed for queries involving sensitive tables
 EXPLAIN (VERBOSE) SELECT city FROM test_customers LIMIT 4;
-ERROR:  [PG_DIFFIX] EXPLAIN VERBOSE is not currently supported.
-EXPLAIN (VERBOSE true) SELECT city FROM test_customers LIMIT 4;
 ERROR:  [PG_DIFFIX] EXPLAIN VERBOSE is not currently supported.
 -- EXPLAIN is left intact for non-anonymizing queries
 EXPLAIN SELECT name FROM test_products LIMIT 4;

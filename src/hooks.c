@@ -114,13 +114,23 @@ static DefElem *make_costs_false_defelem()
   return def_elem;
 }
 
+static bool involves_sensitive_relations(Query *query)
+{
+  List *sensitive_relations = gather_sensitive_relations(query);
+  bool result = sensitive_relations != NIL;
+  list_free(sensitive_relations);
+  return result;
+}
+
 static void do_process_utility(PlannedStmt *pstmt)
 {
-  if (!superuser() && get_session_access_level() != ACCESS_DIRECT &&
-      pstmt->commandType == CMD_UTILITY && IsA(pstmt->utilityStmt, ExplainStmt))
+  if (superuser() || get_session_access_level() == ACCESS_DIRECT)
+    return;
+
+  if (IsA(pstmt->utilityStmt, ExplainStmt))
   {
     ExplainStmt *explain = (ExplainStmt *)pstmt->utilityStmt;
-    if (gather_sensitive_relations((Query *)explain->query) != NIL)
+    if (involves_sensitive_relations((Query *)explain->query))
     {
       verify_explain_options(explain);
       /* Unless given a conflicting `COSTS true` (verified above), set `COSTS false`, which censors the `EXPLAIN`. */

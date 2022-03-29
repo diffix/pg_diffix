@@ -2,6 +2,7 @@
 
 #include "catalog/pg_collation.h"
 #include "catalog/pg_inherits.h"
+#include "commands/defrem.h"
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
@@ -33,7 +34,7 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static void verify_bucket_expressions(Query *query);
-static bool is_option_true(const char *name, DefElem *option);
+static bool option_matches(DefElem *option, char *name, bool value);
 
 void verify_utility_command(Node *utility_stmt)
 {
@@ -67,11 +68,11 @@ void verify_explain_options(ExplainStmt *explain)
   foreach (cell, explain->options)
   {
     DefElem *option = lfirst_node(DefElem, cell);
-    if (is_option_true("costs", option))
-      FAILWITH("Explicit 'COSTS true' for EXPLAIN is not allowed for queries involving sensitive tables");
-    if (is_option_true("analyze", option))
+    if (option_matches(option, "costs", true))
+      FAILWITH("COSTS option is not allowed for queries involving sensitive tables");
+    if (option_matches(option, "analyze", true))
       FAILWITH("EXPLAIN ANALYZE is not allowed for queries involving sensitive tables");
-    if (is_option_true("verbose", option))
+    if (option_matches(option, "verbose", true))
       FAILWITH("EXPLAIN VERBOSE is not currently supported.");
   }
 }
@@ -370,8 +371,7 @@ double numeric_value_to_double(Oid type, Datum value)
   }
 }
 
-/* Either implicitly (e.g. `COSTS`) or explicitly (`COSTS true`). */
-static bool is_option_true(const char *name, DefElem *option)
+static bool option_matches(DefElem *option, char *name, bool value)
 {
-  return strcasecmp(option->defname, name) == 0 && (!option->arg || strcasecmp(strVal(option->arg), "true") == 0);
+  return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
 }
