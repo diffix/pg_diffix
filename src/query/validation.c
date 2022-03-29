@@ -162,6 +162,12 @@ static Node *unwrap_cast(Node *node)
   return node;
 }
 
+static void verify_non_system_column(Var *var)
+{
+  if (var->varattno < 0)
+    FAILWITH_LOCATION(var->location, "System columns are not allowed in this context.");
+}
+
 static bool verify_aggregator(Node *node, void *context)
 {
   if (node == NULL)
@@ -178,7 +184,10 @@ static bool verify_aggregator(Node *node, void *context)
     if (aggoid == g_oid_cache.count_value)
     {
       TargetEntry *tle = (TargetEntry *)unwrap_cast(linitial(aggref->args));
-      if (!IsA(unwrap_cast((Node *)tle->expr), Var))
+      Node *tle_arg = unwrap_cast((Node *)tle->expr);
+      if (IsA(tle_arg, Var))
+        verify_non_system_column((Var *)tle_arg);
+      else
         FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
     }
 
@@ -192,12 +201,6 @@ static bool verify_aggregator(Node *node, void *context)
 static void verify_aggregators(Query *query)
 {
   query_tree_walker(query, verify_aggregator, NULL, 0);
-}
-
-static void verify_non_system_column(Var *var)
-{
-  if (var->varattno < 0)
-    FAILWITH_LOCATION(var->location, "System columns are not allowed in bucket expressions.");
 }
 
 static void verify_bucket_expression(Node *node)

@@ -190,3 +190,7 @@ SELECT x FROM superclass;
 -- Get rejected because attempt to use system columns
 SELECT ctid FROM empty_test_customers;
 SELECT tableoid FROM empty_test_customers;
+SELECT count(ctid) FROM empty_test_customers;
+SELECT count(tableoid) FROM empty_test_customers;
+SELECT count(distinct ctid) FROM empty_test_customers;
+SELECT count(distinct tableoid) FROM empty_test_customers;
