@@ -130,31 +130,6 @@ static void verify_rtable(Query *query)
   }
 }
 
-static bool verify_aggregator(Node *node, void *context)
-{
-  if (node == NULL)
-    return false;
-
-  if (IsA(node, Aggref))
-  {
-    Aggref *aggref = (Aggref *)node;
-    Oid aggoid = aggref->aggfnoid;
-
-    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value)
-      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
-
-    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
-    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
-  }
-
-  return expression_tree_walker(node, verify_aggregator, context);
-}
-
-static void verify_aggregators(Query *query)
-{
-  query_tree_walker(query, verify_aggregator, NULL, 0);
-}
-
 static bool is_datetime_to_string_cast(CoerceViaIO *expr)
 {
   Node *arg = (Node *)expr->arg;
@@ -185,6 +160,38 @@ static Node *unwrap_cast(Node *node)
       return unwrap_cast((Node *)coerce_expr->arg);
   }
   return node;
+}
+
+static bool verify_aggregator(Node *node, void *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Aggref))
+  {
+    Aggref *aggref = (Aggref *)node;
+    Oid aggoid = aggref->aggfnoid;
+
+    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value)
+      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
+
+    if (aggoid == g_oid_cache.count_value)
+    {
+      TargetEntry *tle = (TargetEntry *)unwrap_cast(linitial(aggref->args));
+      if (!IsA(unwrap_cast((Node *)tle->expr), Var))
+        FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
+    }
+
+    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
+    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
+  }
+
+  return expression_tree_walker(node, verify_aggregator, context);
+}
+
+static void verify_aggregators(Query *query)
+{
+  query_tree_walker(query, verify_aggregator, NULL, 0);
 }
 
 static void verify_non_system_column(Var *var)
