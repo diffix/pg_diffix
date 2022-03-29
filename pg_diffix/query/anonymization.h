@@ -28,12 +28,12 @@ extern Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links);
 /*
  * Ensures that the plan rows don't leak true counts, e.g. from `EXPLAIN`.
  */
-extern bool censor_plan_rows(Plan *plan, bool *is_anonymizing_descendant);
+extern bool censor_plan_rows(Plan *plan, bool *is_anonymizing);
 
 /*
  * Ensures that the instrumentation doesn't leak true counts, e.g. from `EXPLAIN ANALYZE`.
  */
-extern bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant);
+extern bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing);
 
 /*
  * Returns the noise layer seed for the current bucket.

@@ -281,7 +281,7 @@ LINE 1: SELECT tableoid FROM empty_test_customers;
 EXPLAIN SELECT city FROM test_customers LIMIT 4;
                                     QUERY PLAN                                    
 ----------------------------------------------------------------------------------
- Limit  (cost=31.00..31.06 rows=4 width=41)
+ Limit  (cost=31.00..31.06 rows=0 width=41)
    ->  Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41)
          ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41)
                Group Key: city
@@ -291,7 +291,7 @@ EXPLAIN SELECT city FROM test_customers LIMIT 4;
 Explain (ANALYZE, SUMMARY false, TIMING false) SELECT city FROM test_customers LIMIT 4;
                                             QUERY PLAN                                             
 ---------------------------------------------------------------------------------------------------
- Limit  (cost=31.00..31.06 rows=4 width=41) (actual rows=4 loops=1)
+ Limit  (cost=31.00..31.06 rows=0 width=41) (never executed)
    ->  Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41) (never executed)
          ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41) (never executed)
                Group Key: city

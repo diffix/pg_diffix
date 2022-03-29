@@ -709,18 +709,21 @@ static AnonymizationContext *extract_anon_context(Plan *plan, AnonQueryLinks *li
   return data.anon_context;
 }
 
-bool censor_plan_rows(Plan *plan, bool *is_anonymizing_descendant)
+bool censor_plan_rows(Plan *plan, bool *is_anonymizing)
 {
   if (plan == NULL)
     return false;
 
-  bool is_anonymizing = *is_anonymizing_descendant || is_bucket_scan(plan);
+  *is_anonymizing = *is_anonymizing || is_bucket_scan(plan);
+
+  if (walk_plan(plan, censor_plan_rows, is_anonymizing))
+    return true;
 
   /* Censor the count of rows, otherwise true count is accessible via `EXPLAIN`. */
-  if (is_anonymizing)
+  if (*is_anonymizing)
     plan->plan_rows = 0;
 
-  return walk_plan(plan, censor_plan_rows, &is_anonymizing);
+  return false;
 }
 
 Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
@@ -740,16 +743,19 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
   return plan;
 }
 
-bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant)
+bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing)
 {
   if (plan_state == NULL)
     return false;
 
-  bool is_anonymizing = *is_anonymizing_descendant || is_bucket_scan(plan_state->plan);
+  *is_anonymizing = *is_anonymizing || is_bucket_scan(plan_state->plan);
+
+  if (planstate_tree_walker(plan_state, censor_instrumentation, is_anonymizing))
+    return true;
 
   /* Disable instrumentation, otherwise true count is accessible via `EXPLAIN ANALYZE`. */
-  if (is_anonymizing)
+  if (*is_anonymizing)
     plan_state->instrument = NULL;
 
-  return planstate_tree_walker(plan_state, censor_instrumentation, &is_anonymizing);
+  return false;
 }

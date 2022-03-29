@@ -103,8 +103,8 @@ static PlannedStmt *pg_diffix_planner(
 
   if (is_explain(query_string) && !superuser())
   {
-    bool is_anonymizing_descendant = false;
-    censor_plan_rows(plan->planTree, &is_anonymizing_descendant);
+    bool is_anonymizing = false;
+    censor_plan_rows(plan->planTree, &is_anonymizing);
   }
 
   return plan;
@@ -144,8 +144,8 @@ static void pg_diffix_ExecutorRun(
 {
   if (is_explain(queryDesc->sourceText) && !superuser())
   {
-    bool is_anonymizing_descendant = false;
-    censor_instrumentation(queryDesc->planstate, &is_anonymizing_descendant);
+    bool is_anonymizing = false;
+    censor_instrumentation(queryDesc->planstate, &is_anonymizing);
   }
 
   if (prev_ExecutorRun_hook)
