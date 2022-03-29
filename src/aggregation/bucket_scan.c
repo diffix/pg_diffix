@@ -719,5 +719,18 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   plan->plan_rows = left_tree->plan_rows;
   plan->plan_width = left_tree->plan_width;
 
+  /* Censor the count of rows, otherwise true count is accessible via `EXPLAIN`. */
+  plan->plan_rows = 0;
+
   return (Plan *)bucket_scan;
+}
+
+bool is_bucket_scan(Plan *plan)
+{
+  if (IsA(plan, CustomScan))
+  {
+    CustomScan *custom_scan = (CustomScan *)plan;
+    return custom_scan->methods == &BucketScanScanMethods;
+  }
+  return false;
 }

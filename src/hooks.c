@@ -130,6 +130,9 @@ static void pg_diffix_ExecutorRun(
     uint64 count,
     bool execute_once)
 {
+  bool is_anonymizing_descendant = false;
+  queryDesc->planstate = censor_instrumentation(queryDesc->planstate, &is_anonymizing_descendant);
+
   if (prev_ExecutorRun_hook)
     prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
   else

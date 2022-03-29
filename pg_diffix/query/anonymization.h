@@ -1,6 +1,7 @@
 #ifndef PG_DIFFIX_ANONYMIZATION_H
 #define PG_DIFFIX_ANONYMIZATION_H
 
+#include "nodes/execnodes.h"
 #include "nodes/parsenodes.h"
 #include "nodes/plannodes.h"
 
@@ -23,6 +24,11 @@ extern AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_r
  * Frees memory associated with links after rewriting.
  */
 extern Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links);
+
+/*
+ * Ensures that the instrumentation doesn't leak true counts, e.g. from `EXPLAIN ANALYZE`.
+ */
+extern PlanState *censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant);
 
 /*
  * Returns the noise layer seed for the current bucket.

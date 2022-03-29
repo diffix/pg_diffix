@@ -7,6 +7,7 @@
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
+#include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
@@ -708,14 +709,57 @@ static AnonymizationContext *extract_anon_context(Plan *plan, AnonQueryLinks *li
   return data.anon_context;
 }
 
-static void rewrite_plan_list(List *plans, AnonQueryLinks *links)
+static void mutate_plan_list(List *plans, Plan *(*mutator)(), void *context)
 {
   ListCell *cell;
   foreach (cell, plans)
   {
     Plan *plan = (Plan *)lfirst(cell);
-    plans->elements[foreach_current_index(cell)].ptr_value = rewrite_plan(plan, links);
+    plans->elements[foreach_current_index(cell)].ptr_value = mutator(plan, context);
   }
+}
+
+static Plan *mutate_plan(Plan *plan, Plan *(*mutator)(), void *context)
+{
+  if (plan == NULL)
+    return NULL;
+
+  plan->lefttree = mutator(plan->lefttree, context);
+  plan->righttree = mutator(plan->righttree, context);
+
+  switch (plan->type)
+  {
+  case T_Append:
+    mutate_plan_list(((Append *)plan)->appendplans, mutator, context);
+    break;
+  case T_MergeAppend:
+    mutate_plan_list(((MergeAppend *)plan)->mergeplans, mutator, context);
+    break;
+  case T_SubqueryScan:
+    ((SubqueryScan *)plan)->subplan = mutator(((SubqueryScan *)plan)->subplan, context);
+    break;
+  case T_CustomScan:
+    mutate_plan_list(((CustomScan *)plan)->custom_plans, mutator, context);
+    break;
+  default:
+    /* Nothing to do. */
+    break;
+  }
+
+  return plan;
+}
+
+static Plan *censor_plan_rows(Plan *plan, void *context)
+{
+  if (plan == NULL)
+    return NULL;
+
+  mutate_plan(plan, censor_plan_rows, context);
+
+  /* Censor the count of rows, otherwise true count is accessible via `EXPLAIN`. */
+  plan->plan_rows = 0;
+
+  return plan;
 }
 
 Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
@@ -723,34 +767,115 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
   if (plan == NULL)
     return NULL;
 
-  plan->lefttree = rewrite_plan(plan->lefttree, links);
-  plan->righttree = rewrite_plan(plan->righttree, links);
-
-  switch (plan->type)
-  {
-  case T_Append:
-    rewrite_plan_list(((Append *)plan)->appendplans, links);
-    break;
-  case T_MergeAppend:
-    rewrite_plan_list(((MergeAppend *)plan)->mergeplans, links);
-    break;
-  case T_SubqueryScan:
-    ((SubqueryScan *)plan)->subplan = rewrite_plan(((SubqueryScan *)plan)->subplan, links);
-    break;
-  case T_CustomScan:
-    rewrite_plan_list(((CustomScan *)plan)->custom_plans, links);
-    break;
-  default:
-    /* Nothing to do. */
-    break;
-  }
+  mutate_plan(plan, rewrite_plan, links);
 
   if (IsA(plan, Agg))
   {
     AnonymizationContext *anon_context = extract_anon_context(plan, links);
     if (anon_context != NULL)
-      return make_bucket_scan(plan, anon_context);
+      return censor_plan_rows(make_bucket_scan(plan, anon_context), NULL);
   }
 
   return plan;
+}
+
+static void mutate_plan_state_subplans(List *plans, PlanState *(*mutator)(), void *context)
+{
+  ListCell *cell;
+  foreach (cell, plans)
+  {
+    SubPlanState *plan = (SubPlanState *)lfirst(cell);
+    plans->elements[foreach_current_index(cell)].ptr_value = mutator(plan, context);
+  }
+}
+
+static void mutate_plan_state_members(PlanState **planstates, int nplans, PlanState *(*mutator)(), void *context)
+{
+  for (int j = 0; j < nplans; j++)
+  {
+    planstates[j] = mutator(planstates[j], context);
+  }
+}
+
+/* Based on `planstate_tree_walker`. */
+static PlanState *mutate_plan_state(PlanState *planstate, PlanState *(*mutator)(), void *context)
+{
+  Plan *plan = planstate->plan;
+  ListCell *cell;
+
+  /* Guard against stack overflow due to overly complex plan trees */
+  check_stack_depth();
+
+  /* initPlan-s */
+  mutate_plan_state_subplans(planstate->initPlan, mutator, context);
+
+  /* lefttree */
+  outerPlanState(planstate) = mutator(outerPlanState(planstate), context);
+
+  /* righttree */
+  innerPlanState(planstate) = mutator(innerPlanState(planstate), context);
+
+  /* special child plans */
+  switch (nodeTag(plan))
+  {
+#if PG_MAJORVERSION_NUM <= 13
+  case T_ModifyTable:
+    mutate_plan_state_members(((ModifyTableState *)planstate)->mt_plans,
+                              ((ModifyTableState *)planstate)->mt_nplans,
+                              mutator, context);
+    break;
+#endif
+  case T_Append:
+    mutate_plan_state_members(((AppendState *)planstate)->appendplans,
+                              ((AppendState *)planstate)->as_nplans,
+                              mutator, context);
+    break;
+  case T_MergeAppend:
+    mutate_plan_state_members(((MergeAppendState *)planstate)->mergeplans,
+                              ((MergeAppendState *)planstate)->ms_nplans,
+                              mutator, context);
+    break;
+  case T_BitmapAnd:
+    mutate_plan_state_members(((BitmapAndState *)planstate)->bitmapplans,
+                              ((BitmapAndState *)planstate)->nplans,
+                              mutator, context);
+    break;
+  case T_BitmapOr:
+    mutate_plan_state_members(((BitmapOrState *)planstate)->bitmapplans,
+                              ((BitmapOrState *)planstate)->nplans,
+                              mutator, context);
+    break;
+  case T_SubqueryScan:
+    mutator(((SubqueryScanState *)planstate)->subplan, context);
+    break;
+  case T_CustomScan:
+    foreach (cell, ((CustomScanState *)planstate)->custom_ps)
+    {
+      mutator((PlanState *)lfirst(cell), context);
+    }
+    break;
+  default:
+    break;
+  }
+
+  /* subPlan-s */
+  mutate_plan_state_subplans(planstate->subPlan, mutator, context);
+
+  return planstate;
+}
+
+PlanState *censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant)
+{
+  if (plan_state == NULL)
+    return NULL;
+
+  bool is_anonymizing = *is_anonymizing_descendant || is_bucket_scan(plan_state->plan);
+
+  mutate_plan_state(plan_state, censor_instrumentation, &is_anonymizing);
+
+  /* Disable instrumentation, otherwise true count is accessible via `EXPLAIN ANALYZE`. */
+  if (is_anonymizing)
+    plan_state->instrument = NULL;
+
+  return plan_state;
 }
