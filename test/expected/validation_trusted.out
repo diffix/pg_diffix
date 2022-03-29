@@ -319,12 +319,10 @@ EXPLAIN SELECT name FROM test_products LIMIT 4;
    ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32)
 (2 rows)
 
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true, VERBOSE true) SELECT name FROM test_products LIMIT 4;
-                                              QUERY PLAN                                               
--------------------------------------------------------------------------------------------------------
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test_products LIMIT 4;
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
  Limit  (cost=0.00..0.07 rows=4 width=32) (actual rows=4 loops=1)
-   Output: name
-   ->  Seq Scan on public.test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=4 loops=1)
-         Output: name
-(4 rows)
+   ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=4 loops=1)
+(2 rows)
 

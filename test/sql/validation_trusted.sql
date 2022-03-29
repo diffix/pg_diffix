@@ -201,4 +201,4 @@ EXPLAIN (VERBOSE true) SELECT city FROM test_customers LIMIT 4;
 
 -- EXPLAIN is left intact for non-anonymizing queries
 EXPLAIN SELECT name FROM test_products LIMIT 4;
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true, VERBOSE true) SELECT name FROM test_products LIMIT 4;
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test_products LIMIT 4;
