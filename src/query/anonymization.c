@@ -779,103 +779,16 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
   return plan;
 }
 
-static void mutate_plan_state_subplans(List *plans, PlanState *(*mutator)(), void *context)
-{
-  ListCell *cell;
-  foreach (cell, plans)
-  {
-    SubPlanState *plan = (SubPlanState *)lfirst(cell);
-    plans->elements[foreach_current_index(cell)].ptr_value = mutator(plan, context);
-  }
-}
-
-static void mutate_plan_state_members(PlanState **planstates, int nplans, PlanState *(*mutator)(), void *context)
-{
-  for (int j = 0; j < nplans; j++)
-  {
-    planstates[j] = mutator(planstates[j], context);
-  }
-}
-
-/* Based on `planstate_tree_walker`. */
-static PlanState *mutate_plan_state(PlanState *planstate, PlanState *(*mutator)(), void *context)
-{
-  Plan *plan = planstate->plan;
-  ListCell *cell;
-
-  /* Guard against stack overflow due to overly complex plan trees */
-  check_stack_depth();
-
-  /* initPlan-s */
-  mutate_plan_state_subplans(planstate->initPlan, mutator, context);
-
-  /* lefttree */
-  outerPlanState(planstate) = mutator(outerPlanState(planstate), context);
-
-  /* righttree */
-  innerPlanState(planstate) = mutator(innerPlanState(planstate), context);
-
-  /* special child plans */
-  switch (nodeTag(plan))
-  {
-#if PG_MAJORVERSION_NUM <= 13
-  case T_ModifyTable:
-    mutate_plan_state_members(((ModifyTableState *)planstate)->mt_plans,
-                              ((ModifyTableState *)planstate)->mt_nplans,
-                              mutator, context);
-    break;
-#endif
-  case T_Append:
-    mutate_plan_state_members(((AppendState *)planstate)->appendplans,
-                              ((AppendState *)planstate)->as_nplans,
-                              mutator, context);
-    break;
-  case T_MergeAppend:
-    mutate_plan_state_members(((MergeAppendState *)planstate)->mergeplans,
-                              ((MergeAppendState *)planstate)->ms_nplans,
-                              mutator, context);
-    break;
-  case T_BitmapAnd:
-    mutate_plan_state_members(((BitmapAndState *)planstate)->bitmapplans,
-                              ((BitmapAndState *)planstate)->nplans,
-                              mutator, context);
-    break;
-  case T_BitmapOr:
-    mutate_plan_state_members(((BitmapOrState *)planstate)->bitmapplans,
-                              ((BitmapOrState *)planstate)->nplans,
-                              mutator, context);
-    break;
-  case T_SubqueryScan:
-    mutator(((SubqueryScanState *)planstate)->subplan, context);
-    break;
-  case T_CustomScan:
-    foreach (cell, ((CustomScanState *)planstate)->custom_ps)
-    {
-      mutator((PlanState *)lfirst(cell), context);
-    }
-    break;
-  default:
-    break;
-  }
-
-  /* subPlan-s */
-  mutate_plan_state_subplans(planstate->subPlan, mutator, context);
-
-  return planstate;
-}
-
-PlanState *censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant)
+bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant)
 {
   if (plan_state == NULL)
-    return NULL;
+    return false;
 
   bool is_anonymizing = *is_anonymizing_descendant || is_bucket_scan(plan_state->plan);
-
-  mutate_plan_state(plan_state, censor_instrumentation, &is_anonymizing);
 
   /* Disable instrumentation, otherwise true count is accessible via `EXPLAIN ANALYZE`. */
   if (is_anonymizing)
     plan_state->instrument = NULL;
 
-  return plan_state;
+  return planstate_tree_walker(plan_state, censor_instrumentation, &is_anonymizing);
 }
