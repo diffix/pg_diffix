@@ -20,21 +20,15 @@
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
-typedef struct AidReference
+typedef struct AidRef
 {
   const SensitiveRelation *relation; /* Source relation of AID */
   const AidColumn *aid_column;       /* Column data for AID */
   Index rte_index;                   /* RTE index in query rtable */
   AttrNumber aid_attnum;             /* AID AttrNumber in relation/subquery */
-} AidReference;
+} AidRef;
 
-typedef struct QueryContext
-{
-  Query *query;         /* Current query/subquery */
-  List *aid_references; /* `AidReference`s in scope */
-} QueryContext;
-
-static void append_aid_args(Aggref *aggref, QueryContext *context);
+static void append_aid_args(Aggref *aggref, List *aid_refs);
 
 /* Append a junk target entry at the end of query's tlist. */
 static TargetEntry *add_junk_tle(Query *query, Expr *expr, char *resname)
@@ -123,7 +117,7 @@ static void add_junk_count_star(Query *query)
 /*
  * Appends junk `low_count(aids...)` to target list.
  */
-static void add_junk_low_count_agg(QueryContext *context)
+static void add_junk_low_count_agg(Query *query, List *aid_refs)
 {
   Aggref *lc_agg = makeNode(Aggref);
   lc_agg->aggfnoid = g_oid_cache.low_count;
@@ -134,8 +128,8 @@ static void add_junk_low_count_agg(QueryContext *context)
   lc_agg->aggkind = AGGKIND_NORMAL;
   lc_agg->aggsplit = AGGSPLIT_SIMPLE; /* Planner might change this. */
   lc_agg->location = -1;              /* Unknown location. */
-  append_aid_args(lc_agg, context);
-  add_junk_tle(context->query, (Expr *)lc_agg, "low_count");
+  append_aid_args(lc_agg, aid_refs);
+  add_junk_tle(query, (Expr *)lc_agg, "low_count");
 }
 
 /*-------------------------------------------------------------------------
@@ -143,7 +137,7 @@ static void add_junk_low_count_agg(QueryContext *context)
  *-------------------------------------------------------------------------
  */
 
-static void rewrite_to_anon_aggregator(Aggref *aggref, QueryContext *context, Oid fnoid)
+static void rewrite_to_anon_aggregator(Aggref *aggref, List *aid_refs, Oid fnoid)
 {
   aggref->aggfnoid = fnoid;
   /*
@@ -152,10 +146,10 @@ static void rewrite_to_anon_aggregator(Aggref *aggref, QueryContext *context, Oi
    */
   aggref->aggstar = false;
   aggref->aggdistinct = false;
-  append_aid_args(aggref, context);
+  append_aid_args(aggref, aid_refs);
 }
 
-static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
+static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
 {
   if (node == NULL)
     return NULL;
@@ -166,7 +160,7 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
     return (Node *)query_tree_mutator(
         query,
         aggregate_expression_mutator,
-        context,
+        aid_refs,
         QTW_DONT_COPY_QUERY);
   }
   else if (IsA(node, Aggref))
@@ -175,15 +169,15 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
      * Copy and visit sub expressions.
      * We basically use this for copying, but we could use the visitor to process args in the future.
      */
-    Aggref *aggref = (Aggref *)expression_tree_mutator(node, aggregate_expression_mutator, context);
+    Aggref *aggref = (Aggref *)expression_tree_mutator(node, aggregate_expression_mutator, aid_refs);
     Oid aggfnoid = aggref->aggfnoid;
 
     if (aggfnoid == g_oid_cache.count_star)
-      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_star);
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_star);
     else if (aggfnoid == g_oid_cache.count_value && aggref->aggdistinct)
-      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_distinct);
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_distinct);
     else if (aggfnoid == g_oid_cache.count_value)
-      rewrite_to_anon_aggregator(aggref, context, g_oid_cache.anon_count_value);
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");
@@ -192,7 +186,7 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
     return (Node *)aggref;
   }
 
-  return expression_tree_mutator(node, aggregate_expression_mutator, context);
+  return expression_tree_mutator(node, aggregate_expression_mutator, aid_refs);
 }
 
 /*-------------------------------------------------------------------------
@@ -200,23 +194,23 @@ static Node *aggregate_expression_mutator(Node *node, QueryContext *context)
  *-------------------------------------------------------------------------
  */
 
-static Expr *make_aid_expr(AidReference *ref)
+static Expr *make_aid_expr(AidRef *aid_ref)
 {
   return (Expr *)makeVar(
-      ref->rte_index,
-      ref->aid_attnum,
-      ref->aid_column->atttype,
-      ref->aid_column->typmod,
-      ref->aid_column->collid,
+      aid_ref->rte_index,
+      aid_ref->aid_attnum,
+      aid_ref->aid_column->atttype,
+      aid_ref->aid_column->typmod,
+      aid_ref->aid_column->collid,
       0);
 }
 
-static TargetEntry *make_aid_target(AidReference *ref, AttrNumber resno, bool resjunk)
+static TargetEntry *make_aid_target(AidRef *aid_ref, AttrNumber resno, bool resjunk)
 {
-  TargetEntry *te = makeTargetEntry(make_aid_expr(ref), resno, "aid", resjunk);
+  TargetEntry *te = makeTargetEntry(make_aid_expr(aid_ref), resno, "aid", resjunk);
 
-  te->resorigtbl = ref->relation->oid;
-  te->resorigcol = ref->aid_column->attnum;
+  te->resorigtbl = aid_ref->relation->oid;
+  te->resorigcol = aid_ref->aid_column->attnum;
 
   return te;
 }
@@ -235,26 +229,26 @@ static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
 }
 
 /*
- * Adds references targeting AIDs of relation to `aid_references`.
+ * Adds references targeting AIDs of relation to `aid_refs`.
  */
 static void gather_relation_aids(
     const SensitiveRelation *relation,
     Index rte_index,
     RangeTblEntry *rte,
-    List **aid_references)
+    List **aid_refs)
 {
   ListCell *cell;
   foreach (cell, relation->aid_columns)
   {
     AidColumn *aid_col = (AidColumn *)lfirst(cell);
 
-    AidReference *aid_ref = palloc(sizeof(AidReference));
+    AidRef *aid_ref = palloc(sizeof(AidRef));
     aid_ref->relation = relation;
     aid_ref->aid_column = aid_col;
     aid_ref->rte_index = rte_index;
     aid_ref->aid_attnum = aid_col->attnum;
 
-    *aid_references = lappend(*aid_references, aid_ref);
+    *aid_refs = lappend(*aid_refs, aid_ref);
 
     /* Emulate what the parser does */
     rte->selectedCols = bms_add_member(
@@ -263,9 +257,9 @@ static void gather_relation_aids(
 }
 
 /* Collects and prepares AIDs for use in the current query's scope. */
-static QueryContext *build_context(Query *query, List *relations)
+static List *gather_aid_refs(Query *query, List *relations)
 {
-  List *aid_references = NIL;
+  List *aid_refs = NIL;
 
   ListCell *cell;
   foreach (cell, query->rtable)
@@ -277,24 +271,21 @@ static QueryContext *build_context(Query *query, List *relations)
     {
       SensitiveRelation *relation = find_relation(rte->relid, relations);
       if (relation != NULL)
-        gather_relation_aids(relation, rte_index, rte, &aid_references);
+        gather_relation_aids(relation, rte_index, rte, &aid_refs);
     }
   }
 
-  QueryContext *context = palloc(sizeof(QueryContext));
-  context->query = query;
-  context->aid_references = aid_references;
-  return context;
+  return aid_refs;
 }
 
-static void append_aid_args(Aggref *aggref, QueryContext *context)
+static void append_aid_args(Aggref *aggref, List *aid_refs)
 {
   bool found_any = false;
 
   ListCell *cell;
-  foreach (cell, context->aid_references)
+  foreach (cell, aid_refs)
   {
-    AidReference *aid_ref = (AidReference *)lfirst(cell);
+    AidRef *aid_ref = (AidRef *)lfirst(cell);
     TargetEntry *aid_entry = make_aid_target(aid_ref, list_length(aggref->args) + 1, false);
 
     /* Append the AID argument to function's arguments. */
@@ -469,7 +460,7 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
 
 static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitive_relations)
 {
-  QueryContext *context = build_context(query, sensitive_relations);
+  List *aid_refs = gather_aid_refs(query, sensitive_relations);
   AnonymizationContext *anon_context = palloc0(sizeof(AnonymizationContext));
 
   bool initial_has_aggs = query->hasAggs;
@@ -488,12 +479,12 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitiv
   query_tree_mutator(
       query,
       aggregate_expression_mutator,
-      context,
+      aid_refs,
       QTW_DONT_COPY_QUERY);
 
   /* Global aggregates have to be excluded from low-count filtering. */
   if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))
-    add_junk_low_count_agg(context);
+    add_junk_low_count_agg(query, aid_refs);
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 
