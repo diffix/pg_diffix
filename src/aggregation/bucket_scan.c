@@ -728,9 +728,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 bool is_bucket_scan(Plan *plan)
 {
   if (IsA(plan, CustomScan))
-  {
-    CustomScan *custom_scan = (CustomScan *)plan;
-    return custom_scan->methods == &BucketScanScanMethods;
-  }
-  return false;
+    return ((CustomScan *)plan)->methods == &BucketScanScanMethods;
+  else
+    return false;
 }
