@@ -95,6 +95,9 @@ static PlannedStmt *pg_diffix_planner(
 
   plan->planTree = rewrite_plan(plan->planTree, links);
 
+  bool is_anonymizing_descendant = false;
+  censor_plan_rows(plan->planTree, &is_anonymizing_descendant);
+
   return plan;
 }
 

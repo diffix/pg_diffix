@@ -719,6 +719,17 @@ static void mutate_plan_list(List *plans, Plan *(*mutator)(), void *context)
   }
 }
 
+static bool walk_plan_list(List *plans, bool (*walker)(), void *context)
+{
+  ListCell *cell;
+  foreach (cell, plans)
+  {
+    Plan *plan = (Plan *)lfirst(cell);
+    if (walker(plan, context))
+      return true;
+  }
+}
+
 static Plan *mutate_plan(Plan *plan, Plan *(*mutator)(), void *context)
 {
   if (plan == NULL)
@@ -749,17 +760,54 @@ static Plan *mutate_plan(Plan *plan, Plan *(*mutator)(), void *context)
   return plan;
 }
 
-static Plan *censor_plan_rows(Plan *plan, void *context)
+static bool walk_plan(Plan *plan, bool (*walker)(), void *context)
 {
   if (plan == NULL)
-    return NULL;
+    return false;
 
-  mutate_plan(plan, censor_plan_rows, context);
+  if (walker(plan->lefttree, context))
+    return true;
+  if (walker(plan->righttree, context))
+    return true;
+
+  switch (plan->type)
+  {
+  case T_Append:
+    if (walk_plan_list(((Append *)plan)->appendplans, walker, context))
+      return true;
+    break;
+  case T_MergeAppend:
+    if (walk_plan_list(((MergeAppend *)plan)->mergeplans, walker, context))
+      return true;
+    break;
+  case T_SubqueryScan:
+    if (walker(((SubqueryScan *)plan)->subplan, context))
+      return true;
+    break;
+  case T_CustomScan:
+    if (walk_plan_list(((CustomScan *)plan)->custom_plans, walker, context))
+      return true;
+    break;
+  default:
+    /* Nothing to do. */
+    break;
+  }
+
+  return false;
+}
+
+bool censor_plan_rows(Plan *plan, bool *is_anonymizing_descendant)
+{
+  if (plan == NULL)
+    return false;
+
+  bool is_anonymizing = *is_anonymizing_descendant || is_bucket_scan(plan);
 
   /* Censor the count of rows, otherwise true count is accessible via `EXPLAIN`. */
-  plan->plan_rows = 0;
+  if (is_anonymizing)
+    plan->plan_rows = 0;
 
-  return plan;
+  return walk_plan(plan, censor_plan_rows, &is_anonymizing);
 }
 
 Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
@@ -773,7 +821,7 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
   {
     AnonymizationContext *anon_context = extract_anon_context(plan, links);
     if (anon_context != NULL)
-      return censor_plan_rows(make_bucket_scan(plan, anon_context), NULL);
+      return make_bucket_scan(plan, anon_context);
   }
 
   return plan;

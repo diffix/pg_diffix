@@ -26,6 +26,11 @@ extern AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_r
 extern Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links);
 
 /*
+ * Ensures that the plan rows don't leak true counts, e.g. from `EXPLAIN`.
+ */
+extern bool censor_plan_rows(Plan *plan, bool *is_anonymizing_descendant);
+
+/*
  * Ensures that the instrumentation doesn't leak true counts, e.g. from `EXPLAIN ANALYZE`.
  */
 extern bool censor_instrumentation(PlanState *plan_state, bool *is_anonymizing_descendant);
