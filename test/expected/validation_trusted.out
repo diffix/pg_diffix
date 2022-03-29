@@ -278,34 +278,38 @@ ERROR:  [PG_DIFFIX] System columns are not allowed in bucket expressions.
 LINE 1: SELECT tableoid FROM empty_test_customers;
                ^
 -- Row count gets censored in EXPLAIN, only for anonymizing queries
-EXPLAIN SELECT city FROM test_customers;
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
- Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41)
-   ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41)
-         Group Key: city
-         ->  Seq Scan on test_customers  (cost=0.00..22.00 rows=0 width=36)
-(4 rows)
-
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT city FROM test_customers;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
- Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41) (never executed)
-   ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41) (never executed)
-         Group Key: city
-         Batches: 1  Memory Usage: 40kB
-         ->  Seq Scan on test_customers  (cost=0.00..22.00 rows=0 width=36) (never executed)
+EXPLAIN SELECT city FROM test_customers LIMIT 4;
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
+ Limit  (cost=31.00..31.06 rows=4 width=41)
+   ->  Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41)
+         ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41)
+               Group Key: city
+               ->  Seq Scan on test_customers  (cost=0.00..22.00 rows=0 width=36)
 (5 rows)
 
-EXPLAIN SELECT name FROM test_products;
-                            QUERY PLAN                            
-------------------------------------------------------------------
- Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32)
-(1 row)
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT city FROM test_customers LIMIT 4;
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
+ Limit  (cost=31.00..31.06 rows=4 width=41) (actual rows=4 loops=1)
+   ->  Custom Scan (BucketScan)  (cost=38.00..40.00 rows=0 width=41) (never executed)
+         ->  HashAggregate  (cost=31.00..34.00 rows=0 width=41) (never executed)
+               Group Key: city
+               Batches: 1  Memory Usage: 40kB
+               ->  Seq Scan on test_customers  (cost=0.00..22.00 rows=0 width=36) (never executed)
+(6 rows)
 
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT name FROM test_products;
-                                        QUERY PLAN                                        
-------------------------------------------------------------------------------------------
- Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=5 loops=1)
-(1 row)
+EXPLAIN SELECT name FROM test_products LIMIT 4;
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Limit  (cost=0.00..0.07 rows=4 width=32)
+   ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32)
+(2 rows)
+
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT name FROM test_products LIMIT 4;
+                                           QUERY PLAN                                           
+------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..0.07 rows=4 width=32) (actual rows=4 loops=1)
+   ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=4 loops=1)
+(2 rows)
 

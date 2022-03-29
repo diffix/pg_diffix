@@ -188,8 +188,8 @@ SELECT ctid FROM empty_test_customers;
 SELECT tableoid FROM empty_test_customers;
 
 -- Row count gets censored in EXPLAIN, only for anonymizing queries
-EXPLAIN SELECT city FROM test_customers;
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT city FROM test_customers;
+EXPLAIN SELECT city FROM test_customers LIMIT 4;
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT city FROM test_customers LIMIT 4;
 
-EXPLAIN SELECT name FROM test_products;
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT name FROM test_products;
+EXPLAIN SELECT name FROM test_products LIMIT 4;
+EXPLAIN (ANALYZE, SUMMARY false, TIMING false) SELECT name FROM test_products LIMIT 4;
