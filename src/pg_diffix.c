@@ -2,6 +2,7 @@
 
 #include "fmgr.h"
 
+#include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/auth.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/hooks.h"
@@ -26,6 +27,7 @@ void _PG_init(void)
   auth_init();
   config_init();
   config_validate();
+  register_bucket_scan_nodes();
   hooks_init();
 }
 
