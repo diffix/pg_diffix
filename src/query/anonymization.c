@@ -154,16 +154,7 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
   if (node == NULL)
     return NULL;
 
-  if (IsA(node, Query))
-  {
-    Query *query = (Query *)node;
-    return (Node *)query_tree_mutator(
-        query,
-        aggregate_expression_mutator,
-        aid_refs,
-        QTW_DONT_COPY_QUERY);
-  }
-  else if (IsA(node, Aggref))
+  if (IsA(node, Aggref))
   {
     /*
      * Copy and visit sub expressions.
