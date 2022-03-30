@@ -178,7 +178,9 @@ static bool verify_aggregator(Node *node, void *context)
     Aggref *aggref = (Aggref *)node;
     Oid aggoid = aggref->aggfnoid;
 
-    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value)
+    if (aggoid != g_oid_cache.count_star &&
+        aggoid != g_oid_cache.count_value &&
+        aggoid != g_oid_cache.is_suppress_bin)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
     if (aggoid == g_oid_cache.count_value)
