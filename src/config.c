@@ -265,6 +265,18 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL);                                         /* show_hook */
 
   DefineCustomBoolVariable(
+      "pg_diffix.enable_low_effect_detection",             /* name */
+      "Whether LED (low-effect detection) should be run.", /* short_desc */
+      NULL,                                                /* long_desc */
+      &g_config.enable_low_effect_detection,               /* valueAddr */
+      true,                                                /* bootValue */
+      PGC_SUSET,                                           /* context */
+      0,                                                   /* flags */
+      NULL,                                                /* check_hook */
+      NULL,                                                /* assign_hook */
+      NULL);                                               /* show_hook */
+
+  DefineCustomBoolVariable(
       "pg_diffix.compute_suppress_bin",                                                 /* name */
       "Whether the suppress bin should be computed and included in the query results.", /* short_desc */
       NULL,                                                                             /* long_desc */

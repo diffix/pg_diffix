@@ -217,6 +217,8 @@ low count filter threshold. Default value is 2.0.
 `pg_diffix.low_count_layer_sd` - The standard deviation for each noise layer used when calculating the low count filter
 threshold. Default value is 1.0.
 
+`pg_diffix.enable_low_effect_detection` - If `True`, LED (low-effect detection) will be run, merging some of the suppressed bins into non-suppressed bins, in order to prevent inferring data about the suppressed bins.
+
 `pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result might contain the suppress bin, which
 provides the combined anonymized count of all the bins that were suppressed (low count filtered). The suppress bin shows
 all column values as `NULL` (`*` for text-typed columns, customizable via `pg_diffix.text_label_for_suppress_bin`). Note

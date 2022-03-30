@@ -23,6 +23,8 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
+  bool enable_low_effect_detection;
+
   bool compute_suppress_bin;
   char *text_label_for_suppress_bin;
 } DiffixConfig;

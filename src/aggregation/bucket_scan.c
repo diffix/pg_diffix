@@ -303,7 +303,8 @@ static void run_hooks(BucketScanState *bucket_state)
   if (!has_low_count_agg)
     return;
 
-  led_hook(bucket_state->buckets, bucket_desc);
+  if (g_config.enable_low_effect_detection)
+    led_hook(bucket_state->buckets, bucket_desc);
 
   Bucket *star_bucket = NULL;
   if (g_config.compute_suppress_bin)
@@ -720,7 +721,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 
   if (plan_data->low_count_index != -1)
   {
-    if (num_labels > 2)
+    if (num_labels > 2 && g_config.enable_low_effect_detection)
     {
       Cost led_table_cost = num_labels * rows * cpu_tuple_cost;
       Cost led_loop_cost = rows * cpu_tuple_cost;
