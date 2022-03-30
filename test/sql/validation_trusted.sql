@@ -60,6 +60,9 @@ GROUP BY 1, 2, 3;
 -- Allow all functions post-anonymization
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 
+-- Allow diffix.is_suppress_bin in non-direct access level
+SELECT city, count(*), diffix.is_suppress_bin(*) from empty_test_customers GROUP BY 1;
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -97,6 +100,10 @@ SELECT MIN(id) + MAX(id) FROM empty_test_customers;
 SELECT city FROM empty_test_customers GROUP BY 1 ORDER BY AVG(LENGTH(city));
 SELECT count(city ORDER BY city) FROM empty_test_customers;
 SELECT count(*) FILTER (WHERE true) FROM empty_test_customers;
+SELECT count(distinct id + 5) FROM empty_test_customers;
+SELECT count(distinct least(id, 5)) FROM empty_test_customers;
+SELECT count(id + 5) FROM empty_test_customers;
+SELECT count(least(id, 5)) FROM empty_test_customers;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM empty_test_customers GROUP BY LENGTH(city);
@@ -186,3 +193,7 @@ SELECT x FROM superclass;
 -- Get rejected because attempt to use system columns
 SELECT ctid FROM empty_test_customers;
 SELECT tableoid FROM empty_test_customers;
+SELECT count(ctid) FROM empty_test_customers;
+SELECT count(tableoid) FROM empty_test_customers;
+SELECT count(distinct ctid) FROM empty_test_customers;
+SELECT count(distinct tableoid) FROM empty_test_customers;

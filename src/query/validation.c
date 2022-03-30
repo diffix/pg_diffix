@@ -130,31 +130,6 @@ static void verify_rtable(Query *query)
   }
 }
 
-static bool verify_aggregator(Node *node, void *context)
-{
-  if (node == NULL)
-    return false;
-
-  if (IsA(node, Aggref))
-  {
-    Aggref *aggref = (Aggref *)node;
-    Oid aggoid = aggref->aggfnoid;
-
-    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value)
-      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
-
-    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
-    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
-  }
-
-  return expression_tree_walker(node, verify_aggregator, context);
-}
-
-static void verify_aggregators(Query *query)
-{
-  query_tree_walker(query, verify_aggregator, NULL, 0);
-}
-
 static bool is_datetime_to_string_cast(CoerceViaIO *expr)
 {
   Node *arg = (Node *)expr->arg;
@@ -190,7 +165,44 @@ static Node *unwrap_cast(Node *node)
 static void verify_non_system_column(Var *var)
 {
   if (var->varattno < 0)
-    FAILWITH_LOCATION(var->location, "System columns are not allowed in bucket expressions.");
+    FAILWITH_LOCATION(var->location, "System columns are not allowed in this context.");
+}
+
+static bool verify_aggregator(Node *node, void *context)
+{
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Aggref))
+  {
+    Aggref *aggref = (Aggref *)node;
+    Oid aggoid = aggref->aggfnoid;
+
+    if (aggoid != g_oid_cache.count_star &&
+        aggoid != g_oid_cache.count_value &&
+        aggoid != g_oid_cache.is_suppress_bin)
+      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
+
+    if (aggoid == g_oid_cache.count_value)
+    {
+      TargetEntry *tle = (TargetEntry *)unwrap_cast(linitial(aggref->args));
+      Node *tle_arg = unwrap_cast((Node *)tle->expr);
+      if (IsA(tle_arg, Var))
+        verify_non_system_column((Var *)tle_arg);
+      else
+        FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
+    }
+
+    NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
+    NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
+  }
+
+  return expression_tree_walker(node, verify_aggregator, context);
+}
+
+static void verify_aggregators(Query *query)
+{
+  query_tree_walker(query, verify_aggregator, NULL, 0);
 }
 
 static void verify_bucket_expression(Node *node)

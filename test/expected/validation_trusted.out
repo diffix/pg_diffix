@@ -90,6 +90,12 @@ SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 ----------
 (0 rows)
 
+-- Allow diffix.is_suppress_bin in non-direct access level
+SELECT city, count(*), diffix.is_suppress_bin(*) from empty_test_customers GROUP BY 1;
+ city | count | is_suppress_bin 
+------+-------+-----------------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -140,6 +146,22 @@ SELECT count(city ORDER BY city) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Feature 'ORDER BY clauses in aggregate expressions' is not currently supported.
 SELECT count(*) FILTER (WHERE true) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Feature 'FILTER clauses in aggregate expressions' is not currently supported.
+SELECT count(distinct id + 5) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT count(distinct id + 5) FROM empty_test_customers;
+               ^
+SELECT count(distinct least(id, 5)) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT count(distinct least(id, 5)) FROM empty_test_customer...
+               ^
+SELECT count(id + 5) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT count(id + 5) FROM empty_test_customers;
+               ^
+SELECT count(least(id, 5)) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT count(least(id, 5)) FROM empty_test_customers;
+               ^
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM empty_test_customers GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
@@ -270,10 +292,26 @@ SELECT x FROM superclass;
 ERROR:  [PG_DIFFIX] Feature 'Inheritance in anonymizing queries.' is not currently supported.
 -- Get rejected because attempt to use system columns
 SELECT ctid FROM empty_test_customers;
-ERROR:  [PG_DIFFIX] System columns are not allowed in bucket expressions.
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
 LINE 1: SELECT ctid FROM empty_test_customers;
                ^
 SELECT tableoid FROM empty_test_customers;
-ERROR:  [PG_DIFFIX] System columns are not allowed in bucket expressions.
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
 LINE 1: SELECT tableoid FROM empty_test_customers;
                ^
+SELECT count(ctid) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
+LINE 1: SELECT count(ctid) FROM empty_test_customers;
+                     ^
+SELECT count(tableoid) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
+LINE 1: SELECT count(tableoid) FROM empty_test_customers;
+                     ^
+SELECT count(distinct ctid) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
+LINE 1: SELECT count(distinct ctid) FROM empty_test_customers;
+                              ^
+SELECT count(distinct tableoid) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
+LINE 1: SELECT count(distinct tableoid) FROM empty_test_customers;
+                              ^
