@@ -23,7 +23,7 @@ typedef struct DiffixConfig
   int top_count_min;
   int top_count_max;
 
-  bool bucket_merging;
+  bool bin_merging;
 
   bool compute_suppress_bin;
   char *text_label_for_suppress_bin;

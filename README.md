@@ -217,7 +217,7 @@ low count filter threshold. Default value is 2.0.
 `pg_diffix.low_count_layer_sd` - The standard deviation for each noise layer used when calculating the low count filter
 threshold. Default value is 1.0.
 
-`pg_diffix.bucket_merging` - If `True`, some of the suppressed bins may be merged into non-suppressed bins, in order to
+`pg_diffix.bin_merging` - If `True`, some of the suppressed bins may be merged into non-suppressed bins in order to
 prevent inferring data about them.
 
 `pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result might contain the suppress bin, which

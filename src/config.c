@@ -265,16 +265,16 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL);                                         /* show_hook */
 
   DefineCustomBoolVariable(
-      "pg_diffix.bucket_merging",                                                       /* name */
-      "Whether some of the suppressed bins should be merged into non-suppressed bins.", /* short_desc */
-      NULL,                                                                             /* long_desc */
-      &g_config.bucket_merging,                                                         /* valueAddr */
-      true,                                                                             /* bootValue */
-      PGC_SUSET,                                                                        /* context */
-      0,                                                                                /* flags */
-      NULL,                                                                             /* check_hook */
-      NULL,                                                                             /* assign_hook */
-      NULL);                                                                            /* show_hook */
+      "pg_diffix.bin_merging",                                                            /* name */
+      "Whether suppressed bins are allowed to be merged to related non-suppressed bins.", /* short_desc */
+      NULL,                                                                               /* long_desc */
+      &g_config.bin_merging,                                                              /* valueAddr */
+      true,                                                                               /* bootValue */
+      PGC_SUSET,                                                                          /* context */
+      0,                                                                                  /* flags */
+      NULL,                                                                               /* check_hook */
+      NULL,                                                                               /* assign_hook */
+      NULL);                                                                              /* show_hook */
 
   DefineCustomBoolVariable(
       "pg_diffix.compute_suppress_bin",                                                 /* name */

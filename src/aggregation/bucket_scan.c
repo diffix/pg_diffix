@@ -303,7 +303,7 @@ static void run_hooks(BucketScanState *bucket_state)
   if (!has_low_count_agg)
     return;
 
-  if (g_config.bucket_merging)
+  if (g_config.bin_merging)
     led_hook(bucket_state->buckets, bucket_desc);
 
   Bucket *star_bucket = NULL;
@@ -721,7 +721,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 
   if (plan_data->low_count_index != -1)
   {
-    if (num_labels > 2 && g_config.bucket_merging)
+    if (num_labels > 2 && g_config.bin_merging)
     {
       Cost led_table_cost = num_labels * rows * cpu_tuple_cost;
       Cost led_loop_cost = rows * cpu_tuple_cost;
