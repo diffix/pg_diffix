@@ -4,7 +4,7 @@ function buildLexer(input) {
   const lexer = moo.compile({
     whitespace: { match: /[\s\r\n]+/, lineBreaks: true },
     string: /"(?:\\["\\]|[^\n"\\])*"/,
-    key: /:[A-Za-z0-9_]+/,
+    key: /:[A-Za-z0-9_.]+/,
     nodeStart: /\{[A-Za-z0-9_]+/,
     nodeEnd: '}',
     arrayStart: /\([a-z]?/,
