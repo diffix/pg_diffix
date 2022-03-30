@@ -1,11 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
 -- Create test data.
-CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL);
+CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL, planet TEXT);
 INSERT INTO test_customers VALUES
-  (0, NULL, NULL), (1, 'Berlin', 1.0), (2, 'Berlin', 1.0), (3, 'Rome', 0.5), (4, 'London', 2.0), (5, 'Berlin', 2.0),
-  (6, 'Rome', 1.0), (7, 'Rome', 0.5), (8, 'Berlin', 0.0), (9, 'Rome', 1.0), (10, 'Berlin', 2.0), (11, 'Rome', 1.5),
-  (12, 'Rome', 0.5), (13, 'Rome', 0.5), (14, 'Berlin', 1.5), (15, 'Berlin', 1.0);
+  (0, NULL, NULL, NULL), (1, 'Berlin', 1.0, 'Earth'), (2, 'Berlin', 1.0, 'Earth'), (3, 'Rome', 0.5, 'Earth'),
+  (4, 'London', 2.0, 'Earth'), (5, 'Berlin', 2.0, 'Earth'), (6, 'Rome', 1.0, 'Earth'), (7, 'Rome', 0.5, 'Earth'),
+  (8, 'Berlin', 0.0, 'Earth'), (9, 'Rome', 1.0, 'Earth'), (10, 'Berlin', 2.0, 'Earth'), (11, 'Rome', 1.5, 'Earth'),
+  (12, 'Rome', 0.5, 'Earth'), (13, 'Rome', 0.5, 'Earth'), (14, 'Berlin', 1.5, 'Earth'), (15, 'Berlin', 1.0, 'Earth');
 CREATE TABLE test_products (id INTEGER PRIMARY KEY, name TEXT, price REAL);
 INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5),
   (2, 'Car', 100.0), (3, 'House', 400.0), (4, 'Movie', 10.0);
@@ -21,8 +22,7 @@ INSERT INTO test_patients VALUES
   (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT, discount REAL);
 -- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
-CREATE TABLE london_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
-INSERT INTO london_customers (SELECT * FROM test_customers WHERE city = 'London');
+CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
 CREATE TABLE empty_test_times (cid INTEGER PRIMARY key, birthday DATE, lunchtime TIME, last_seen TIMESTAMP);
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
