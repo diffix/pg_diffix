@@ -101,40 +101,32 @@ static PlannedStmt *pg_diffix_planner(
   return plan;
 }
 
-static DefElem *make_costs_false_defelem()
+static DefElem *make_bool_option(char *name, bool value)
 {
-  Value *false_value = makeString("false");
+  Value *bool_string_value = value ? makeString("true") : makeString("false");
   DefElem *def_elem = makeNode(DefElem);
 
   def_elem->defnamespace = NULL;
-  def_elem->defname = "costs";
-  def_elem->arg = (Node *)false_value;
+  def_elem->defname = name;
+  def_elem->arg = (Node *)bool_string_value;
   def_elem->defaction = DEFELEM_UNSPEC;
   def_elem->location = -1;
   return def_elem;
 }
 
-static bool involves_sensitive_relations(Query *query)
-{
-  List *sensitive_relations = gather_sensitive_relations(query);
-  bool result = sensitive_relations != NIL;
-  list_free(sensitive_relations);
-  return result;
-}
-
 static void do_process_utility(PlannedStmt *pstmt)
 {
-  if (superuser() || get_session_access_level() == ACCESS_DIRECT)
-    return;
-
   if (IsA(pstmt->utilityStmt, ExplainStmt))
   {
+    if (superuser() || get_session_access_level() == ACCESS_DIRECT)
+      return;
+
     ExplainStmt *explain = (ExplainStmt *)pstmt->utilityStmt;
     if (involves_sensitive_relations((Query *)explain->query))
     {
       verify_explain_options(explain);
       /* Unless given a conflicting `COSTS true` (verified above), set `COSTS false`, which censors the `EXPLAIN`. */
-      explain->options = lappend(explain->options, make_costs_false_defelem());
+      explain->options = lappend(explain->options, make_bool_option("costs", false));
     }
   }
 }
