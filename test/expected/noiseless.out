@@ -216,3 +216,32 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
      0 |     0 |     0
 (1 row)
 
+----------------------------------------------------------------
+-- Minimal count
+----------------------------------------------------------------
+-- Zero for global aggregation
+SELECT COUNT(DISTINCT planet) FROM test_customers;
+ count 
+-------
+     1
+(1 row)
+
+-- `low_count_min_threshold` for queries with GROUP BY
+SELECT city, COUNT(DISTINCT city) FROM test_customers GROUP BY 1;
+  city  | count 
+--------+-------
+ *      |     2
+ Rome   |     2
+ Berlin |     2
+(3 rows)
+
+SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+ discount | count 
+----------+-------
+          |     2
+      1.5 |     2
+      0.5 |     4
+        1 |     5
+        2 |     2
+(5 rows)
+
