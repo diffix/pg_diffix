@@ -114,7 +114,7 @@ static DefElem *make_bool_option(char *name, bool value)
   return def_elem;
 }
 
-static void do_process_utility(PlannedStmt *pstmt)
+static void prepare_utility(PlannedStmt *pstmt)
 {
   if (IsA(pstmt->utilityStmt, ExplainStmt))
   {
@@ -139,7 +139,7 @@ static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
                                      QueryEnvironment *queryEnv,
                                      DestReceiver *dest, QueryCompletion *qc)
 {
-  do_process_utility(pstmt);
+  prepare_utility(pstmt);
   if (prev_ProcessUtility_hook)
     prev_ProcessUtility_hook(pstmt, queryString, context, params, queryEnv, dest, qc);
   else
@@ -154,7 +154,7 @@ static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
                                      QueryEnvironment *queryEnv,
                                      DestReceiver *dest, QueryCompletion *qc)
 {
-  do_process_utility(pstmt);
+  prepare_utility(pstmt);
   if (prev_ProcessUtility_hook)
     prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc);
   else
