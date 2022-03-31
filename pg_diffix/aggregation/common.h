@@ -125,9 +125,10 @@ typedef struct BucketAttribute
 
 typedef struct AnonymizationContext
 {
-  List *group_clause;  /* Original (unoptimized) group clause */
-  seed_t sql_seed;     /* Static part of bucket seed */
-  bool expand_buckets; /* True if buckets have to be expanded for this query */
+  seed_t sql_seed;           /* Static part of bucket seed */
+  AttrNumber *grouping_cols; /* Array of indices into the target list for the grouping columns */
+  int grouping_cols_count;   /* Count of grouping columns */
+  bool expand_buckets;       /* True if buckets have to be expanded for this query */
 } AnonymizationContext;
 
 typedef struct BucketDescriptor

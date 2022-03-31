@@ -6,6 +6,7 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
+#include "optimizer/tlist.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
 #include "utils/fmgrprotos.h"
@@ -479,8 +480,9 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitiv
 
   query->hasAggs = true; /* Anonymizing queries always have at least one aggregate. */
 
-  /* Create a copy because planner may overwrite this. */
-  anon_context->group_clause = copyObjectImpl(query->groupClause);
+  /* Compute grouping columns indices now because planner may overwrite the info later. */
+  anon_context->grouping_cols = extract_grouping_cols(query->groupClause, query->targetList);
+  anon_context->grouping_cols_count = list_length(query->groupClause);
 
   return anon_context;
 }
