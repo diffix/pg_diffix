@@ -516,7 +516,7 @@ static int location_to_link_index(int location)
  */
 typedef struct AnonContextWalkerData
 {
-  AnonQueryLinks *links;              /* Where to store added links */
+  AnonQueryLinks *anon_links;         /* Where to store added links */
   AnonymizationContext *anon_context; /* Anon context to associate */
 } AnonContextWalkerData;
 
@@ -535,8 +535,8 @@ static bool link_anon_context_walker(Node *node, AnonContextWalkerData *data)
       link->orig_location = aggref->location;
       link->aggref_oid = aggref->aggfnoid;
 
-      int link_index = list_length(data->links->aggref_links);
-      data->links->aggref_links = lappend(data->links->aggref_links, link);
+      int link_index = list_length(data->anon_links->aggref_links);
+      data->anon_links->aggref_links = lappend(data->anon_links->aggref_links, link);
 
       aggref->location = link_index_to_location(link_index); /* Attach the index to aggref. */
     }
@@ -549,19 +549,13 @@ static bool link_anon_context_walker(Node *node, AnonContextWalkerData *data)
  * Encodes an AnonContext reference to Aggrefs of anonymizing aggregators
  * by injecting AGGREF_LINK_OFFSET + AggrefLink's index to aggref->location.
  */
-static AnonQueryLinks *link_anon_context(Query *query, AnonymizationContext *anon_context)
+static void link_anon_context(Query *query, AnonQueryLinks *anon_links, AnonymizationContext *anon_context)
 {
-  /* Once we support subqueries, this needs to be shared across the tree. */
-  AnonQueryLinks *links = palloc(sizeof(AnonQueryLinks));
-  links->aggref_links = NIL;
-
-  AnonContextWalkerData data = {links, anon_context};
+  AnonContextWalkerData data = {.anon_links = anon_links, .anon_context = anon_context};
   expression_tree_walker((Node *)query->targetList, link_anon_context_walker, &data);
-
-  return links;
 }
 
-AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_relations)
+static void compile_anonymizing_query(Query *query, List *sensitive_relations, AnonQueryLinks *anon_links)
 {
   verify_anonymization_requirements(query);
 
@@ -571,7 +565,55 @@ AnonQueryLinks *compile_anonymizing_query(Query *query, List *sensitive_relation
 
   anon_context->sql_seed = prepare_bucket_seeds(query);
 
-  return link_anon_context(query, anon_context);
+  link_anon_context(query, anon_links, anon_context);
+}
+
+static bool is_anonymizing_query(Query *query, List *sensitive_relations)
+{
+  ListCell *cell;
+  foreach (cell, query->rtable)
+  {
+    RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
+    if (rte->rtekind == RTE_RELATION)
+    {
+      SensitiveRelation *relation = find_relation(rte->relid, sensitive_relations);
+      if (relation != NULL)
+        return true;
+    }
+  }
+  return false;
+}
+
+typedef struct QueryCompileContext
+{
+  List *sensitive_relations;
+  AnonQueryLinks *anon_links;
+} QueryCompileContext;
+
+static bool compile_query_walker(Node *node, QueryCompileContext *context)
+{
+  if (node && IsA(node, Query))
+  {
+    Query *query = (Query *)node;
+    if (is_anonymizing_query(query, context->sensitive_relations))
+      compile_anonymizing_query(query, context->sensitive_relations, context->anon_links);
+    else
+      query_tree_walker(query, compile_query_walker, context, 0);
+  }
+
+  return false;
+}
+
+AnonQueryLinks *compile_query(Query *query, List *sensitive_relations)
+{
+  QueryCompileContext context = {
+      .sensitive_relations = sensitive_relations,
+      .anon_links = palloc0(sizeof(AnonQueryLinks)),
+  };
+
+  compile_query_walker((Node *)query, &context);
+
+  return context.anon_links;
 }
 
 /*-------------------------------------------------------------------------
@@ -590,7 +632,7 @@ static bool extract_anon_context_walker(Node *node, AnonContextWalkerData *data)
     if (is_anonymizing_agg(aggref->aggfnoid) && aggref->location >= AGGREF_LINK_OFFSET)
     {
       int link_index = location_to_link_index(aggref->location);
-      AggrefLink *link = list_nth(data->links->aggref_links, link_index);
+      AggrefLink *link = list_nth(data->anon_links->aggref_links, link_index);
 
       /* Sanity checks. */
       if (link->aggref_oid != aggref->aggfnoid)

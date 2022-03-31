@@ -46,24 +46,14 @@ static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query, Jumbl
 
 static AnonQueryLinks *prepare_query(Query *query)
 {
-  static uint64 next_query_id = 1;
-  query->queryId = next_query_id++;
-
   /* Do nothing for sessions with direct access. */
   if (get_session_access_level() == ACCESS_DIRECT)
-  {
-    DEBUG_LOG("Direct query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
     return NULL;
-  }
 
   List *sensitive_relations = gather_sensitive_relations(query);
-
   /* A query requires anonymization if it targets sensitive relations. */
   if (sensitive_relations == NIL)
-  {
-    DEBUG_LOG("Non-anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
     return NULL;
-  }
 
   /* At this point we have an anonymizing query. */
   DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
@@ -77,27 +67,31 @@ static AnonQueryLinks *prepare_query(Query *query)
    */
   config_validate();
 
-  AnonQueryLinks *links = compile_anonymizing_query(query, sensitive_relations);
+  AnonQueryLinks *links = compile_query(query, sensitive_relations);
 
-  DEBUG_LOG("Rewritten query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+  DEBUG_LOG("Compiled query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 
   return links;
 }
 
 static PlannedStmt *pg_diffix_planner(
-    Query *parse,
+    Query *query,
     const char *query_string,
     int cursorOptions,
     ParamListInfo boundParams)
 {
-  DEBUG_LOG("STATEMENT: %s", query_string);
-  AnonQueryLinks *links = prepare_query(parse);
+  static uint64 next_query_id = 1;
+  query->queryId = next_query_id++;
+
+  DEBUG_LOG("Statement (Query ID=%lu) (User ID=%u): %s", query->queryId, GetSessionUserId(), query_string);
+
+  AnonQueryLinks *links = prepare_query(query);
 
   PlannedStmt *plan;
   if (prev_planner_hook)
-    plan = prev_planner_hook(parse, query_string, cursorOptions, boundParams);
+    plan = prev_planner_hook(query, query_string, cursorOptions, boundParams);
   else
-    plan = standard_planner(parse, query_string, cursorOptions, boundParams);
+    plan = standard_planner(query, query_string, cursorOptions, boundParams);
 
   plan->planTree = rewrite_plan(plan->planTree, links);
 
