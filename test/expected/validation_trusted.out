@@ -75,7 +75,7 @@ GROUP BY 1, 2;
 (0 rows)
 
 SELECT
-  substring(cast(last_seen AS text), 1, 3), 
+  substring(cast(last_seen AS text), 1, 3),
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
 FROM empty_test_times
@@ -84,11 +84,76 @@ GROUP BY 1, 2, 3;
 -----------+-----------+-----------
 (0 rows)
 
--- Allow all functions post-anonymization
+-- Allow all functions post-anonymization.
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
  ?column? 
 ----------
 (0 rows)
+
+-- Set operations between anonymizing queries.
+SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
+ city 
+------
+(0 rows)
+
+SELECT city FROM empty_test_customers UNION SELECT city FROM empty_test_customers;
+ city 
+------
+(0 rows)
+
+-- Anonymizing sublinks are supported.
+SELECT EXISTS (SELECT city FROM empty_test_customers);
+ exists 
+--------
+ f
+(1 row)
+
+SELECT 1 WHERE EXISTS (SELECT city FROM empty_test_customers);
+ ?column? 
+----------
+(0 rows)
+
+-- Anonymizing leaf subqueries are supported.
+SELECT * FROM ( SELECT COUNT(*) FROM empty_test_customers ) x;
+ count 
+-------
+     0
+(1 row)
+
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM empty_test_customers
+  GROUP BY 1
+) x;
+ count 
+-------
+     0
+(1 row)
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM empty_test_customers
+) x;
+ count | count | count 
+-------+-------+-------
+     0 |     0 |     0
+(1 row)
+
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM empty_test_customers ) x;
+ count 
+-------
+     0
+(1 row)
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM empty_test_customers ) y
+) x;
+ count | count | count 
+-------+-------+-------
+     0 |     0 |     0
+(1 row)
 
 ----------------------------------------------------------------
 -- Unsupported queries
@@ -104,18 +169,11 @@ SELECT city FROM empty_test_customers GROUP BY GROUPING SETS ((city), ());
 ERROR:  [PG_DIFFIX] Feature 'GROUPING SETS' is not currently supported.
 SELECT city FROM empty_test_customers GROUP BY CUBE ((city));
 ERROR:  [PG_DIFFIX] Feature 'GROUPING SETS' is not currently supported.
--- Get rejected because UNIONs etc. are unsupported.
-SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
-ERROR:  [PG_DIFFIX] Feature 'UNION/INTERSECT/EXCEPT' is not currently supported.
 -- Get rejected because SRF functions are unsupported.
 SELECT generate_series(1,4) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Feature 'SRF functions' is not currently supported.
 -- Get rejected because sublinks are unsupported.
 SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
-ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
-SELECT EXISTS (SELECT * FROM empty_test_customers WHERE discount < 10);
-ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
-SELECT 1 WHERE EXISTS (SELECT * FROM empty_test_customers);
 ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM empty_test_customers;
@@ -182,37 +240,6 @@ SELECT GREATEST(discount, 20) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
 SELECT LEAST(discount, 20) FROM empty_test_customers;
 ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
--- Get rejected because of subqueries
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
-FROM (
-  SELECT * FROM empty_test_customers
-) x;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
-FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM empty_test_customers ) y
-) x;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
-SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
-FROM (
-  SELECT id, cid, city as user_city
-  FROM empty_test_customers
-  INNER JOIN test_purchases tp ON id = cid
-) x
-GROUP BY 1;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM empty_test_customers ) x;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
--- Get rejected because of subqueries, but used to be rejected because of their inner aggregation
-SELECT * FROM ( SELECT COUNT(*) FROM empty_test_customers ) x;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
-SELECT COUNT(city)
-FROM (
-  SELECT city FROM empty_test_customers
-  GROUP BY 1
-) x;
-ERROR:  [PG_DIFFIX] Feature 'Subqueries in anonymizing queries' is not currently supported.
 -- Get rejected because of JOINs
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM empty_test_customers
   INNER JOIN test_purchases tp ON id = cid;
