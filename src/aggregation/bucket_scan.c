@@ -405,8 +405,13 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     {
       if (plan_data->anon_context.expand_buckets)
       {
-        /* Repeat bucket for n-1 times after current one. */
-        bucket_state->repeat_previous_bucket = scan_slot_get_int64(econtext, plan_data->count_star_index) - 1;
+        int64 bucket_repeat_count = scan_slot_get_int64(econtext, plan_data->count_star_index);
+        if (bucket_repeat_count > 0)
+          /* Repeat bucket for n-1 times after current one. */
+          bucket_state->repeat_previous_bucket = bucket_repeat_count - 1;
+        else
+          /* Zero occurrences, skip bucket. */
+          continue;
       }
 
       return ExecProject(proj_info);

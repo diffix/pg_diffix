@@ -28,4 +28,12 @@ typedef struct SensitiveRelation
 
 extern List *gather_sensitive_relations(Query *query);
 
+static inline bool involves_sensitive_relations(Query *query)
+{
+  List *sensitive_relations = gather_sensitive_relations(query);
+  bool result = sensitive_relations != NIL;
+  list_free(sensitive_relations);
+  return result;
+}
+
 #endif /* PG_DIFFIX_RELATION_H */

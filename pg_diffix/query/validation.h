@@ -10,6 +10,12 @@
 extern void verify_utility_command(Node *utility_stmt);
 
 /*
+ * Verifies that the options of an explain statement are safe to use for anonymizing queries.
+ * If requirements are not met, an error is reported and execution is halted.
+ */
+extern void verify_explain_options(ExplainStmt *explain);
+
+/*
  * Verifies that a query matches current anonymization restrictions and limitations.
  * If requirements are not met, an error is reported and execution is halted.
  *

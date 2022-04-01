@@ -64,3 +64,14 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
 ----------------------------------------------------------------
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
+
+----------------------------------------------------------------
+-- Minimal count
+----------------------------------------------------------------
+
+-- Zero for global aggregation
+SELECT COUNT(DISTINCT planet) FROM test_customers;
+
+-- `low_count_min_threshold` for queries with GROUP BY
+SELECT city, COUNT(DISTINCT city) FROM test_customers GROUP BY 1;
+SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
