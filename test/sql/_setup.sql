@@ -72,3 +72,6 @@ $$;
 
 GRANT CONNECT ON DATABASE contrib_regression TO diffix_test;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO diffix_test;
+
+-- Allow SELECT on future test-specific tables.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO diffix_test;
