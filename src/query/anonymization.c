@@ -594,7 +594,10 @@ typedef struct QueryCompileContext
 
 static bool compile_query_walker(Node *node, QueryCompileContext *context)
 {
-  if (node && IsA(node, Query))
+  if (node == NULL)
+    return false;
+
+  if (IsA(node, Query))
   {
     Query *query = (Query *)node;
     if (is_anonymizing_query(query, context->sensitive_relations))
