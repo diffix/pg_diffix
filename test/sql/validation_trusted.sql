@@ -51,17 +51,47 @@ FROM empty_test_customers
 GROUP BY 1, 2;
 
 SELECT
-  substring(cast(last_seen AS text), 1, 3), 
+  substring(cast(last_seen AS text), 1, 3),
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
 FROM empty_test_times
 GROUP BY 1, 2, 3;
 
--- Allow all functions post-anonymization
+-- Allow all functions post-anonymization.
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 
--- Allow diffix.is_suppress_bin in non-direct access level
+-- Allow diffix.is_suppress_bin in non-direct access level.
 SELECT city, count(*), diffix.is_suppress_bin(*) from empty_test_customers GROUP BY 1;
+
+-- Set operations between anonymizing queries.
+SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
+SELECT city FROM empty_test_customers UNION SELECT city FROM empty_test_customers;
+
+-- Anonymizing sublinks are supported.
+SELECT EXISTS (SELECT city FROM empty_test_customers);
+SELECT 1 WHERE EXISTS (SELECT city FROM empty_test_customers);
+
+-- Anonymizing leaf subqueries are supported.
+SELECT * FROM ( SELECT COUNT(*) FROM empty_test_customers ) x;
+
+SELECT COUNT(city)
+FROM (
+  SELECT city FROM empty_test_customers
+  GROUP BY 1
+) x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+FROM (
+  SELECT * FROM empty_test_customers
+) x;
+
+SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM empty_test_customers ) x;
+
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+FROM (
+  SELECT y.city as city, y.id as user_id
+  FROM ( SELECT * FROM empty_test_customers ) y
+) x;
 
 ----------------------------------------------------------------
 -- Unsupported queries
@@ -77,16 +107,11 @@ WITH c AS (SELECT 1 FROM empty_test_customers) SELECT 1 FROM empty_test_customer
 SELECT city FROM empty_test_customers GROUP BY GROUPING SETS ((city), ());
 SELECT city FROM empty_test_customers GROUP BY CUBE ((city));
 
--- Get rejected because UNIONs etc. are unsupported.
-SELECT city FROM empty_test_customers EXCEPT SELECT city FROM empty_test_customers;
-
 -- Get rejected because SRF functions are unsupported.
 SELECT generate_series(1,4) FROM empty_test_customers;
 
 -- Get rejected because sublinks are unsupported.
 SELECT city, (SELECT 1 FROM empty_test_customers) FROM empty_test_customers GROUP BY 1;
-SELECT EXISTS (SELECT * FROM empty_test_customers WHERE discount < 10);
-SELECT 1 WHERE EXISTS (SELECT * FROM empty_test_customers);
 
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM empty_test_customers;
@@ -120,37 +145,6 @@ SELECT COALESCE(discount, 20) FROM empty_test_customers;
 SELECT NULLIF(discount, 20) FROM empty_test_customers;
 SELECT GREATEST(discount, 20) FROM empty_test_customers;
 SELECT LEAST(discount, 20) FROM empty_test_customers;
-
--- Get rejected because of subqueries
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
-FROM (
-  SELECT * FROM empty_test_customers
-) x;
-
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
-FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM empty_test_customers ) y
-) x;
-
-SELECT x.user_city, COUNT(*), COUNT(DISTINCT x.id), COUNT(DISTINCT x.cid)
-FROM (
-  SELECT id, cid, city as user_city
-  FROM empty_test_customers
-  INNER JOIN test_purchases tp ON id = cid
-) x
-GROUP BY 1;
-
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM empty_test_customers ) x;
-
--- Get rejected because of subqueries, but used to be rejected because of their inner aggregation
-SELECT * FROM ( SELECT COUNT(*) FROM empty_test_customers ) x;
-
-SELECT COUNT(city)
-FROM (
-  SELECT city FROM empty_test_customers
-  GROUP BY 1
-) x;
 
 -- Get rejected because of JOINs
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM empty_test_customers

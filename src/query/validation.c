@@ -15,7 +15,6 @@
 #include "utils/memutils.h"
 
 #include "pg_diffix/auth.h"
-#include "pg_diffix/config.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/validation.h"
@@ -28,12 +27,10 @@
       FAILWITH("Feature '%s' is not currently supported.", (feature)); \
   } while (0)
 
-static void verify_query(Query *query);
 static void verify_where(Query *query);
 static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
-static void verify_bucket_expressions(Query *query);
 static bool option_matches(DefElem *option, char *name, bool value);
 
 void verify_utility_command(Node *utility_stmt)
@@ -77,21 +74,6 @@ void verify_explain_options(ExplainStmt *explain)
   }
 }
 
-void verify_anonymization_requirements(Query *query)
-{
-  /*
-   * Since we cannot easily validate cross-dependent parameters using GUC,
-   * we verify those here and fail if they are misconfigured.
-   */
-  config_validate();
-  verify_query(query);
-}
-
-void verify_anonymizing_query(Query *query)
-{
-  verify_bucket_expressions(query);
-}
-
 bool verify_pg_catalog_access(List *range_tables)
 {
   ListCell *cell;
@@ -108,7 +90,7 @@ bool verify_pg_catalog_access(List *range_tables)
   return true;
 }
 
-static void verify_query(Query *query)
+void verify_anonymization_requirements(Query *query)
 {
   NOT_SUPPORTED(query->commandType != CMD_SELECT, "non-select query");
   NOT_SUPPORTED(query->cteList, "WITH");
@@ -335,8 +317,8 @@ static void verify_generalization(Node *node)
   }
 }
 
-/* Should be run on rewritten queries only. */
-static void verify_bucket_expressions(Query *query)
+/* Should be run on anonymizing queries only. */
+void verify_bucket_expressions(Query *query)
 {
   AccessLevel access_level = get_session_access_level();
 

@@ -507,14 +507,11 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
  * First entries are grouping labels, followed by aggregate expressions.
  * Anonymizing aggregators are updated to have AnonAggState return type.
  */
-static List *flatten_agg_tlist(Agg *agg, List *group_clause)
+static List *flatten_agg_tlist(Agg *agg, AttrNumber *grouping_cols, int num_labels)
 {
   List *child_tlist = outerPlan(agg)->targetlist;
   List *orig_agg_tlist = agg->plan.targetlist;
   List *flat_agg_tlist = NIL;
-
-  int num_labels = list_length(group_clause);
-  AttrNumber *grouping_cols = extract_grouping_cols(group_clause, orig_agg_tlist);
 
   /* Add grouping labels to target list. */
   for (int i = 0; i < num_labels; i++)
@@ -544,8 +541,6 @@ static List *flatten_agg_tlist(Agg *agg, List *group_clause)
 
     flat_agg_tlist = lappend(flat_agg_tlist, label_target_entry);
   }
-
-  pfree(grouping_cols);
 
   /* Add aggregates to target list. */
   List *aggrefs = NIL;
@@ -696,11 +691,11 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   bucket_scan->custom_private = list_make1(plan_data);
   plan_data->extensible.extnodename = BUCKET_SCAN_DATA_NAME;
   plan_data->anon_context = *anon_context; /* Copy by value to avoid managing another custom node. */
-  int num_labels = plan_data->num_labels = list_length(anon_context->group_clause);
+  int num_labels = plan_data->num_labels = anon_context->grouping_cols_count;
 
   /* Lift projection and qual up. */
   Agg *agg = (Agg *)left_tree;
-  List *flat_agg_tlist = flatten_agg_tlist(agg, anon_context->group_clause);
+  List *flat_agg_tlist = flatten_agg_tlist(agg, anon_context->grouping_cols, anon_context->grouping_cols_count);
   RewriteProjectionContext context = {flat_agg_tlist, num_labels};
   plan->targetlist = project_agg_tlist(agg->plan.targetlist, &context);
   plan->qual = project_agg_qual(agg->plan.qual, &context);
@@ -764,6 +759,14 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 #define WRITE_SEED_FIELD(fldname) \
   appendStringInfo(str, " :" CppAsString(fldname) " %" INT64_MODIFIER "x", node->fldname)
 
+#define WRITE_ATTRNUMBER_ARRAY(fldname, len)                    \
+  do                                                            \
+  {                                                             \
+    appendStringInfoString(str, " :" CppAsString(fldname) " "); \
+    for (int i = 0; i < len; i++)                               \
+      appendStringInfo(str, " %d", node->fldname[i]);           \
+  } while (0)
+
 #define booltostr(x) ((x) ? "true" : "false")
 
 #define COPY_SCALAR_FIELD(fldname) \
@@ -771,6 +774,17 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 
 #define COPY_NODE_FIELD(fldname) \
   (dst->fldname = copyObjectImpl(src->fldname))
+
+#define COPY_POINTER_FIELD(fldname, sz)          \
+  do                                             \
+  {                                              \
+    Size _size = (sz);                           \
+    if (_size > 0)                               \
+    {                                            \
+      dst->fldname = palloc(_size);              \
+      memcpy(dst->fldname, src->fldname, _size); \
+    }                                            \
+  } while (0)
 
 static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode *src_node)
 {
@@ -782,7 +796,9 @@ static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode
   COPY_SCALAR_FIELD(low_count_index);
   COPY_SCALAR_FIELD(count_star_index);
 
-  COPY_NODE_FIELD(anon_context.group_clause);
+  int grouping_cols_size = sizeof(src->anon_context.grouping_cols[0]) * src->anon_context.grouping_cols_count;
+  COPY_POINTER_FIELD(anon_context.grouping_cols, grouping_cols_size);
+  COPY_SCALAR_FIELD(anon_context.grouping_cols_count);
   COPY_SCALAR_FIELD(anon_context.sql_seed);
   COPY_SCALAR_FIELD(anon_context.expand_buckets);
 }
@@ -803,8 +819,8 @@ static void bucket_scan_data_out(struct StringInfoData *str, const ExtensibleNod
   WRITE_INT_FIELD(count_star_index);
 
   WRITE_SEED_FIELD(anon_context.sql_seed);
+  WRITE_ATTRNUMBER_ARRAY(anon_context.grouping_cols, node->anon_context.grouping_cols_count);
   WRITE_BOOL_FIELD(anon_context.expand_buckets);
-  WRITE_NODE_FIELD(anon_context.group_clause);
 }
 
 static void bucket_scan_data_read(ExtensibleNode *node)
