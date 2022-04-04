@@ -819,8 +819,8 @@ static void bucket_scan_data_out(struct StringInfoData *str, const ExtensibleNod
   WRITE_INT_FIELD(count_star_index);
 
   WRITE_SEED_FIELD(anon_context.sql_seed);
-  WRITE_BOOL_FIELD(anon_context.expand_buckets);
   WRITE_ATTRNUMBER_ARRAY(anon_context.grouping_cols, node->anon_context.grouping_cols_count);
+  WRITE_BOOL_FIELD(anon_context.expand_buckets);
 }
 
 static void bucket_scan_data_read(ExtensibleNode *node)
