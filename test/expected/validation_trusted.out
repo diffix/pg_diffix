@@ -90,7 +90,7 @@ SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 ----------
 (0 rows)
 
--- Allow diffix.is_suppress_bin in non-direct access level
+-- Allow diffix.is_suppress_bin in non-direct access level.
 SELECT city, count(*), diffix.is_suppress_bin(*) from empty_test_customers GROUP BY 1;
  city | count | is_suppress_bin 
 ------+-------+-----------------

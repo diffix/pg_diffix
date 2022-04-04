@@ -60,7 +60,7 @@ GROUP BY 1, 2, 3;
 -- Allow all functions post-anonymization.
 SELECT 2 * length(city) FROM empty_test_customers GROUP BY city;
 
--- Allow diffix.is_suppress_bin in non-direct access level
+-- Allow diffix.is_suppress_bin in non-direct access level.
 SELECT city, count(*), diffix.is_suppress_bin(*) from empty_test_customers GROUP BY 1;
 
 -- Set operations between anonymizing queries.
