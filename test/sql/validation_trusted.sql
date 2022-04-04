@@ -93,6 +93,10 @@ FROM (
   FROM ( SELECT * FROM empty_test_customers ) y
 ) x;
 
+WITH c AS (SELECT city FROM empty_test_customers) SELECT * FROM c;
+
+SELECT (SELECT city FROM empty_test_customers);
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -168,6 +172,15 @@ SELECT cast(id AS text) FROM empty_test_customers GROUP BY 1;
 SELECT cast(id AS varchar) FROM empty_test_customers GROUP BY 1;
 SELECT substring(cast(id AS text), 1, 1) FROM empty_test_customers GROUP BY 1;
 SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_customers GROUP BY 1;
+
+-- Invalid subqueries are rejected.
+SELECT * FROM (SELECT length(city) FROM empty_test_customers) x;
+SELECT EXISTS (SELECT length(city) FROM empty_test_customers);
+SELECT 1 WHERE EXISTS (SELECT length(city) FROM empty_test_customers);
+SELECT 1 UNION SELECT length(city) FROM empty_test_customers;
+SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM empty_test_customers) t2;
+WITH c AS (SELECT length(city) FROM empty_test_customers) SELECT * FROM c;
+SELECT (SELECT length(city) FROM empty_test_customers);
 
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
