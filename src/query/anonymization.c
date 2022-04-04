@@ -603,7 +603,7 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
       query_tree_walker(query, compile_query_walker, context, 0);
   }
 
-  return false;
+  return expression_tree_walker(node, compile_query_walker, context);
 }
 
 AnonQueryLinks *compile_query(Query *query, List *sensitive_relations)
