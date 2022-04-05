@@ -24,9 +24,29 @@ void auth_init(void)
   register_label_provider(PROVIDER_TAG, object_relabel);
 }
 
+/*
+ * Get the (palloc-ed) n-th token from a ':'-delimited input seclabel (which is copied). If n-th token is not there,
+ * NULL is returned. `n` is zero-based.
+ */
+static inline char *seclabel_token(const char *str, int n)
+{
+  if (str == NULL)
+    return NULL;
+
+  char *token = palloc(sizeof(char) * (strlen(str) + 1));
+  strcpy(token, str);
+  char *saveptr;
+  token = __strtok_r(token, ":", &saveptr);
+  for (int i = 0; i < n; i++)
+  {
+    token = __strtok_r(NULL, ":", &saveptr);
+  }
+  return token;
+}
+
 static inline bool is_sensitive_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "sensitive") == 0;
+  return strcasecmp(seclabel_token(seclabel, 0), "sensitive") == 0;
 }
 
 static inline bool is_public_label(const char *seclabel)
@@ -101,6 +121,27 @@ bool is_sensitive_relation(Oid relation_oid)
     FAIL_ON_INVALID_LABEL(seclabel);
 }
 
+static char *get_salt_from_seclabel(const char *seclabel)
+{
+  char *salt = seclabel_token(seclabel, 1);
+  if (salt == NULL)
+    return NULL;
+
+  /* Truncate the salt to 32-bytes (hex encoded). */
+  if (strlen(salt) > 64)
+    salt[64] = 0;
+
+  hex_decode(salt, strlen(salt), salt);
+  salt[strlen(salt) / 2] = 0;
+  return salt;
+}
+
+char *get_salt_for_relation(Oid relation_oid)
+{
+  ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
+  return get_salt_from_seclabel(GetSecurityLabel(&relation_object, PROVIDER_TAG));
+}
+
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)
 {
   ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = attnum};
@@ -126,6 +167,12 @@ static void verify_pg_features(Oid relation_id)
     FAILWITH("Anonymization over tables using inheritance is not supported.");
 }
 
+static void verify_salt_suffix(const char *seclabel)
+{
+  if (get_salt_from_seclabel(seclabel) == NULL)
+    FAILWITH("Expected format for relations security label: 'sensitive:<hex-encoded-salt>'");
+}
+
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
 {
   if (!superuser())
@@ -137,7 +184,10 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
     if (is_sensitive_label(seclabel))
+    {
       verify_pg_features(object->objectId);
+      verify_salt_suffix(seclabel);
+    }
 
     if (object->classId == RelationRelationId && object->objectSubId == 0)
       return;

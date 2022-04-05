@@ -41,7 +41,8 @@ static seed_t contributors_seed(const Contributor *contributors, int count)
 static void determine_outlier_top_counts(
     uint64 total_count,
     const Contributors *top_contributors,
-    CountResult *result)
+    CountResult *result,
+    const char *salt)
 {
   /* Compact flattening intervals */
   int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
@@ -74,13 +75,13 @@ static void determine_outlier_top_counts(
       top_contributors->members, compact_outlier_count_max + compact_top_count_max);
 
   result->noisy_outlier_count = generate_uniform_noise(
-      flattening_seed, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
+      flattening_seed, salt, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
   result->noisy_top_count = generate_uniform_noise(
-      flattening_seed, "top", g_config.top_count_min, compact_top_count_max);
+      flattening_seed, salt, "top", g_config.top_count_min, compact_top_count_max);
 }
 
 CountResult aggregate_count_contributions(
-    seed_t bucket_seed, seed_t aid_seed,
+    seed_t bucket_seed, seed_t aid_seed, const char *salt,
     uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
     const Contributors *top_contributors)
 {
@@ -95,7 +96,7 @@ CountResult aggregate_count_contributions(
     return result;
   }
 
-  determine_outlier_top_counts(distinct_contributors, top_contributors, &result);
+  determine_outlier_top_counts(distinct_contributors, top_contributors, &result, salt);
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
@@ -121,16 +122,17 @@ CountResult aggregate_count_contributions(
   double noise_scale = Max(average, 0.5 * top_average);
   result.noise_sd = g_config.noise_layer_sd * noise_scale;
   seed_t noise_layers[] = {bucket_seed, aid_seed};
-  result.noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), "noise", result.noise_sd);
+  result.noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), salt, "noise", result.noise_sd);
 
   return result;
 }
 
-static CountResult count_calculate_result(seed_t bucket_seed, const ContributionTrackerState *tracker)
+static CountResult count_calculate_result(seed_t bucket_seed, const char *salt, const ContributionTrackerState *tracker)
 {
   return aggregate_count_contributions(
       bucket_seed,
       tracker->aid_seed,
+      salt,
       tracker->overall_contribution.integer,
       tracker->distinct_contributors,
       tracker->unaccounted_for,
@@ -219,7 +221,7 @@ static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDesc
   foreach (cell, state->contribution_trackers)
   {
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
-    CountResult result = count_calculate_result(bucket_seed, contribution_tracker);
+    CountResult result = count_calculate_result(bucket_seed, bucket_desc->anon_context->salt, contribution_tracker);
 
     if (result.not_enough_aid_values)
       return Int64GetDatum(min_count);

@@ -35,6 +35,11 @@ extern AccessLevel get_session_access_level(void);
 extern bool is_sensitive_relation(Oid relation_oid);
 
 /*
+ * Returns the salt for a sensitive relation.
+ */
+char *get_salt_for_relation(Oid relation_oid);
+
+/*
  * Returns true if the column has been labeled as an AID, false otherwise.
  */
 extern bool is_aid_column(Oid relation_oid, AttrNumber attnum);
