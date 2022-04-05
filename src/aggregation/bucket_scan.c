@@ -317,7 +317,7 @@ static void run_hooks(BucketScanState *bucket_state)
 
   if (star_bucket != NULL)
   {
-    list_nth_cell(bucket_state->buckets, 0)->ptr_value = star_bucket;
+    list_head(bucket_state->buckets)->ptr_value = star_bucket;
     bucket_state->next_bucket_index = 0; /* Include star bucket in output. */
   }
 }
