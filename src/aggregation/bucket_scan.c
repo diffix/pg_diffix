@@ -84,6 +84,12 @@ typedef struct BucketScanState
   bool input_done;               /* Is the list of buckets populated? */
 } BucketScanState;
 
+static inline bool has_star_bucket(BucketScanState *bucket_state)
+{
+  Assert(bucket_state->buckets != NIL);
+  return linitial(bucket_state->buckets) != NULL;
+}
+
 /* Memory context of currently executing BucketScan node. */
 MemoryContext g_current_bucket_context = NULL;
 
@@ -207,8 +213,8 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   Assert(outerPlan(plan) != NULL);
   Assert(innerPlan(plan) == NULL);
 
-  if (eflags & (EXEC_FLAG_REWIND | EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK))
-    FAILWITH("Cannot REWIND, BACKWARD, or MARK/RESTORE a BucketScan.");
+  if (eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK))
+    FAILWITH("Cannot BACKWARD or MARK/RESTORE a BucketScan.");
 
   bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
@@ -432,7 +438,29 @@ static void bucket_end_scan(CustomScanState *css)
 
 static void bucket_rescan(CustomScanState *css)
 {
-  FAILWITH("Rescan not supported for BucketScan.");
+  BucketScanState *bucket_state = (BucketScanState *)css;
+  PlanState *outer_plan = outerPlanState(css);
+
+  /* Buckets not materialized yet, nothing to do. */
+  if (!bucket_state->input_done)
+    return;
+
+  if (outer_plan->chgParam != NULL)
+  {
+    /* We are forced to re-scan input. */
+    MemoryContextReset(bucket_state->bucket_context); /* Frees all existing buckets. */
+    bucket_state->buckets = NIL;
+    bucket_state->next_bucket_index = 1;
+    bucket_state->repeat_previous_bucket = 0;
+    bucket_state->input_done = false;
+    /* Child plan will be re-scanned by first ExecProcNode, so no need to do it here. */
+  }
+  else
+  {
+    /* Re-scan existing buckets. */
+    bucket_state->next_bucket_index = has_star_bucket(bucket_state) ? 0 : 1;
+    bucket_state->repeat_previous_bucket = 0;
+  }
 }
 
 static void bucket_explain_scan(CustomScanState *node, List *ancestors, ExplainState *es)
@@ -685,6 +713,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
   Plan *plan = &bucket_scan->scan.plan;
   bucket_scan->methods = &BucketScanScanMethods;
+  bucket_scan->flags = 0; /* No support for BACKWARD or MARK/RESTORE. */
 
   /* Attach data to plan. */
   BucketScanData *plan_data = (BucketScanData *)newNode(sizeof(BucketScanData), T_ExtensibleNode);

@@ -161,6 +161,17 @@ FROM (
      0 |     0 |     0
 (1 row)
 
+WITH c AS (SELECT city FROM empty_test_customers) SELECT * FROM c;
+ city 
+------
+(0 rows)
+
+SELECT (SELECT city FROM empty_test_customers);
+ city 
+------
+ 
+(1 row)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -296,6 +307,35 @@ SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_customers GROUP BY 1
 ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
 LINE 1: SELECT substring(cast(id AS varchar), 1, 1) FROM empty_test_...
                ^
+-- Invalid subqueries are rejected.
+SELECT * FROM (SELECT length(city) FROM empty_test_customers) x;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT * FROM (SELECT length(city) FROM empty_test_customers...
+                              ^
+SELECT EXISTS (SELECT length(city) FROM empty_test_customers);
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT EXISTS (SELECT length(city) FROM empty_test_customers...
+                              ^
+SELECT 1 WHERE EXISTS (SELECT length(city) FROM empty_test_customers);
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT 1 WHERE EXISTS (SELECT length(city) FROM empty_test_c...
+                                      ^
+SELECT 1 UNION SELECT length(city) FROM empty_test_customers;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT 1 UNION SELECT length(city) FROM empty_test_customers...
+                              ^
+SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM empty_test_customers) t2;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM empty...
+                                             ^
+WITH c AS (SELECT length(city) FROM empty_test_customers) SELECT * FROM c;
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: WITH c AS (SELECT length(city) FROM empty_test_customers) SE...
+                          ^
+SELECT (SELECT length(city) FROM empty_test_customers);
+ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+LINE 1: SELECT (SELECT length(city) FROM empty_test_customers);
+                       ^
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
