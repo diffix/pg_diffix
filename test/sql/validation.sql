@@ -121,6 +121,8 @@ FROM (
   FROM ( SELECT * FROM test_validation ) y
 ) x;
 
+SELECT * FROM (SELECT name FROM test_validation) x, (SELECT city FROM test_validation) y;
+
 WITH c AS (SELECT city FROM test_validation) SELECT * FROM c;
 
 SELECT (SELECT city FROM test_validation);
@@ -210,10 +212,6 @@ SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM test_validation) t2;
 WITH c AS (SELECT length(city) FROM test_validation) SELECT * FROM c;
 SELECT (SELECT length(city) FROM test_validation);
 
--- Get rejected because of disallowed utility statement
-COPY test_customers TO STDOUT;
-ALTER TABLE test_validation DROP COLUMN id;
-
 -- Get rejected because of accessing pg_catalog tables with sensitive stats
 SELECT * FROM pg_stats;
 SELECT * FROM pg_statistic;
@@ -232,19 +230,6 @@ SELECT count(ctid) FROM test_validation;
 SELECT count(tableoid) FROM test_validation;
 SELECT count(distinct ctid) FROM test_validation;
 SELECT count(distinct tableoid) FROM test_validation;
-
--- EXPLAIN is censored
-EXPLAIN SELECT city FROM test_customers LIMIT 4;
-EXPLAIN (COSTS false) SELECT city FROM test_customers LIMIT 4;
-
--- EXPLAIN is blocked
-EXPLAIN ANALYZE SELECT city FROM test_customers LIMIT 4;
-EXPLAIN (COSTS) SELECT city FROM test_customers LIMIT 4;
-EXPLAIN (VERBOSE) SELECT city FROM test_customers LIMIT 4;
-
--- EXPLAIN is left intact for non-anonymizing queries
-EXPLAIN SELECT name FROM test_products LIMIT 4;
-EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test_products LIMIT 4;
 
 
 ----------------------------------------------------------------
