@@ -72,7 +72,7 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
   return true;
 }
 
-// `check_hook`s for intervals only issue warnings, so they only make sense in interactive mode
+/* `check_hook`s for intervals only issue warnings, so they only make sense in interactive mode. */
 static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource source)
 {
   if (source >= PGC_S_INTERACTIVE && *newval > g_config.outlier_count_max)
