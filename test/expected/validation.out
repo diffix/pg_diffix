@@ -185,6 +185,11 @@ FROM (
      0 |     0 |     0
 (1 row)
 
+SELECT * FROM (SELECT name FROM test_validation) x, (SELECT city FROM test_validation) y;
+ name | city 
+------+------
+(0 rows)
+
 WITH c AS (SELECT city FROM test_validation) SELECT * FROM c;
  city 
 ------

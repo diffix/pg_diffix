@@ -121,6 +121,8 @@ FROM (
   FROM ( SELECT * FROM test_validation ) y
 ) x;
 
+SELECT * FROM (SELECT name FROM test_validation) x, (SELECT city FROM test_validation) y;
+
 WITH c AS (SELECT city FROM test_validation) SELECT * FROM c;
 
 SELECT (SELECT city FROM test_validation);
