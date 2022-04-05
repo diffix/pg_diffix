@@ -23,10 +23,6 @@ INSERT INTO test_patients VALUES
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT, discount REAL);
 -- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
 CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
-CREATE TABLE empty_test_times (cid INTEGER PRIMARY key, birthday DATE, lunchtime TIME, last_seen TIMESTAMP);
-CREATE TABLE superclass (x INTEGER);
-CREATE TABLE subclass (x INTEGER, y INTEGER);
-INSERT INTO subclass VALUES (1, 2);
 -- Config tables.
 SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
@@ -39,24 +35,6 @@ SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive:6469666
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE empty_test_times IS 'sensitive:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_times.cid IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN superclass.x IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
-ALTER TABLE subclass INHERIT superclass;
--- No-op. Repeated to test the error on conflicting or invalid configuration
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive:646966666978';
-ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive:646966666978';
-ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
-ERROR:  [PG_DIFFIX] Expected format for relations security label: 'sensitive:<hex-encoded-salt>'
-SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive:';
-ERROR:  [PG_DIFFIX] Expected format for relations security label: 'sensitive:<hex-encoded-salt>'
-SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive:x';
-ERROR:  invalid hexadecimal digit: "x"
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$
 BEGIN
