@@ -9,8 +9,6 @@
 /* Security labels type definitions */
 #include "catalog/pg_authid.h"
 #include "catalog/pg_class.h"
-#include "catalog/pg_database.h"
-#include "catalog/pg_namespace.h"
 #include "commands/seclabel.h"
 
 #include "pg_diffix/auth.h"
@@ -88,22 +86,10 @@ AccessLevel get_session_access_level(void)
   return (AccessLevel)g_config.session_access_level;
 }
 
-bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
+bool is_sensitive_relation(Oid relation_oid)
 {
   ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
-
-  if (seclabel == NULL)
-  {
-    ObjectAddress namespace_object = {.classId = NamespaceRelationId, .objectId = namespace_oid, .objectSubId = 0};
-    seclabel = GetSecurityLabel(&namespace_object, PROVIDER_TAG);
-
-    if (seclabel == NULL)
-    {
-      ObjectAddress database_object = {.classId = DatabaseRelationId, .objectId = MyDatabaseId, .objectSubId = 0};
-      seclabel = GetSecurityLabel(&database_object, PROVIDER_TAG);
-    }
-  }
 
   if (seclabel == NULL)
     return false;
@@ -150,13 +136,10 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
-    if (is_sensitive_label(seclabel) && object->classId == RelationRelationId && object->objectSubId == 0)
+    if (is_sensitive_label(seclabel))
       verify_pg_features(object->objectId);
 
-    if ((object->classId == DatabaseRelationId ||
-         object->classId == NamespaceRelationId ||
-         object->classId == RelationRelationId) &&
-        object->objectSubId == 0)
+    if (object->classId == RelationRelationId && object->objectSubId == 0)
       return;
 
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
