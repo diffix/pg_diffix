@@ -255,7 +255,7 @@ typedef struct DatumSetEntry
 #define SH_KEY value
 #define SH_KEY_TYPE Datum
 #define SH_EQUAL(tb, a, b) (a == b)
-#define SH_HASH_KEY(tb, key) ((uint32)key)
+#define SH_HASH_KEY(tb, key) (uint32) hash_bytes(&key, sizeof(Datum))
 #define SH_SCOPE static inline
 #define SH_DECLARE
 #define SH_DEFINE
