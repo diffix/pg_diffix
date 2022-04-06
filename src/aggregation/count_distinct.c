@@ -227,24 +227,24 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
   }
 }
 
-static void delete_value(List *per_aid_values, Datum value)
+static void *list_pop_back(List **list)
 {
-  ListCell *cell;
-  foreach (cell, per_aid_values)
-  {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
-    /* Since values are unique at this point, we can use simple pointer equality even for reference types. */
-    entry->values = list_delete_ptr(entry->values, (void *)value);
-  }
+  if (*list == NIL)
+    return NULL;
+
+  void *value = lfirst(list_tail(*list));
+  *list = list_delete_last(*list);
+  return value;
 }
 
 /*
  * Builds the top contributors array from the list of per-AID low-count values.
  * From each AID value in turn, in increasing order of contributions amount, a unique value
- * is counted and removed from all other entries, until all distinct values are exhausted.
+ * is counted and marked as "used", until all distinct values are exhausted.
  */
 static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 {
+  List *used_values = NIL;
   while (values_count > 0)
   {
     ListCell *cell;
@@ -253,12 +253,19 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
       PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
       if (entry->values != NIL)
       {
-        values_count--;
-        delete_value(per_aid_values, (Datum)lfirst(list_tail(entry->values)));
-        entry->contributions++;
+        void *value_tu_use = list_pop_back(&entry->values);
+        while (entry->values != NIL && list_member_ptr(used_values, value_tu_use))
+          value_tu_use = list_pop_back(&entry->values);
+        if (!list_member_ptr(used_values, value_tu_use))
+        {
+          values_count--;
+          used_values = lappend(used_values, value_tu_use);
+          entry->contributions++;
+        }
       }
     }
   }
+  list_free(used_values);
 }
 
 /* Computes the aid seed, total count of contributors and fills the top contributors array. */
