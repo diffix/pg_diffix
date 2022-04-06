@@ -69,8 +69,6 @@ void verify_explain_options(ExplainStmt *explain)
       FAILWITH("COSTS option is not allowed for queries involving sensitive tables");
     if (option_matches(option, "analyze", true))
       FAILWITH("EXPLAIN ANALYZE is not allowed for queries involving sensitive tables");
-    if (option_matches(option, "verbose", true))
-      FAILWITH("EXPLAIN VERBOSE is not currently supported.");
   }
 }
 
