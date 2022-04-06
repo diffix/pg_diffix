@@ -9,8 +9,6 @@ typedef struct DiffixConfig
   int default_access_level;
   int session_access_level;
 
-  char *salt;
-
   double noise_layer_sd;
 
   int low_count_min_threshold;
