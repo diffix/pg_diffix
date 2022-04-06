@@ -30,7 +30,6 @@ static char *config_to_string(DiffixConfig *config)
 
   appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
   appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
-  appendStringInfo(&string, " :salt \"%s\"", config->salt);
   appendStringInfo(&string, " :noise_layer_sd %f", config->noise_layer_sd);
   appendStringInfo(&string, " :low_count_min_threshold %i", config->low_count_min_threshold);
   appendStringInfo(&string, " :low_count_mean_gap %f", config->low_count_mean_gap);
