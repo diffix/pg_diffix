@@ -67,7 +67,7 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
       return false;
 
     Oid namespace_oid = get_rel_namespace(rte->relid);
-    if (is_sensitive_relation(rte->relid, namespace_oid))
+    if (is_sensitive_relation(rte->relid))
     {
       SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, namespace_oid);
       *relations = lappend(*relations, rel_data);

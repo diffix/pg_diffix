@@ -5,7 +5,7 @@ CREATE TABLE test_stress AS (
     i AS id, left(md5(random()::text), 4) AS t, (random() * 10.0)::real AS r, round(random() * 1000)::integer AS i
   FROM generate_series(1, 50000) series(i)
 );
-SECURITY LABEL FOR pg_diffix ON TABLE test_stress IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE test_stress IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_stress.id IS 'aid';
 -- Prepare test session.
 SET pg_diffix.noise_layer_sd = 0;

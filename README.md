@@ -139,21 +139,20 @@ To remove an anonymization label from an object, set it to `NULL`.
 
 Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
 
-Tables, schemas and databases can be labeled as `public` or `sensitive`. Direct access is allowed to public data
-even for restricted users.
+Tables can be labeled as `public` or `sensitive`. Direct access is allowed to public data even for restricted users.
+If a table is unlabeled, its data is presumed to be public.
 
-If a table targeted by a query is unlabeled, its schema label is checked. If the schema is also unlabeled, the
-database label is checked. If no label was found during this process, the table's data is presumed to be public.
-This provides the necessary flexibility to implement various data access policies.
+When a table is labeled as `sensitive`, salt (secret value that influences noise generation) must be provided using the
+following format: `sensitive:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
+32 bytes of **salt** can be given and it is recommended for the salt to have at least 16 cryptographically strong random
+bytes.
 
 ```sql
-SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'sensitive';
-SECURITY LABEL FOR pg_diffix ON SCHEMA my_schema IS 'sensitive';
-SECURITY LABEL FOR pg_diffix ON TABLE my_schema.table IS 'public';
+SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'sensitive:d1ff1c5'
 ```
 
 Anonymization ID (AID) columns for a sensitive table have to be marked with the anonymization label `aid`. A sensitive
-table can have zero, one or more AID columns.
+table can have one or more AID columns.
 
 ```SQL
 SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';
@@ -198,9 +197,6 @@ Execute `SELECT * FROM diffix.show_settings();` to display the current settings 
 level for the current user; can be changed by all users; defaults to maximum access level allowed.
 
 #### Noise settings
-
-`pg_diffix.salt` - Secret value that influences noise generation; needs to be set by the system administrator in
-the configuration file; can't be read by regular users.
 
 `pg_diffix.noise_layer_sd` - Standard deviation for each noise layer added to aggregates. Default value is 1.0.
 

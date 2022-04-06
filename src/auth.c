@@ -9,8 +9,6 @@
 /* Security labels type definitions */
 #include "catalog/pg_authid.h"
 #include "catalog/pg_class.h"
-#include "catalog/pg_database.h"
-#include "catalog/pg_namespace.h"
 #include "commands/seclabel.h"
 
 #include "pg_diffix/auth.h"
@@ -26,9 +24,32 @@ void auth_init(void)
   register_label_provider(PROVIDER_TAG, object_relabel);
 }
 
+/*
+ * Returns the nth token from a seclabel formatted like `token_0:token_1:token_2:...:token_n:...`. The input seclabel is
+ * not modified. The returned `token` is palloc'ed. If there is no nth token, NULL is returned.
+ */
+static inline char *seclabel_token(const char *str, int n)
+{
+  if (str == NULL)
+    return NULL;
+
+  char *token = palloc(sizeof(char) * (strlen(str) + 1));
+  strcpy(token, str);
+  char *saveptr;
+  token = __strtok_r(token, ":", &saveptr);
+  for (int i = 0; i < n; i++)
+  {
+    token = __strtok_r(NULL, ":", &saveptr);
+  }
+  return token;
+}
+
 static inline bool is_sensitive_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "sensitive") == 0;
+  char *label = seclabel_token(seclabel, 0);
+  bool result = strcasecmp(label, "sensitive") == 0;
+  pfree(label);
+  return result;
 }
 
 static inline bool is_public_label(const char *seclabel)
@@ -88,22 +109,10 @@ AccessLevel get_session_access_level(void)
   return (AccessLevel)g_config.session_access_level;
 }
 
-bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
+bool is_sensitive_relation(Oid relation_oid)
 {
   ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
-
-  if (seclabel == NULL)
-  {
-    ObjectAddress namespace_object = {.classId = NamespaceRelationId, .objectId = namespace_oid, .objectSubId = 0};
-    seclabel = GetSecurityLabel(&namespace_object, PROVIDER_TAG);
-
-    if (seclabel == NULL)
-    {
-      ObjectAddress database_object = {.classId = DatabaseRelationId, .objectId = MyDatabaseId, .objectSubId = 0};
-      seclabel = GetSecurityLabel(&database_object, PROVIDER_TAG);
-    }
-  }
 
   if (seclabel == NULL)
     return false;
@@ -113,6 +122,27 @@ bool is_sensitive_relation(Oid relation_oid, Oid namespace_oid)
     return false;
   else
     FAIL_ON_INVALID_LABEL(seclabel);
+}
+
+static char *get_salt_from_seclabel(const char *seclabel)
+{
+  char *salt = seclabel_token(seclabel, 1);
+  if (salt == NULL)
+    return NULL;
+
+  /* Truncate the salt to 32-bytes (hex encoded). */
+  if (strlen(salt) > 64)
+    salt[64] = 0;
+
+  hex_decode(salt, strlen(salt), salt);
+  salt[strlen(salt) / 2] = 0;
+  return salt;
+}
+
+char *get_salt_for_relation(Oid relation_oid)
+{
+  ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
+  return get_salt_from_seclabel(GetSecurityLabel(&relation_object, PROVIDER_TAG));
 }
 
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)
@@ -140,6 +170,12 @@ static void verify_pg_features(Oid relation_id)
     FAILWITH("Anonymization over tables using inheritance is not supported.");
 }
 
+static void verify_salt_suffix(const char *seclabel)
+{
+  if (get_salt_from_seclabel(seclabel) == NULL)
+    FAILWITH("Expected format for relations security label: 'sensitive:<hex-encoded-salt>'");
+}
+
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
 {
   if (!superuser())
@@ -150,13 +186,13 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
   if (is_sensitive_label(seclabel) || is_public_label(seclabel))
   {
-    if (is_sensitive_label(seclabel) && object->classId == RelationRelationId && object->objectSubId == 0)
+    if (is_sensitive_label(seclabel))
+    {
       verify_pg_features(object->objectId);
+      verify_salt_suffix(seclabel);
+    }
 
-    if ((object->classId == DatabaseRelationId ||
-         object->classId == NamespaceRelationId ||
-         object->classId == RelationRelationId) &&
-        object->objectSubId == 0)
+    if (object->classId == RelationRelationId && object->objectSubId == 0)
       return;
 
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);

@@ -31,16 +31,16 @@ CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT,
 CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
 
 -- Config tables.
-SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE test_purchases IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE test_purchases IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive';
+SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'sensitive:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output

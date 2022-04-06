@@ -139,18 +139,6 @@ void config_init(void)
       NULL,                                /* assign_hook */
       NULL);                               /* show_hook */
 
-  DefineCustomStringVariable(
-      "pg_diffix.salt",                              /* name */
-      "Secret value used for seeding noise layers.", /* short_desc */
-      NULL,                                          /* long_desc */
-      &g_config.salt,                                /* valueAddr */
-      "diffix",                                      /* bootValue */
-      PGC_SUSET,                                     /* context */
-      GUC_SUPERUSER_ONLY,                            /* flags */
-      NULL,                                          /* check_hook */
-      NULL,                                          /* assign_hook */
-      NULL);                                         /* show_hook */
-
   DefineCustomRealVariable(
       "pg_diffix.noise_layer_sd",                                     /* name */
       "Standard deviation for each noise layer added to aggregates.", /* short_desc */
