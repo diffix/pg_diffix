@@ -38,6 +38,23 @@ BEGIN
   PERFORM count(*) FROM test_customers;
 END;
 $$;
+-- Order of labels and aggregates is respected
+SELECT city, count(*) FROM test_customers GROUP BY city;
+  city  | count 
+--------+-------
+ *      |     2
+ Rome   |     7
+ Berlin |    10
+(3 rows)
+
+SELECT count(*), city FROM test_customers GROUP BY city;
+ count |  city  
+-------+--------
+     2 | *
+     7 | Rome
+    10 | Berlin
+(3 rows)
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
@@ -69,8 +86,6 @@ EXPLAIN ANALYZE SELECT city FROM test_customers LIMIT 4;
 ERROR:  [PG_DIFFIX] EXPLAIN ANALYZE is not allowed for queries involving sensitive tables
 EXPLAIN (COSTS) SELECT city FROM test_customers LIMIT 4;
 ERROR:  [PG_DIFFIX] COSTS option is not allowed for queries involving sensitive tables
-EXPLAIN (VERBOSE) SELECT city FROM test_customers LIMIT 4;
-ERROR:  [PG_DIFFIX] EXPLAIN VERBOSE is not currently supported.
 -- EXPLAIN is left intact for non-anonymizing queries
 EXPLAIN SELECT name FROM test_products LIMIT 4;
                                QUERY PLAN                               
@@ -85,4 +100,16 @@ EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test
  Limit  (cost=0.00..0.07 rows=4 width=32) (actual rows=4 loops=1)
    ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=4 loops=1)
 (2 rows)
+
+-- EXPLAIN prints group/sort names
+EXPLAIN SELECT city FROM test_customers ORDER BY 1;
+                  QUERY PLAN                  
+----------------------------------------------
+ Sort
+   Sort Key: city
+   ->  Custom Scan (BucketScan)
+         ->  HashAggregate
+               Group Key: city
+               ->  Seq Scan on test_customers
+(6 rows)
 

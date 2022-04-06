@@ -34,6 +34,10 @@ BEGIN
 END;
 $$;
 
+-- Order of labels and aggregates is respected
+SELECT city, count(*) FROM test_customers GROUP BY city;
+SELECT count(*), city FROM test_customers GROUP BY city;
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ALTER TABLE test_customers DROP COLUMN id;
@@ -45,8 +49,10 @@ EXPLAIN (COSTS false) SELECT city FROM test_customers LIMIT 4;
 -- EXPLAIN is blocked
 EXPLAIN ANALYZE SELECT city FROM test_customers LIMIT 4;
 EXPLAIN (COSTS) SELECT city FROM test_customers LIMIT 4;
-EXPLAIN (VERBOSE) SELECT city FROM test_customers LIMIT 4;
 
 -- EXPLAIN is left intact for non-anonymizing queries
 EXPLAIN SELECT name FROM test_products LIMIT 4;
 EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test_products LIMIT 4;
+
+-- EXPLAIN prints group/sort names
+EXPLAIN SELECT city FROM test_customers ORDER BY 1;
