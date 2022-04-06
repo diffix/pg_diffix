@@ -232,7 +232,7 @@ static void *list_pop_back(List **list)
   if (*list == NIL)
     return NULL;
 
-  void *value = lfirst(list_tail(*list));
+  void *value = llast(*list);
   *list = list_delete_last(*list);
   return value;
 }
@@ -300,6 +300,7 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
       }
     }
   }
+  DatumSet_destroy(used_values);
 }
 
 /* Computes the aid seed, total count of contributors and fills the top contributors array. */
