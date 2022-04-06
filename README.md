@@ -139,8 +139,8 @@ To remove an anonymization label from an object, set it to `NULL`.
 
 Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
 
-Tables can be labeled as `public` or `sensitive`. Direct access is allowed to public data even for restricted users. If
-a table is unlabeled, its data is presumed to be public.
+Tables can be labeled as `public` or `sensitive`. Direct access is allowed to public data even for restricted users.
+If a table is unlabeled, its data is presumed to be public.
 
 When a table is labeled as `sensitive`, salt (secret value that influences noise generation) must be provided using the
 following format: `sensitive:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
@@ -152,7 +152,7 @@ SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'sensitive:d1ff1c5'
 ```
 
 Anonymization ID (AID) columns for a sensitive table have to be marked with the anonymization label `aid`. A sensitive
-table can one or more AID columns.
+table can have one or more AID columns.
 
 ```SQL
 SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';

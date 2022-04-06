@@ -302,7 +302,11 @@ typedef struct CountDistinctResult
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, seed_t bucket_seed, const char *salt, int64 min_count)
+static CountDistinctResult count_distinct_calculate_final(
+    CountDistinctState *state,
+    seed_t bucket_seed,
+    const char *salt,
+    int64 min_count)
 {
   int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);

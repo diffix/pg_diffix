@@ -830,7 +830,7 @@ static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode
   COPY_SCALAR_FIELD(anon_context.grouping_cols_count);
   COPY_SCALAR_FIELD(anon_context.sql_seed);
   COPY_SCALAR_FIELD(anon_context.expand_buckets);
-  int salt_size = strlen(src->anon_context.salt);
+  int salt_size = strlen(src->anon_context.salt) + 1;
   COPY_POINTER_FIELD(anon_context.salt, salt_size);
 }
 

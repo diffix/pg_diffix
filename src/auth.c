@@ -25,8 +25,8 @@ void auth_init(void)
 }
 
 /*
- * Get the (palloc-ed) n-th token from a ':'-delimited input seclabel (which is copied). If n-th token is not there,
- * NULL is returned. `n` is zero-based.
+ * Returns the nth token from a seclabel formatted like `token_0:token_1:token_2:...:token_n:...`. The input seclabel is
+ * not modified. The returned `token` is palloc'ed. If there is no nth token, NULL is returned.
  */
 static inline char *seclabel_token(const char *str, int n)
 {
@@ -46,7 +46,10 @@ static inline char *seclabel_token(const char *str, int n)
 
 static inline bool is_sensitive_label(const char *seclabel)
 {
-  return strcasecmp(seclabel_token(seclabel, 0), "sensitive") == 0;
+  char *label = seclabel_token(seclabel, 0);
+  bool result = strcasecmp(label, "sensitive") == 0;
+  pfree(label);
+  return result;
 }
 
 static inline bool is_public_label(const char *seclabel)
