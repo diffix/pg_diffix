@@ -179,32 +179,6 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
   bucket_state->bucket_desc = bucket_desc;
 }
 
-/*
- * Prepares scan tuple slot for storing labels and finalized aggregates.
- */
-static void init_scan_slot(BucketScanState *bucket_state, EState *estate)
-{
-  ScanState *scan_state = &bucket_state->css.ss;
-  BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
-  int num_atts = bucket_num_atts(bucket_desc);
-  TupleDesc scan_tupdesc = CreateTemplateTupleDesc(num_atts);
-
-  for (int i = 0; i < num_atts; i++)
-  {
-    BucketAttribute *att = &bucket_desc->attrs[i];
-    AttrNumber resno = 1 + i;
-    TupleDescInitEntry(scan_tupdesc, resno, att->resname, att->final_type, att->final_typmod, 0);
-    TupleDescInitEntryCollation(scan_tupdesc, resno, att->final_collid);
-  }
-
-  ExecInitScanTupleSlot(estate, scan_state, scan_tupdesc, &TTSOpsVirtual);
-
-  /* Mark slot as ready because we will always populate it before use. */
-  TupleTableSlot *scan_slot = scan_state->ss_ScanTupleSlot;
-  scan_slot->tts_flags &= ~TTS_FLAG_EMPTY;
-  scan_slot->tts_nvalid = num_atts;
-}
-
 static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 {
   BucketScanState *bucket_state = (BucketScanState *)css;
@@ -227,7 +201,6 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 
   /* Requires an initialized outerPlanState. */
   init_bucket_descriptor(bucket_state);
-  init_scan_slot(bucket_state, estate);
   css->ss.ps.ps_ExprContext->ecxt_scantuple = css->ss.ss_ScanTupleSlot;
 }
 
@@ -353,6 +326,10 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
   }
 
   MemoryContextSwitchTo(old_context);
+
+  /* Mark slot as ready. */
+  scan_slot->tts_flags &= ~TTS_FLAG_EMPTY;
+  scan_slot->tts_nvalid = num_atts;
 }
 
 static int64 scan_slot_get_int64(ExprContext *econtext, int index)
@@ -374,19 +351,28 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
     run_hooks(bucket_state);
   }
 
+  /*
+   * If we have queries where labels are followed by aggregates in matching order,
+   * for example `SELECT city, count(*) FROM customers GROUP BY city`,
+   * then CustomScan drops the redundant projection info and we have to return
+   * scan tuples directly.
+   */
+  ProjectionInfo *proj_info = css->ss.ps.ps_ProjInfo;
+
   /* Expand previously emitted bucket. */
   if (bucket_state->repeat_previous_bucket > 0)
   {
     CHECK_FOR_INTERRUPTS();
     bucket_state->repeat_previous_bucket--;
-    return bucket_state->css.ss.ps.ps_ResultTupleSlot;
+    return proj_info
+               ? bucket_state->css.ss.ps.ps_ResultTupleSlot
+               : bucket_state->css.ss.ss_ScanTupleSlot;
   }
 
   BucketScan *plan = (BucketScan *)bucket_state->css.ss.ps.plan;
   BucketScanData *plan_data = get_plan_data(plan);
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
   ExprContext *econtext = css->ss.ps.ps_ExprContext;
-  ProjectionInfo *proj_info = css->ss.ps.ps_ProjInfo;
   ExprState *qual = css->ss.ps.qual;
 
   List *buckets = bucket_state->buckets;
@@ -420,7 +406,7 @@ static TupleTableSlot *bucket_exec_scan(CustomScanState *css)
           continue;
       }
 
-      return ExecProject(proj_info);
+      return proj_info ? ExecProject(proj_info) : econtext->ecxt_scantuple;
     }
   }
 }
@@ -702,6 +688,31 @@ static int find_agg_index(List *tlist, Oid fnoid)
   return -1;
 }
 
+static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
+{
+  int num_atts = num_labels + num_aggs;
+  List *scan_tlist = NIL;
+
+  for (int i = 0; i < num_atts; i++)
+  {
+    TargetEntry *agg_tle = list_nth_node(TargetEntry, flat_agg_tlist, i);
+    Var *var = makeVarFromTargetEntry(OUTER_VAR, agg_tle);
+
+    if (i >= num_labels)
+    {
+      /* If it's an anonymized aggregate, store final type. */
+      const AnonAggFuncs *agg_funcs = find_agg_funcs(castNode(Aggref, agg_tle->expr)->aggfnoid);
+      if (agg_funcs != NULL)
+        agg_funcs->final_type(&var->vartype, &var->vartypmod, &var->varcollid);
+    }
+
+    TargetEntry *scan_tle = makeTargetEntry((Expr *)var, i + 1, agg_tle->resname, false);
+    scan_tlist = lappend(scan_tlist, scan_tle);
+  }
+
+  return scan_tlist;
+}
+
 extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
 
 Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
@@ -733,9 +744,10 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   agg->plan.qual = NIL;
 
   /* Rest of data after flattening agg tlist. */
-  plan_data->num_aggs = list_length(flat_agg_tlist) - num_labels;
+  int num_aggs = plan_data->num_aggs = list_length(flat_agg_tlist) - num_labels;
   plan_data->low_count_index = find_agg_index(flat_agg_tlist, g_oid_cache.low_count);
   plan_data->count_star_index = find_agg_index(flat_agg_tlist, g_oid_cache.anon_count_star);
+  bucket_scan->custom_scan_tlist = make_scan_tlist(flat_agg_tlist, num_labels, num_aggs);
 
   if (anon_context->expand_buckets && plan_data->count_star_index == -1)
     FAILWITH("Cannot expand buckets with no anonymized COUNT(*) in scope.");

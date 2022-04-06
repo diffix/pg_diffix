@@ -86,3 +86,15 @@ EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test
    ->  Seq Scan on test_products  (cost=0.00..22.00 rows=1200 width=32) (actual rows=4 loops=1)
 (2 rows)
 
+-- EXPLAIN prints group/sort names
+EXPLAIN SELECT city FROM test_customers ORDER BY 1;
+                  QUERY PLAN                  
+----------------------------------------------
+ Sort
+   Sort Key: city
+   ->  Custom Scan (BucketScan)
+         ->  HashAggregate
+               Group Key: city
+               ->  Seq Scan on test_customers
+(6 rows)
+
