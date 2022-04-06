@@ -227,24 +227,59 @@ static int compare_per_aid_values_entries(const ListCell *a, const ListCell *b)
   }
 }
 
-static void delete_value(List *per_aid_values, Datum value)
+static void *list_pop_back(List **list)
 {
-  ListCell *cell;
-  foreach (cell, per_aid_values)
-  {
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
-    /* Since values are unique at this point, we can use simple pointer equality even for reference types. */
-    entry->values = list_delete_ptr(entry->values, (void *)value);
-  }
+  if (*list == NIL)
+    return NULL;
+
+  void *value = llast(*list);
+  *list = list_delete_last(*list);
+  return value;
+}
+
+/*
+ * Used to leverage `simplehash.h` as a simple HashSet<Datum>.
+ */
+typedef struct DatumSetEntry
+{
+  Datum value; /* Unique value */
+  char status; /* Required for hash table */
+} DatumSetEntry;
+
+/*
+ * Declarations for HashTable<Datum, DatumSetEntry>>
+ * Since values held here are unique at this point, we can use simple pointer equality even for reference types.
+ */
+#define SH_PREFIX DatumSet
+#define SH_ELEMENT_TYPE DatumSetEntry
+#define SH_KEY value
+#define SH_KEY_TYPE Datum
+#define SH_EQUAL(tb, a, b) (a == b)
+#define SH_HASH_KEY(tb, key) (uint32) hash_bytes(&key, sizeof(Datum))
+#define SH_SCOPE static inline
+#define SH_DECLARE
+#define SH_DEFINE
+#include "lib/simplehash.h"
+
+static inline bool is_marked_as_used(DatumSet_hash *used_values, Datum value)
+{
+  return DatumSet_lookup(used_values, value) != NULL;
+}
+
+static inline void mark_as_used(DatumSet_hash *used_values, Datum value)
+{
+  bool found = false;
+  DatumSet_insert(used_values, value, &found);
 }
 
 /*
  * Builds the top contributors array from the list of per-AID low-count values.
  * From each AID value in turn, in increasing order of contributions amount, a unique value
- * is counted and removed from all other entries, until all distinct values are exhausted.
+ * is counted and marked as "used", until all distinct values are exhausted.
  */
 static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 {
+  DatumSet_hash *used_values = DatumSet_create(CurrentMemoryContext, values_count, NULL);
   while (values_count > 0)
   {
     ListCell *cell;
@@ -253,12 +288,19 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
       PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
       if (entry->values != NIL)
       {
-        values_count--;
-        delete_value(per_aid_values, (Datum)lfirst(list_tail(entry->values)));
-        entry->contributions++;
+        Datum value = (Datum)list_pop_back(&entry->values);
+        while (entry->values != NIL && is_marked_as_used(used_values, value))
+          value = (Datum)list_pop_back(&entry->values);
+        if (!is_marked_as_used(used_values, value))
+        {
+          values_count--;
+          mark_as_used(used_values, value);
+          entry->contributions++;
+        }
       }
     }
   }
+  DatumSet_destroy(used_values);
 }
 
 /* Computes the aid seed, total count of contributors and fills the top contributors array. */
