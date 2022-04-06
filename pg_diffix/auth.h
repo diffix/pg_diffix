@@ -9,7 +9,8 @@ typedef enum AccessLevel
 {
   ACCESS_DIRECT,           /* No protection - access to raw data. */
   ACCESS_PUBLISH_TRUSTED,  /* Publish access level, trusted analyst; protects against accidental re-identification. */
-  ACCESS_PUBLISH_UNTRUSTED /* Publish access level, untrusted analyst; protects against intentional re-identification. */
+  ACCESS_PUBLISH_UNTRUSTED /* Publish access level, untrusted analyst; protects against intentional re-identification.
+                            */
 } AccessLevel;
 
 /* Returns true if the first access level is higher privilege than the second one. */

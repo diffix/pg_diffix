@@ -68,11 +68,9 @@ static inline uint32 subset_hash(SiblingsTrackerData *data, BucketRef bucket)
     if (i == skipped_column)
       continue;
 
-    uint32 label_hash = bucket->is_null[i]
-                            ? 0
-                            : (uint32)hash_datum(bucket->values[i],
-                                                 bucket_desc->attrs[i].typ_byval,
-                                                 bucket_desc->attrs[i].typ_len);
+    uint32 label_hash = bucket->is_null[i] ? 0
+                                           : (uint32)hash_datum(bucket->values[i], bucket_desc->attrs[i].typ_byval,
+                                                                bucket_desc->attrs[i].typ_len);
     hash ^= label_hash;
   }
 
@@ -137,7 +135,8 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   if (num_labels <= 2)
     return;
 
-  MemoryContext led_context = AllocSetContextCreate(bucket_desc->bucket_context, "led_hook context", ALLOCSET_DEFAULT_SIZES);
+  MemoryContext led_context =
+      AllocSetContextCreate(bucket_desc->bucket_context, "led_hook context", ALLOCSET_DEFAULT_SIZES);
   MemoryContext temp_context = AllocSetContextCreate(led_context, "led_hook temporary context", ALLOCSET_DEFAULT_SIZES);
 
   MemoryContext old_context = MemoryContextSwitchTo(temp_context);
@@ -161,9 +160,8 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
    * if we have 3 columns (c), then for each bucket (b) we have:
    * [ b0c0, b0c1, b0c2, b1c0, b1c1, b1c2, b2c0 ... ]
    */
-  BucketSiblings **bucket_siblings = MemoryContextAllocZero(
-      led_context,
-      num_buckets * num_labels * sizeof(BucketSiblings *));
+  BucketSiblings **bucket_siblings =
+      MemoryContextAllocZero(led_context, num_buckets * num_labels * sizeof(BucketSiblings *));
 
   /* Fill hash table & associate siblings. Skip star bucket (bucket #0). */
   for (int bucket_idx = 1; bucket_idx < num_buckets; bucket_idx++)
@@ -219,9 +217,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
          * Single sibling (self+other). Find it and check if it's high count.
          * A column with a single high-count sibling is an isolating column.
          */
-        BucketRef other_bucket = (siblings->values[0] == bucket)
-                                     ? (siblings->values[1])
-                                     : (siblings->values[0]);
+        BucketRef other_bucket = (siblings->values[0] == bucket) ? (siblings->values[1]) : (siblings->values[0]);
         if (!other_bucket->low_count)
           merge_targets[isolating_columns++] = other_bucket;
       }

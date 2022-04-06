@@ -59,7 +59,8 @@ static AnonQueryLinks *prepare_query(Query *query)
     return NULL;
 
   /* At this point we have an anonymizing query. */
-  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(),
+            nodeToString(query));
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
@@ -77,11 +78,8 @@ static AnonQueryLinks *prepare_query(Query *query)
   return links;
 }
 
-static PlannedStmt *pg_diffix_planner(
-    Query *query,
-    const char *query_string,
-    int cursorOptions,
-    ParamListInfo boundParams)
+static PlannedStmt *pg_diffix_planner(Query *query, const char *query_string, int cursorOptions,
+                                      ParamListInfo boundParams)
 {
   static uint64 next_query_id = 1;
   query->queryId = next_query_id++;
@@ -132,12 +130,9 @@ static void prepare_utility(PlannedStmt *pstmt)
 }
 
 #if PG_MAJORVERSION_NUM == 13
-static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
-                                     const char *queryString,
-                                     ProcessUtilityContext context,
-                                     ParamListInfo params,
-                                     QueryEnvironment *queryEnv,
-                                     DestReceiver *dest, QueryCompletion *qc)
+static void pg_diffix_ProcessUtility(PlannedStmt *pstmt, const char *queryString, ProcessUtilityContext context,
+                                     ParamListInfo params, QueryEnvironment *queryEnv, DestReceiver *dest,
+                                     QueryCompletion *qc)
 {
   prepare_utility(pstmt);
   if (prev_ProcessUtility_hook)
@@ -146,12 +141,8 @@ static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
     standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
 }
 #else
-static void pg_diffix_ProcessUtility(PlannedStmt *pstmt,
-                                     const char *queryString,
-                                     bool readOnlyTree,
-                                     ProcessUtilityContext context,
-                                     ParamListInfo params,
-                                     QueryEnvironment *queryEnv,
+static void pg_diffix_ProcessUtility(PlannedStmt *pstmt, const char *queryString, bool readOnlyTree,
+                                     ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv,
                                      DestReceiver *dest, QueryCompletion *qc)
 {
   prepare_utility(pstmt);
@@ -188,11 +179,7 @@ static bool pg_diffix_ExecutorCheckPerms(List *range_tables, bool should_abort)
   return true;
 }
 
-static void pg_diffix_ExecutorRun(
-    QueryDesc *queryDesc,
-    ScanDirection direction,
-    uint64 count,
-    bool execute_once)
+static void pg_diffix_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count, bool execute_once)
 {
   if (prev_ExecutorRun_hook)
     prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);

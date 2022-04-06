@@ -32,7 +32,8 @@ static void set_text_label(Bucket *star_bucket, int att_idx, Oid type, MemoryCon
 Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
 {
   MemoryContext bucket_context = bucket_desc->bucket_context;
-  MemoryContext temp_context = AllocSetContextCreate(bucket_context, "star_bucket_hook temporary context", ALLOCSET_DEFAULT_SIZES);
+  MemoryContext temp_context =
+      AllocSetContextCreate(bucket_context, "star_bucket_hook temporary context", ALLOCSET_DEFAULT_SIZES);
 
   MemoryContext old_context = MemoryContextSwitchTo(temp_context);
 
@@ -47,7 +48,8 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
       /* Create an empty anon agg state and merge buckets into it. */
-      star_bucket->values[i] = PointerGetDatum(create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
+      star_bucket->values[i] =
+          PointerGetDatum(create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
     else if (att->tag == BUCKET_LABEL)
       set_text_label(star_bucket, i, att->final_type, bucket_context);
     else if (att->agg.fn_oid == g_oid_cache.is_suppress_bin)

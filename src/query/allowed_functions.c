@@ -7,10 +7,8 @@
 #include "pg_diffix/utils.h"
 
 static const char *const g_allowed_casts[] = {
-    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
-    "ftod", "dtof",
-    "int4_numeric", "float4_numeric", "float8_numeric",
-    "numeric_float4", "numeric_float8",
+    "i2tod", "i2tof", "i2toi4",       "i4toi2",         "i4tod",          "i4tof",          "i8tod",          "i8tof",
+    "ftod",  "dtof",  "int4_numeric", "float4_numeric", "float8_numeric", "numeric_float4", "numeric_float8",
     /**/
 };
 
@@ -42,12 +40,8 @@ static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
 
 /* Pointers to OID cache which is populated at runtime. */
 static const Oid *const g_implicit_range_udfs[] = {
-    &g_oid_cache.round_by_nn,
-    &g_oid_cache.round_by_dd,
-    &g_oid_cache.ceil_by_nn,
-    &g_oid_cache.ceil_by_dd,
-    &g_oid_cache.floor_by_nn,
-    &g_oid_cache.floor_by_dd,
+    &g_oid_cache.round_by_nn, &g_oid_cache.round_by_dd, &g_oid_cache.ceil_by_nn,
+    &g_oid_cache.ceil_by_dd,  &g_oid_cache.floor_by_nn, &g_oid_cache.floor_by_dd,
 };
 
 /* Taken from fmgr.c. */

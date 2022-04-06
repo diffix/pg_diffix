@@ -77,7 +77,7 @@ static inline bool is_direct_label(const char *seclabel)
   return strcasecmp(seclabel, "direct") == 0;
 }
 
-#define FAIL_ON_INVALID_LABEL(seclabel) \
+#define FAIL_ON_INVALID_LABEL(seclabel)                                                                                \
   FAILWITH_CODE(ERRCODE_INVALID_NAME, "'%s' is not a valid anonymization label", seclabel);
 
 AccessLevel get_user_access_level(void)
@@ -158,11 +158,9 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
     FAIL_ON_INVALID_LABEL(seclabel);
 }
 
-#define FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object)                   \
-  FAILWITH_CODE(                                                        \
-      ERRCODE_FEATURE_NOT_SUPPORTED,                                    \
-      "Anonymization label `%s` not supported on objects of type `%s`", \
-      seclabel, getObjectTypeDescription(object))
+#define FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object)                                                                  \
+  FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Anonymization label `%s` not supported on objects of type `%s`",       \
+                seclabel, getObjectTypeDescription(object))
 
 static void verify_pg_features(Oid relation_id)
 {

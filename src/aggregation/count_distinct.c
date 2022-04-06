@@ -43,8 +43,7 @@ typedef struct DistinctTrackerData
 static const int VALUE_INDEX = 1;
 static const int AIDS_OFFSET = 2;
 
-static DistinctTrackerHashEntry *
-get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
+static DistinctTrackerHashEntry *get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
   bool found = false;
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
@@ -262,9 +261,7 @@ static void distribute_lc_values(List *per_aid_values, uint32 values_count)
 }
 
 /* Computes the aid seed, total count of contributors and fills the top contributors array. */
-static void process_lc_values_contributions(List *per_aid_values,
-                                            seed_t *aid_seed,
-                                            uint64 *contributors_count,
+static void process_lc_values_contributions(List *per_aid_values, seed_t *aid_seed, uint64 *contributors_count,
                                             Contributors *top_contributors)
 {
   *contributors_count = 0;
@@ -302,11 +299,8 @@ typedef struct CountDistinctResult
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(
-    CountDistinctState *state,
-    seed_t bucket_seed,
-    const char *salt,
-    int64 min_count)
+static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, seed_t bucket_seed,
+                                                          const char *salt, int64 min_count)
 {
   int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
@@ -338,15 +332,11 @@ static CountDistinctResult count_distinct_calculate_final(
 
     seed_t aid_seed = 0;
     uint64 contributors_count = 0;
-    process_lc_values_contributions(
-        per_aid_values,
-        &aid_seed, &contributors_count,
-        top_contributors);
+    process_lc_values_contributions(per_aid_values, &aid_seed, &contributors_count, top_contributors);
 
     uint64 unaccounted_for = 0;
     CountResult inner_count_result = aggregate_count_contributions(
-        bucket_seed, aid_seed, salt, lc_values_true_count,
-        contributors_count, unaccounted_for, top_contributors);
+        bucket_seed, aid_seed, salt, lc_values_true_count, contributors_count, unaccounted_for, top_contributors);
 
     list_free_deep(per_aid_values);
     pfree(top_contributors);
@@ -406,14 +396,16 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
   return &state->base;
 }
 
-static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc,
+                                     bool *is_null)
 {
   CountDistinctState *state = (CountDistinctState *)base_state;
 
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
   bool is_global = bucket_desc->num_labels == 0;
   int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
-  CountDistinctResult result = count_distinct_calculate_final(state, bucket_seed, bucket_desc->anon_context->salt, min_count);
+  CountDistinctResult result =
+      count_distinct_calculate_final(state, bucket_seed, bucket_desc->anon_context->salt, min_count);
   return Int64GetDatum(result.noisy_count);
 }
 
@@ -436,8 +428,7 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   DistinctTrackerHashEntry *src_entry = NULL;
   while ((src_entry = DistinctTracker_iterate(src_state->tracker, &src_iterator)) != NULL)
   {
-    DistinctTrackerHashEntry *dst_entry =
-        get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);
+    DistinctTrackerHashEntry *dst_entry = get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);
 
     ListCell *dst_cell = NULL;
     const ListCell *src_cell = NULL;

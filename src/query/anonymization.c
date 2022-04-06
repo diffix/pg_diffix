@@ -189,13 +189,8 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
 
 static Expr *make_aid_expr(AidRef *aid_ref)
 {
-  return (Expr *)makeVar(
-      aid_ref->rte_index,
-      aid_ref->aid_attnum,
-      aid_ref->aid_column->atttype,
-      aid_ref->aid_column->typmod,
-      aid_ref->aid_column->collid,
-      0);
+  return (Expr *)makeVar(aid_ref->rte_index, aid_ref->aid_attnum, aid_ref->aid_column->atttype,
+                         aid_ref->aid_column->typmod, aid_ref->aid_column->collid, 0);
 }
 
 static TargetEntry *make_aid_target(AidRef *aid_ref, AttrNumber resno, bool resjunk)
@@ -224,11 +219,8 @@ static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
 /*
  * Adds references targeting AIDs of relation to `aid_refs`.
  */
-static void gather_relation_aids(
-    const SensitiveRelation *relation,
-    Index rte_index,
-    RangeTblEntry *rte,
-    List **aid_refs)
+static void gather_relation_aids(const SensitiveRelation *relation, Index rte_index, RangeTblEntry *rte,
+                                 List **aid_refs)
 {
   ListCell *cell;
   foreach (cell, relation->aid_columns)
@@ -244,8 +236,7 @@ static void gather_relation_aids(
     *aid_refs = lappend(*aid_refs, aid_ref);
 
     /* Emulate what the parser does */
-    rte->selectedCols = bms_add_member(
-        rte->selectedCols, aid_col->attnum - FirstLowInvalidHeapAttributeNumber);
+    rte->selectedCols = bms_add_member(rte->selectedCols, aid_col->attnum - FirstLowInvalidHeapAttributeNumber);
   }
 }
 
@@ -299,8 +290,7 @@ static void append_aid_args(Aggref *aggref, List *aid_refs)
 
 #define MAX_SEED_MATERIAL_SIZE 1024 /* Fixed max size, to avoid dynamic allocation. */
 
-static void append_seed_material(
-    char *existing_material, const char *new_material, char separator)
+static void append_seed_material(char *existing_material, const char *new_material, char separator)
 {
   size_t existing_material_length = strlen(existing_material);
   size_t new_material_length = strlen(new_material);
@@ -472,11 +462,7 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitiv
     anon_context->expand_buckets = true;
   }
 
-  query_tree_mutator(
-      query,
-      aggregate_expression_mutator,
-      aid_refs,
-      QTW_DONT_COPY_QUERY);
+  query_tree_mutator(query, aggregate_expression_mutator, aid_refs, QTW_DONT_COPY_QUERY);
 
   /* Global aggregates have to be excluded from low-count filtering. */
   if (initial_has_group_clause || (!initial_has_aggs && !initial_all_targets_constant))

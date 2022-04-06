@@ -11,8 +11,7 @@ extern int generate_uniform_noise(seed_t seed, const char *salt, const char *ste
 /*
  * Returns the combined zero-mean gaussian noise value for the given noise layers and step name.
  */
-extern double generate_layered_noise(const seed_t *seeds, int seeds_count,
-                                     const char *salt, const char *step_name,
+extern double generate_layered_noise(const seed_t *seeds, int seeds_count, const char *salt, const char *step_name,
                                      double layer_sd);
 
 /*

@@ -103,8 +103,8 @@ static double generate_normal_noise(seed_t seed, const char *salt, const char *s
   return sd * normal;
 }
 
-double generate_layered_noise(const seed_t *seeds, int seeds_count,
-                              const char *salt, const char *step_name, double layer_sd)
+double generate_layered_noise(const seed_t *seeds, int seeds_count, const char *salt, const char *step_name,
+                              double layer_sd)
 {
   double noise = 0;
   for (int i = 0; i < seeds_count; i++)
@@ -112,11 +112,10 @@ double generate_layered_noise(const seed_t *seeds, int seeds_count,
   return noise;
 }
 
-int generate_lcf_threshold(const seed_t *seeds, int seeds_count,
-                           const char *salt)
+int generate_lcf_threshold(const seed_t *seeds, int seeds_count, const char *salt)
 {
-  double threshold_mean = (double)g_config.low_count_min_threshold +
-                          g_config.low_count_mean_gap * g_config.low_count_layer_sd;
+  double threshold_mean =
+      (double)g_config.low_count_min_threshold + g_config.low_count_mean_gap * g_config.low_count_layer_sd;
   double noise = generate_layered_noise(seeds, seeds_count, salt, "suppress", g_config.low_count_layer_sd);
   int noisy_threshold = (int)(threshold_mean + noise);
   return Max(noisy_threshold, g_config.low_count_min_threshold);

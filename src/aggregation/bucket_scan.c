@@ -216,7 +216,8 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
   if (eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK))
     FAILWITH("Cannot BACKWARD or MARK/RESTORE a BucketScan.");
 
-  bucket_state->bucket_context = AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
+  bucket_state->bucket_context =
+      AllocSetContextCreate(estate->es_query_cxt, "BucketScan context", ALLOCSET_DEFAULT_SIZES);
   bucket_state->buckets = NIL;
   bucket_state->repeat_previous_bucket = 0;
   bucket_state->next_bucket_index = 1;
@@ -273,9 +274,8 @@ static void fill_bucket_list(BucketScanState *bucket_state)
       if (outer_slot->tts_isnull[i])
         bucket->is_null[i] = true;
       else
-        bucket->values[i] = datumCopy(outer_slot->tts_values[i],
-                                      bucket_desc->attrs[i].typ_byval,
-                                      bucket_desc->attrs[i].typ_len);
+        bucket->values[i] =
+            datumCopy(outer_slot->tts_values[i], bucket_desc->attrs[i].typ_byval, bucket_desc->attrs[i].typ_len);
     }
 
     buckets = lappend(buckets, bucket);
@@ -658,11 +658,8 @@ static List *project_agg_tlist(List *orig_agg_tlist, RewriteProjectionContext *c
   {
     TargetEntry *orig_tle = lfirst_node(TargetEntry, cell);
 
-    TargetEntry *projected_tle = makeTargetEntry(
-        (Expr *)rewrite_projection_mutator((Node *)orig_tle->expr, context),
-        orig_tle->resno,
-        orig_tle->resname,
-        orig_tle->resjunk);
+    TargetEntry *projected_tle = makeTargetEntry((Expr *)rewrite_projection_mutator((Node *)orig_tle->expr, context),
+                                                 orig_tle->resno, orig_tle->resname, orig_tle->resjunk);
 
     projected_tle->resorigtbl = orig_tle->resorigtbl;
     projected_tle->resorigcol = orig_tle->resorigcol;
@@ -775,44 +772,39 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 
 /* Subset of macros from outfuncs.c & copyfuncs.c. */
 
-#define WRITE_INT_FIELD(fldname) \
-  appendStringInfo(str, " :" CppAsString(fldname) " %d", node->fldname)
+#define WRITE_INT_FIELD(fldname) appendStringInfo(str, " :" CppAsString(fldname) " %d", node->fldname)
 
-#define WRITE_NODE_FIELD(fldname)                              \
-  (appendStringInfoString(str, " :" CppAsString(fldname) " "), \
-   outNode(str, node->fldname))
+#define WRITE_NODE_FIELD(fldname)                                                                                      \
+  (appendStringInfoString(str, " :" CppAsString(fldname) " "), outNode(str, node->fldname))
 
-#define WRITE_BOOL_FIELD(fldname) \
-  appendStringInfo(str, " :" CppAsString(fldname) " %s", booltostr(node->fldname))
+#define WRITE_BOOL_FIELD(fldname) appendStringInfo(str, " :" CppAsString(fldname) " %s", booltostr(node->fldname))
 
-#define WRITE_SEED_FIELD(fldname) \
+#define WRITE_SEED_FIELD(fldname)                                                                                      \
   appendStringInfo(str, " :" CppAsString(fldname) " %" INT64_MODIFIER "x", node->fldname)
 
-#define WRITE_ATTRNUMBER_ARRAY(fldname, len)                    \
-  do                                                            \
-  {                                                             \
-    appendStringInfoString(str, " :" CppAsString(fldname) " "); \
-    for (int i = 0; i < len; i++)                               \
-      appendStringInfo(str, " %d", node->fldname[i]);           \
+#define WRITE_ATTRNUMBER_ARRAY(fldname, len)                                                                           \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    appendStringInfoString(str, " :" CppAsString(fldname) " ");                                                        \
+    for (int i = 0; i < len; i++)                                                                                      \
+      appendStringInfo(str, " %d", node->fldname[i]);                                                                  \
   } while (0)
 
 #define booltostr(x) ((x) ? "true" : "false")
 
-#define COPY_SCALAR_FIELD(fldname) \
-  (dst->fldname = src->fldname)
+#define COPY_SCALAR_FIELD(fldname) (dst->fldname = src->fldname)
 
-#define COPY_NODE_FIELD(fldname) \
-  (dst->fldname = copyObjectImpl(src->fldname))
+#define COPY_NODE_FIELD(fldname) (dst->fldname = copyObjectImpl(src->fldname))
 
-#define COPY_POINTER_FIELD(fldname, sz)          \
-  do                                             \
-  {                                              \
-    Size _size = (sz);                           \
-    if (_size > 0)                               \
-    {                                            \
-      dst->fldname = palloc(_size);              \
-      memcpy(dst->fldname, src->fldname, _size); \
-    }                                            \
+#define COPY_POINTER_FIELD(fldname, sz)                                                                                \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    Size _size = (sz);                                                                                                 \
+    if (_size > 0)                                                                                                     \
+    {                                                                                                                  \
+      dst->fldname = palloc(_size);                                                                                    \
+      memcpy(dst->fldname, src->fldname, _size);                                                                       \
+    }                                                                                                                  \
   } while (0)
 
 static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode *src_node)

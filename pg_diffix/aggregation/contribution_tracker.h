@@ -81,27 +81,19 @@ extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid
 /*
  * Updates state with a contribution from an AID.
  */
-extern void contribution_tracker_update_contribution(
-    ContributionTrackerState *state,
-    aid_t aid,
-    contribution_t contribution);
+extern void contribution_tracker_update_contribution(ContributionTrackerState *state, aid_t aid,
+                                                     contribution_t contribution);
 
 /*
  * Gets or creates the multi-AID aggregation state from the function arguments.
  */
-extern List *create_contribution_trackers(
-    ArgsDescriptor *args_desc,
-    int aids_offset,
-    const ContributionDescriptor *descriptor);
+extern List *create_contribution_trackers(ArgsDescriptor *args_desc, int aids_offset,
+                                          const ContributionDescriptor *descriptor);
 
-extern void add_top_contributor(
-    const ContributionDescriptor *descriptor,
-    Contributors *top_contributors,
-    Contributor contributor);
+extern void add_top_contributor(const ContributionDescriptor *descriptor, Contributors *top_contributors,
+                                Contributor contributor);
 
-extern void update_or_add_top_contributor(
-    const ContributionDescriptor *descriptor,
-    Contributors *top_contributors,
-    Contributor contributor);
+extern void update_or_add_top_contributor(const ContributionDescriptor *descriptor, Contributors *top_contributors,
+                                          Contributor contributor);
 
 #endif /* PG_DIFFIX_CONTRIBUTION_TRACKER_H */

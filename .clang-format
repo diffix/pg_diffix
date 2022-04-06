@@ -4,4 +4,6 @@ IndentWidth: 2
 BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false
 IndentCaseLabels: false
-ColumnLimit: 0
+ColumnLimit: 120
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None

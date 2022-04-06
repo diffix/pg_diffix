@@ -38,11 +38,8 @@ static seed_t contributors_seed(const Contributor *contributors, int count)
   return seed;
 }
 
-static void determine_outlier_top_counts(
-    uint64 total_count,
-    const Contributors *top_contributors,
-    CountResult *result,
-    const char *salt)
+static void determine_outlier_top_counts(uint64 total_count, const Contributors *top_contributors, CountResult *result,
+                                         const char *salt)
 {
   /* Compact flattening intervals */
   int total_adjustment = g_config.outlier_count_max + g_config.top_count_max - total_count;
@@ -71,19 +68,18 @@ static void determine_outlier_top_counts(
   }
 
   /* Determine noisy outlier/top counts. */
-  seed_t flattening_seed = contributors_seed(
-      top_contributors->members, compact_outlier_count_max + compact_top_count_max);
+  seed_t flattening_seed =
+      contributors_seed(top_contributors->members, compact_outlier_count_max + compact_top_count_max);
 
-  result->noisy_outlier_count = generate_uniform_noise(
-      flattening_seed, salt, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
-  result->noisy_top_count = generate_uniform_noise(
-      flattening_seed, salt, "top", g_config.top_count_min, compact_top_count_max);
+  result->noisy_outlier_count =
+      generate_uniform_noise(flattening_seed, salt, "outlier", g_config.outlier_count_min, compact_outlier_count_max);
+  result->noisy_top_count =
+      generate_uniform_noise(flattening_seed, salt, "top", g_config.top_count_min, compact_top_count_max);
 }
 
-CountResult aggregate_count_contributions(
-    seed_t bucket_seed, seed_t aid_seed, const char *salt,
-    uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
-    const Contributors *top_contributors)
+CountResult aggregate_count_contributions(seed_t bucket_seed, seed_t aid_seed, const char *salt, uint64 true_count,
+                                          uint64 distinct_contributors, uint64 unacounted_for,
+                                          const Contributors *top_contributors)
 {
   CountResult result = {0};
 
@@ -129,14 +125,9 @@ CountResult aggregate_count_contributions(
 
 static CountResult count_calculate_result(seed_t bucket_seed, const char *salt, const ContributionTrackerState *tracker)
 {
-  return aggregate_count_contributions(
-      bucket_seed,
-      tracker->aid_seed,
-      salt,
-      tracker->overall_contribution.integer,
-      tracker->distinct_contributors,
-      tracker->unaccounted_for,
-      &tracker->top_contributors);
+  return aggregate_count_contributions(bucket_seed, tracker->aid_seed, salt, tracker->overall_contribution.integer,
+                                       tracker->distinct_contributors, tracker->unaccounted_for,
+                                       &tracker->top_contributors);
 }
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
@@ -253,8 +244,8 @@ static void count_merge(AnonAggState *dst_base_state, const AnonAggState *src_ba
     while ((entry = ContributionTracker_iterate(src_contribution_tracker->contribution_table, &iterator)) != NULL)
     {
       if (entry->has_contribution)
-        contribution_tracker_update_contribution(
-            dst_contribution_tracker, entry->contributor.aid, entry->contributor.contribution);
+        contribution_tracker_update_contribution(dst_contribution_tracker, entry->contributor.aid,
+                                                 entry->contributor.contribution);
       else
         contribution_tracker_update_aid(dst_contribution_tracker, entry->contributor.aid);
     }

@@ -198,8 +198,7 @@ struct AnonAggState
 /*
  * Creates an empty AnonAggState state for given AnonAggFuncs.
  */
-static inline AnonAggState *create_anon_agg_state(const AnonAggFuncs *agg_funcs,
-                                                  MemoryContext bucket_context,
+static inline AnonAggState *create_anon_agg_state(const AnonAggFuncs *agg_funcs, MemoryContext bucket_context,
                                                   ArgsDescriptor *args_desc)
 {
   AnonAggState *state = agg_funcs->create_state(bucket_context, args_desc);

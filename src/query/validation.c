@@ -20,11 +20,11 @@
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
-#define NOT_SUPPORTED(cond, feature)                                   \
-  do                                                                   \
-  {                                                                    \
-    if (cond)                                                          \
-      FAILWITH("Feature '%s' is not currently supported.", (feature)); \
+#define NOT_SUPPORTED(cond, feature)                                                                                   \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (cond)                                                                                                          \
+      FAILWITH("Feature '%s' is not currently supported.", (feature));                                                 \
   } while (0)
 
 static void verify_where(Query *query);
@@ -124,7 +124,8 @@ static void verify_rtable(Query *query)
     NOT_SUPPORTED(range_table->rtekind == RTE_JOIN, "JOINs in anonymizing queries");
 
     if (range_table->rtekind == RTE_RELATION)
-      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries.");
+      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid),
+                    "Inheritance in anonymizing queries.");
     else
       FAILWITH("Unsupported FROM clause.");
   }
@@ -178,9 +179,7 @@ static bool verify_aggregator(Node *node, void *context)
     Aggref *aggref = (Aggref *)node;
     Oid aggoid = aggref->aggfnoid;
 
-    if (aggoid != g_oid_cache.count_star &&
-        aggoid != g_oid_cache.count_value &&
-        aggoid != g_oid_cache.is_suppress_bin)
+    if (aggoid != g_oid_cache.count_star && aggoid != g_oid_cache.count_value && aggoid != g_oid_cache.is_suppress_bin)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
     if (aggoid == g_oid_cache.count_value)
@@ -222,12 +221,14 @@ static void verify_bucket_expression(Node *node)
     Assert(list_length(func_expr->args) > 0); /* All allowed functions require at least one argument. */
 
     if (!IsA(unwrap_cast(linitial(func_expr->args)), Var))
-      FAILWITH_LOCATION(func_expr->location, "Primary argument for a bucket function has to be a simple column reference.");
+      FAILWITH_LOCATION(func_expr->location,
+                        "Primary argument for a bucket function has to be a simple column reference.");
 
     for (int i = 1; i < list_length(func_expr->args); i++)
     {
       if (!IsA(unwrap_cast((Node *)list_nth(func_expr->args, i)), Const))
-        FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
+        FAILWITH_LOCATION(func_expr->location,
+                          "Non-primary arguments for a bucket function have to be simple constants.");
     }
   }
   else if (IsA(node, OpExpr))
@@ -270,7 +271,8 @@ static void verify_substring(FuncExpr *func_expr)
   Const *second_arg = (Const *)node;
 
   if (DatumGetUInt32(second_arg->constvalue) != 1)
-    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(second_arg->location,
+                      "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 /* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
@@ -279,8 +281,7 @@ static bool is_money_style(double number)
   char number_as_string[30];
   sprintf(number_as_string, "%.15e", number);
   text *money_pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
-  bool matches_money_pattern = RE_compile_and_execute(money_pattern,
-                                                      number_as_string, strlen(number_as_string),
+  bool matches_money_pattern = RE_compile_and_execute(money_pattern, number_as_string, strlen(number_as_string),
                                                       REG_EXTENDED | REG_NOSUB, C_COLLATION_OID, 0, NULL);
   pfree(money_pattern);
   return matches_money_pattern;
@@ -297,7 +298,8 @@ static void verify_bin_size(Node *range_expr)
     FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization.");
 
   if (!is_money_style(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
-    FAILWITH_LOCATION(range_const->location, "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(range_const->location,
+                      "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 static void verify_generalization(Node *node)
@@ -313,7 +315,8 @@ static void verify_generalization(Node *node)
     else if (is_implicit_range_builtin(func_expr->funcid))
       ;
     else
-      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
+      FAILWITH_LOCATION(func_expr->location,
+                        "Generalization used in the query is not allowed in untrusted access level.");
   }
 }
 

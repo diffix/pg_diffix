@@ -22,10 +22,9 @@ typedef struct CountResult
   bool not_enough_aid_values;
 } CountResult;
 
-extern CountResult aggregate_count_contributions(
-    seed_t bucket_seed, seed_t aid_seed, const char *salt,
-    uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
-    const Contributors *top_contributors);
+extern CountResult aggregate_count_contributions(seed_t bucket_seed, seed_t aid_seed, const char *salt,
+                                                 uint64 true_count, uint64 distinct_contributors, uint64 unacounted_for,
+                                                 const Contributors *top_contributors);
 
 /*
  * Helper data structure and functions to combine multiple count results into one value.

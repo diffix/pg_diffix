@@ -77,7 +77,8 @@ static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource so
 {
   if (source >= PGC_S_INTERACTIVE && *newval > g_config.outlier_count_max)
   {
-    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.outlier_count_max);
+    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval,
+               g_config.outlier_count_max);
   }
   return true;
 }
@@ -86,7 +87,8 @@ static bool outlier_count_max_check_hook(int *newval, void **extra, GucSource so
 {
   if (source >= PGC_S_INTERACTIVE && *newval < g_config.outlier_count_min)
   {
-    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.outlier_count_min, *newval);
+    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.",
+               g_config.outlier_count_min, *newval);
   }
   return true;
 }
@@ -95,7 +97,8 @@ static bool top_count_min_check_hook(int *newval, void **extra, GucSource source
 {
   if (source >= PGC_S_INTERACTIVE && *newval > g_config.top_count_max)
   {
-    NOTICE_LOG("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.top_count_max);
+    NOTICE_LOG("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval,
+               g_config.top_count_max);
   }
   return true;
 }
@@ -104,7 +107,8 @@ static bool top_count_max_check_hook(int *newval, void **extra, GucSource source
 {
   if (source >= PGC_S_INTERACTIVE && *newval < g_config.top_count_min)
   {
-    NOTICE_LOG("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min, *newval);
+    NOTICE_LOG("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min,
+               *newval);
   }
   return true;
 }
@@ -113,74 +117,69 @@ void config_init(void)
 {
   g_initializing = true;
 
-  DefineCustomEnumVariable(
-      "pg_diffix.session_access_level",    /* name */
-      "Access level for current session.", /* short_desc */
-      NULL,                                /* long_desc */
-      &g_config.session_access_level,      /* valueAddr */
-      ACCESS_DIRECT,                       /* bootValue */
-      access_level_options,                /* options */
-      PGC_USERSET,                         /* context */
-      0,                                   /* flags */
-      session_access_level_check,          /* check_hook */
-      NULL,                                /* assign_hook */
-      NULL);                               /* show_hook */
+  DefineCustomEnumVariable("pg_diffix.session_access_level",    /* name */
+                           "Access level for current session.", /* short_desc */
+                           NULL,                                /* long_desc */
+                           &g_config.session_access_level,      /* valueAddr */
+                           ACCESS_DIRECT,                       /* bootValue */
+                           access_level_options,                /* options */
+                           PGC_USERSET,                         /* context */
+                           0,                                   /* flags */
+                           session_access_level_check,          /* check_hook */
+                           NULL,                                /* assign_hook */
+                           NULL);                               /* show_hook */
 
-  DefineCustomEnumVariable(
-      "pg_diffix.default_access_level",    /* name */
-      "Access level for unlabeled users.", /* short_desc */
-      NULL,                                /* long_desc */
-      &g_config.default_access_level,      /* valueAddr */
-      ACCESS_DIRECT,                       /* bootValue */
-      access_level_options,                /* options */
-      PGC_SUSET,                           /* context */
-      0,                                   /* flags */
-      NULL,                                /* check_hook */
-      NULL,                                /* assign_hook */
-      NULL);                               /* show_hook */
+  DefineCustomEnumVariable("pg_diffix.default_access_level",    /* name */
+                           "Access level for unlabeled users.", /* short_desc */
+                           NULL,                                /* long_desc */
+                           &g_config.default_access_level,      /* valueAddr */
+                           ACCESS_DIRECT,                       /* bootValue */
+                           access_level_options,                /* options */
+                           PGC_SUSET,                           /* context */
+                           0,                                   /* flags */
+                           NULL,                                /* check_hook */
+                           NULL,                                /* assign_hook */
+                           NULL);                               /* show_hook */
 
-  DefineCustomRealVariable(
-      "pg_diffix.noise_layer_sd",                                     /* name */
-      "Standard deviation for each noise layer added to aggregates.", /* short_desc */
-      NULL,                                                           /* long_desc */
-      &g_config.noise_layer_sd,                                       /* valueAddr */
-      1.0,                                                            /* bootValue */
-      0,                                                              /* minValue */
-      MAX_NUMERIC_CONFIG,                                             /* maxValue */
-      PGC_SUSET,                                                      /* context */
-      0,                                                              /* flags */
-      NULL,                                                           /* check_hook */
-      NULL,                                                           /* assign_hook */
-      NULL);                                                          /* show_hook */
+  DefineCustomRealVariable("pg_diffix.noise_layer_sd",                                     /* name */
+                           "Standard deviation for each noise layer added to aggregates.", /* short_desc */
+                           NULL,                                                           /* long_desc */
+                           &g_config.noise_layer_sd,                                       /* valueAddr */
+                           1.0,                                                            /* bootValue */
+                           0,                                                              /* minValue */
+                           MAX_NUMERIC_CONFIG,                                             /* maxValue */
+                           PGC_SUSET,                                                      /* context */
+                           0,                                                              /* flags */
+                           NULL,                                                           /* check_hook */
+                           NULL,                                                           /* assign_hook */
+                           NULL);                                                          /* show_hook */
 
-  DefineCustomIntVariable(
-      "pg_diffix.low_count_min_threshold",              /* name */
-      "Lower bound of the low count filter threshold.", /* short_desc */
-      NULL,                                             /* long_desc */
-      &g_config.low_count_min_threshold,                /* valueAddr */
-      2,                                                /* bootValue */
-      2,                                                /* minValue */
-      MAX_NUMERIC_CONFIG,                               /* maxValue */
-      PGC_SUSET,                                        /* context */
-      0,                                                /* flags */
-      NULL,                                             /* check_hook */
-      NULL,                                             /* assign_hook */
-      NULL);                                            /* show_hook */
+  DefineCustomIntVariable("pg_diffix.low_count_min_threshold",              /* name */
+                          "Lower bound of the low count filter threshold.", /* short_desc */
+                          NULL,                                             /* long_desc */
+                          &g_config.low_count_min_threshold,                /* valueAddr */
+                          2,                                                /* bootValue */
+                          2,                                                /* minValue */
+                          MAX_NUMERIC_CONFIG,                               /* maxValue */
+                          PGC_SUSET,                                        /* context */
+                          0,                                                /* flags */
+                          NULL,                                             /* check_hook */
+                          NULL,                                             /* assign_hook */
+                          NULL);                                            /* show_hook */
 
-  DefineCustomRealVariable(
-      "pg_diffix.low_count_mean_gap",             /* name */
-      "Number of standard deviations between the lower bound \
-and the mean of the low count filter threshold.", /* short_desc */
-      NULL,                                       /* long_desc */
-      &g_config.low_count_mean_gap,               /* valueAddr */
-      2.0,                                        /* bootValue */
-      0,                                          /* minValue */
-      MAX_NUMERIC_CONFIG,                         /* maxValue */
-      PGC_SUSET,                                  /* context */
-      0,                                          /* flags */
-      NULL,                                       /* check_hook */
-      NULL,                                       /* assign_hook */
-      NULL);                                      /* show_hook */
+  DefineCustomRealVariable("pg_diffix.low_count_mean_gap", /* name */
+                           "Number of standard deviations between the lower bound \
+and the mean of the low count filter threshold.",          /* short_desc */
+                           NULL,                           /* long_desc */
+                           &g_config.low_count_mean_gap,   /* valueAddr */
+                           2.0,                            /* bootValue */
+                           0,                              /* minValue */
+                           MAX_NUMERIC_CONFIG,             /* maxValue */
+                           PGC_SUSET,                      /* context */
+                           0,                              /* flags */
+                           NULL,                           /* check_hook */
+                           NULL,                           /* assign_hook */
+                           NULL);                          /* show_hook */
 
   DefineCustomRealVariable(
       "pg_diffix.low_count_layer_sd",                                               /* name */
@@ -196,61 +195,57 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL,                                                                         /* assign_hook */
       NULL);                                                                        /* show_hook */
 
-  DefineCustomIntVariable(
-      "pg_diffix.outlier_count_min",                 /* name */
-      "Minimum outlier count (inclusive).",          /* short_desc */
-      "Must not be greater than outlier_count_max.", /* long_desc */
-      &g_config.outlier_count_min,                   /* valueAddr */
-      1,                                             /* bootValue */
-      0,                                             /* minValue */
-      MAX_NUMERIC_CONFIG,                            /* maxValue */
-      PGC_SUSET,                                     /* context */
-      0,                                             /* flags */
-      &outlier_count_min_check_hook,                 /* check_hook */
-      NULL,                                          /* assign_hook */
-      NULL);                                         /* show_hook */
+  DefineCustomIntVariable("pg_diffix.outlier_count_min",                 /* name */
+                          "Minimum outlier count (inclusive).",          /* short_desc */
+                          "Must not be greater than outlier_count_max.", /* long_desc */
+                          &g_config.outlier_count_min,                   /* valueAddr */
+                          1,                                             /* bootValue */
+                          0,                                             /* minValue */
+                          MAX_NUMERIC_CONFIG,                            /* maxValue */
+                          PGC_SUSET,                                     /* context */
+                          0,                                             /* flags */
+                          &outlier_count_min_check_hook,                 /* check_hook */
+                          NULL,                                          /* assign_hook */
+                          NULL);                                         /* show_hook */
 
-  DefineCustomIntVariable(
-      "pg_diffix.outlier_count_max",                 /* name */
-      "Maximum outlier count (inclusive).",          /* short_desc */
-      "Must not be smaller than outlier_count_min.", /* long_desc */
-      &g_config.outlier_count_max,                   /* valueAddr */
-      2,                                             /* bootValue */
-      0,                                             /* minValue */
-      MAX_NUMERIC_CONFIG,                            /* maxValue */
-      PGC_SUSET,                                     /* context */
-      0,                                             /* flags */
-      &outlier_count_max_check_hook,                 /* check_hook */
-      NULL,                                          /* assign_hook */
-      NULL);                                         /* show_hook */
+  DefineCustomIntVariable("pg_diffix.outlier_count_max",                 /* name */
+                          "Maximum outlier count (inclusive).",          /* short_desc */
+                          "Must not be smaller than outlier_count_min.", /* long_desc */
+                          &g_config.outlier_count_max,                   /* valueAddr */
+                          2,                                             /* bootValue */
+                          0,                                             /* minValue */
+                          MAX_NUMERIC_CONFIG,                            /* maxValue */
+                          PGC_SUSET,                                     /* context */
+                          0,                                             /* flags */
+                          &outlier_count_max_check_hook,                 /* check_hook */
+                          NULL,                                          /* assign_hook */
+                          NULL);                                         /* show_hook */
 
-  DefineCustomIntVariable(
-      "pg_diffix.top_count_min",                     /* name */
-      "Minimum top contributors count (inclusive).", /* short_desc */
-      "Must not be greater than top_count_max.",     /* long_desc */
-      &g_config.top_count_min,                       /* valueAddr */
-      4,                                             /* bootValue */
-      1,                                             /* minValue */
-      MAX_NUMERIC_CONFIG,                            /* maxValue */
-      PGC_SUSET,                                     /* context */
-      0,                                             /* flags */
-      &top_count_min_check_hook,                     /* check_hook */
-      NULL,                                          /* assign_hook */
-      NULL);                                         /* show_hook */
+  DefineCustomIntVariable("pg_diffix.top_count_min",                     /* name */
+                          "Minimum top contributors count (inclusive).", /* short_desc */
+                          "Must not be greater than top_count_max.",     /* long_desc */
+                          &g_config.top_count_min,                       /* valueAddr */
+                          4,                                             /* bootValue */
+                          1,                                             /* minValue */
+                          MAX_NUMERIC_CONFIG,                            /* maxValue */
+                          PGC_SUSET,                                     /* context */
+                          0,                                             /* flags */
+                          &top_count_min_check_hook,                     /* check_hook */
+                          NULL,                                          /* assign_hook */
+                          NULL);                                         /* show_hook */
 
-  DefineCustomIntVariable(
-      "pg_diffix.top_count_max",                     /* name */
-      "Maximum top contributors count (inclusive).", /* short_desc */
-      "Must not be smaller than top_count_min.",     /* long_desc */
-      &g_config.top_count_max,                       /* valueAddr */
-      6,                                             /* bootValue */
-      1,                                             /* minValue */
-      MAX_NUMERIC_CONFIG,                            /* maxValue */
-      PGC_SUSET,                                     /* context */
-      0,                                             /* flags */
-      &top_count_max_check_hook,                     /* check_hook */
-      NULL,                                          /* assign_hook */
-      NULL);                                         /* show_hook */
+  DefineCustomIntVariable("pg_diffix.top_count_max",                     /* name */
+                          "Maximum top contributors count (inclusive).", /* short_desc */
+                          "Must not be smaller than top_count_min.",     /* long_desc */
+                          &g_config.top_count_max,                       /* valueAddr */
+                          6,                                             /* bootValue */
+                          1,                                             /* minValue */
+                          MAX_NUMERIC_CONFIG,                            /* maxValue */
+                          PGC_SUSET,                                     /* context */
+                          0,                                             /* flags */
+                          &top_count_max_check_hook,                     /* check_hook */
+                          NULL,                                          /* assign_hook */
+                          NULL);                                         /* show_hook */
 
   DefineCustomBoolVariable(
       "pg_diffix.compute_suppress_bin",                                                 /* name */
