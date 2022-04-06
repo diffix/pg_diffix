@@ -38,6 +38,23 @@ BEGIN
   PERFORM count(*) FROM test_customers;
 END;
 $$;
+-- Order of labels and aggregates is respected
+SELECT city, count(*) FROM test_customers GROUP BY city;
+  city  | count 
+--------+-------
+ *      |     2
+ Rome   |     7
+ Berlin |    10
+(3 rows)
+
+SELECT count(*), city FROM test_customers GROUP BY city;
+ count |  city  
+-------+--------
+     2 | *
+     7 | Rome
+    10 | Berlin
+(3 rows)
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.

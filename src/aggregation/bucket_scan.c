@@ -688,6 +688,10 @@ static int find_agg_index(List *tlist, Oid fnoid)
   return -1;
 }
 
+/*
+ * Builds a tlist describing the scan slot. Attributes match with the child tlist,
+ * except for anonymized aggregates, which are finalized at this stage.
+ */
 static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
 {
   int num_atts = num_labels + num_aggs;

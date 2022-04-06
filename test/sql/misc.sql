@@ -34,6 +34,10 @@ BEGIN
 END;
 $$;
 
+-- Order of labels and aggregates is respected
+SELECT city, count(*) FROM test_customers GROUP BY city;
+SELECT count(*), city FROM test_customers GROUP BY city;
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ALTER TABLE test_customers DROP COLUMN id;
