@@ -53,9 +53,9 @@ static AnonQueryLinks *prepare_query(Query *query)
   if (get_session_access_level() == ACCESS_DIRECT)
     return NULL;
 
-  List *sensitive_relations = gather_sensitive_relations(query);
-  /* A query requires anonymization if it targets sensitive relations. */
-  if (sensitive_relations == NIL)
+  List *personal_relations = gather_personal_relations(query);
+  /* A query requires anonymization if it targets personal relations. */
+  if (personal_relations == NIL)
     return NULL;
 
   /* At this point we have an anonymizing query. */
@@ -70,7 +70,7 @@ static AnonQueryLinks *prepare_query(Query *query)
    */
   config_validate();
 
-  AnonQueryLinks *links = compile_query(query, sensitive_relations);
+  AnonQueryLinks *links = compile_query(query, personal_relations);
 
   DEBUG_LOG("Compiled query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 
@@ -122,7 +122,7 @@ static void prepare_utility(PlannedStmt *pstmt)
       return;
 
     ExplainStmt *explain = (ExplainStmt *)pstmt->utilityStmt;
-    if (involves_sensitive_relations((Query *)explain->query))
+    if (involves_personal_relations((Query *)explain->query))
     {
       verify_explain_options(explain);
       /* Unless given a conflicting `COSTS true` (verified above), set `COSTS false`, which censors the `EXPLAIN`. */

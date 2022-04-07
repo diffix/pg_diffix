@@ -13,10 +13,10 @@
 typedef struct AnonQueryLinks AnonQueryLinks;
 
 /*
- * Transforms subqueries accessing sensitive relations into anonymizing subqueries.
+ * Transforms subqueries accessing personal relations into anonymizing subqueries.
  * Returned data is used during plan rewrite.
  */
-extern AnonQueryLinks *compile_query(Query *query, List *sensitive_relations);
+extern AnonQueryLinks *compile_query(Query *query, List *personal_relations);
 
 /*
  * Wraps anonymizing Agg nodes with BucketScan nodes. Does nothing if links is NULL.

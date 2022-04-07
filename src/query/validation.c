@@ -66,9 +66,9 @@ void verify_explain_options(ExplainStmt *explain)
   {
     DefElem *option = lfirst_node(DefElem, cell);
     if (option_matches(option, "costs", true))
-      FAILWITH("COSTS option is not allowed for queries involving sensitive tables");
+      FAILWITH("COSTS option is not allowed for queries involving personal tables");
     if (option_matches(option, "analyze", true))
-      FAILWITH("EXPLAIN ANALYZE is not allowed for queries involving sensitive tables");
+      FAILWITH("EXPLAIN ANALYZE is not allowed for queries involving personal tables");
   }
 }
 

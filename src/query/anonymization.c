@@ -24,10 +24,10 @@
 
 typedef struct AidRef
 {
-  const SensitiveRelation *relation; /* Source relation of AID */
-  const AidColumn *aid_column;       /* Column data for AID */
-  Index rte_index;                   /* RTE index in query rtable */
-  AttrNumber aid_attnum;             /* AID AttrNumber in relation/subquery */
+  const PersonalRelation *relation; /* Source relation of AID */
+  const AidColumn *aid_column;      /* Column data for AID */
+  Index rte_index;                  /* RTE index in query rtable */
+  AttrNumber aid_attnum;            /* AID AttrNumber in relation/subquery */
 } AidRef;
 
 static void append_aid_args(Aggref *aggref, List *aid_refs);
@@ -208,12 +208,12 @@ static TargetEntry *make_aid_target(AidRef *aid_ref, AttrNumber resno, bool resj
   return te;
 }
 
-static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
+static PersonalRelation *find_relation(Oid rel_oid, List *relations)
 {
   ListCell *cell;
   foreach (cell, relations)
   {
-    SensitiveRelation *relation = (SensitiveRelation *)lfirst(cell);
+    PersonalRelation *relation = (PersonalRelation *)lfirst(cell);
     if (relation->oid == rel_oid)
       return relation;
   }
@@ -225,7 +225,7 @@ static SensitiveRelation *find_relation(Oid rel_oid, List *relations)
  * Adds references targeting AIDs of relation to `aid_refs`.
  */
 static void gather_relation_aids(
-    const SensitiveRelation *relation,
+    const PersonalRelation *relation,
     Index rte_index,
     RangeTblEntry *rte,
     List **aid_refs)
@@ -262,7 +262,7 @@ static List *gather_aid_refs(Query *query, List *relations)
 
     if (rte->rtekind == RTE_RELATION)
     {
-      SensitiveRelation *relation = find_relation(rte->relid, relations);
+      PersonalRelation *relation = find_relation(rte->relid, relations);
       if (relation != NULL)
         gather_relation_aids(relation, rte_index, rte, &aid_refs);
     }
@@ -451,9 +451,9 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
  *-------------------------------------------------------------------------
  */
 
-static AnonymizationContext *make_query_anonymizing(Query *query, List *sensitive_relations)
+static AnonymizationContext *make_query_anonymizing(Query *query, List *personal_relations)
 {
-  List *aid_refs = gather_aid_refs(query, sensitive_relations);
+  List *aid_refs = gather_aid_refs(query, personal_relations);
   AnonymizationContext *anon_context = palloc0(sizeof(AnonymizationContext));
 
   /* All AIDs belong to same relation, we can pick any. */
@@ -561,11 +561,11 @@ static void link_anon_context(Query *query, AnonQueryLinks *anon_links, Anonymiz
   expression_tree_walker((Node *)query->targetList, link_anon_context_walker, &data);
 }
 
-static void compile_anonymizing_query(Query *query, List *sensitive_relations, AnonQueryLinks *anon_links)
+static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links)
 {
   verify_anonymization_requirements(query);
 
-  AnonymizationContext *anon_context = make_query_anonymizing(query, sensitive_relations);
+  AnonymizationContext *anon_context = make_query_anonymizing(query, personal_relations);
 
   verify_bucket_expressions(query);
 
@@ -574,7 +574,7 @@ static void compile_anonymizing_query(Query *query, List *sensitive_relations, A
   link_anon_context(query, anon_links, anon_context);
 }
 
-static bool is_anonymizing_query(Query *query, List *sensitive_relations)
+static bool is_anonymizing_query(Query *query, List *personal_relations)
 {
   ListCell *cell;
   foreach (cell, query->rtable)
@@ -582,7 +582,7 @@ static bool is_anonymizing_query(Query *query, List *sensitive_relations)
     RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
     if (rte->rtekind == RTE_RELATION)
     {
-      SensitiveRelation *relation = find_relation(rte->relid, sensitive_relations);
+      PersonalRelation *relation = find_relation(rte->relid, personal_relations);
       if (relation != NULL)
         return true;
     }
@@ -592,7 +592,7 @@ static bool is_anonymizing_query(Query *query, List *sensitive_relations)
 
 typedef struct QueryCompileContext
 {
-  List *sensitive_relations;
+  List *personal_relations;
   AnonQueryLinks *anon_links;
 } QueryCompileContext;
 
@@ -604,8 +604,8 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   if (IsA(node, Query))
   {
     Query *query = (Query *)node;
-    if (is_anonymizing_query(query, context->sensitive_relations))
-      compile_anonymizing_query(query, context->sensitive_relations, context->anon_links);
+    if (is_anonymizing_query(query, context->personal_relations))
+      compile_anonymizing_query(query, context->personal_relations, context->anon_links);
     else
       query_tree_walker(query, compile_query_walker, context, 0);
   }
@@ -613,10 +613,10 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   return expression_tree_walker(node, compile_query_walker, context);
 }
 
-AnonQueryLinks *compile_query(Query *query, List *sensitive_relations)
+AnonQueryLinks *compile_query(Query *query, List *personal_relations)
 {
   QueryCompileContext context = {
-      .sensitive_relations = sensitive_relations,
+      .personal_relations = personal_relations,
       .anon_links = palloc0(sizeof(AnonQueryLinks)),
   };
 
