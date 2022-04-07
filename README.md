@@ -139,19 +139,19 @@ To remove an anonymization label from an object, set it to `NULL`.
 
 Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
 
-Tables can be labeled as `public` or `sensitive`. Direct access is allowed to public data even for restricted users.
+Tables can be labeled as `public` or `personal`. Direct access is allowed to public data even for restricted users.
 If a table is unlabeled, its data is presumed to be public.
 
-When a table is labeled as `sensitive`, salt (secret value that influences noise generation) must be provided using the
-following format: `sensitive:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
+When a table is labeled as `personal`, salt (secret value that influences noise generation) must be provided using the
+following format: `personal:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
 32 bytes of **salt** can be given and it is recommended for the salt to have at least 16 cryptographically strong random
 bytes.
 
 ```sql
-SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'sensitive:d1ff1c5'
+SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'personal:d1ff1c5'
 ```
 
-Anonymization ID (AID) columns for a sensitive table have to be marked with the anonymization label `aid`. A sensitive
+Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`. A personal
 table can have one or more AID columns.
 
 ```SQL
@@ -172,12 +172,12 @@ At access levels other than `direct`, various data and features built into Postg
 1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones, are not allowed (unless superuser).
 2. Data in the `pg_catalog` schema like `pg_stats`, `pg_user_functions`, or `pg_class` is not accessible (unless superuser).
 3. Selected subset of less frequently used PostgreSQL query features like `EXISTS` or `NULLIF` are disabled.
-4. Inheritance involving a sensitive table is not allowed.
-5. Some of the output of `EXPLAIN` for queries involving a sensitive table is censored (unless superuser).
+4. Inheritance involving a personal table is not allowed.
+5. Some of the output of `EXPLAIN` for queries involving a personal table is censored (unless superuser).
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 
-Row level security (RLS) can be enabled and used on sensitive tables. It is advised that the active policies are vetted from the point of view of anonymity.
+Row level security (RLS) can be enabled and used on personal tables. It is advised that the active policies are vetted from the point of view of anonymity.
 
 It is also strongly advised to vet any other extensions which are enabled alongside `pg_diffix`, as well as any user-defined functions and aggregate functions.
 

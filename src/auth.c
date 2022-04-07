@@ -44,10 +44,10 @@ static inline char *seclabel_token(const char *str, int n)
   return token;
 }
 
-static inline bool is_sensitive_label(const char *seclabel)
+static inline bool is_personal_label(const char *seclabel)
 {
   char *label = seclabel_token(seclabel, 0);
-  bool result = strcasecmp(label, "sensitive") == 0;
+  bool result = strcasecmp(label, "personal") == 0;
   pfree(label);
   return result;
 }
@@ -109,14 +109,14 @@ AccessLevel get_session_access_level(void)
   return (AccessLevel)g_config.session_access_level;
 }
 
-bool is_sensitive_relation(Oid relation_oid)
+bool is_personal_relation(Oid relation_oid)
 {
   ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
 
   if (seclabel == NULL)
     return false;
-  else if (is_sensitive_label(seclabel))
+  else if (is_personal_label(seclabel))
     return true;
   else if (is_public_label(seclabel))
     return false;
@@ -173,7 +173,7 @@ static void verify_pg_features(Oid relation_id)
 static void verify_salt_suffix(const char *seclabel)
 {
   if (get_salt_from_seclabel(seclabel) == NULL)
-    FAILWITH("Expected format for relations security label: 'sensitive:<hex-encoded-salt>'");
+    FAILWITH("Expected format for relations security label: 'personal:<hex-encoded-salt>'");
 }
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
@@ -184,9 +184,9 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
   if (seclabel == NULL)
     return;
 
-  if (is_sensitive_label(seclabel) || is_public_label(seclabel))
+  if (is_personal_label(seclabel) || is_public_label(seclabel))
   {
-    if (is_sensitive_label(seclabel))
+    if (is_personal_label(seclabel))
     {
       verify_pg_features(object->objectId);
       verify_salt_suffix(seclabel);

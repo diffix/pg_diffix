@@ -17,22 +17,22 @@ typedef struct AidColumn
 } AidColumn;
 
 /*
- * Data for a sensitive relation.
+ * Data for a personal relation.
  */
-typedef struct SensitiveRelation
+typedef struct PersonalRelation
 {
   Oid namespace_oid; /* Namespace OID */
   Oid oid;           /* Relation OID */
   List *aid_columns; /* AID columns in relation (of type AidColumn) */
-} SensitiveRelation;
+} PersonalRelation;
 
-extern List *gather_sensitive_relations(Query *query);
+extern List *gather_personal_relations(Query *query);
 
-static inline bool involves_sensitive_relations(Query *query)
+static inline bool involves_personal_relations(Query *query)
 {
-  List *sensitive_relations = gather_sensitive_relations(query);
-  bool result = sensitive_relations != NIL;
-  list_free(sensitive_relations);
+  List *personal_relations = gather_personal_relations(query);
+  bool result = personal_relations != NIL;
+  list_free(personal_relations);
   return result;
 }
 

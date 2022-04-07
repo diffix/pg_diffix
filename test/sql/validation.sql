@@ -10,23 +10,23 @@ CREATE TABLE test_validation (
   last_seen TIMESTAMP
 );
 
-SECURITY LABEL FOR pg_diffix ON TABLE test_validation IS 'sensitive:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE test_validation IS 'personal:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_validation.id IS 'aid';
 
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
 
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'personal:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN superclass.x IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'personal:646966666978';
 SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
 
 ALTER TABLE subclass INHERIT superclass;
 
 -- No-op. Repeated to test the error on conflicting configuration
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'sensitive:646966666978';
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'sensitive:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'personal:646966666978';
 
 SET ROLE diffix_test;
 

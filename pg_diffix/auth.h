@@ -30,12 +30,12 @@ extern AccessLevel get_user_access_level(void);
 extern AccessLevel get_session_access_level(void);
 
 /*
- * Returns true if the relation has been labeled as sensitive, false otherwise.
+ * Returns true if the relation has been labeled as personal, false otherwise.
  */
-extern bool is_sensitive_relation(Oid relation_oid);
+extern bool is_personal_relation(Oid relation_oid);
 
 /*
- * Returns the salt for a sensitive relation.
+ * Returns the salt for a personal relation.
  */
 char *get_salt_for_relation(Oid relation_oid);
 

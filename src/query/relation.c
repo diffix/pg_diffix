@@ -11,12 +11,12 @@
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/utils.h"
 
-static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_oid)
+static PersonalRelation *create_personal_relation(Oid rel_oid, Oid namespace_oid)
 {
-  SensitiveRelation *sensitive_rel = palloc(sizeof(SensitiveRelation));
-  sensitive_rel->namespace_oid = namespace_oid;
-  sensitive_rel->oid = rel_oid;
-  sensitive_rel->aid_columns = NIL;
+  PersonalRelation *personal_rel = palloc(sizeof(PersonalRelation));
+  personal_rel->namespace_oid = namespace_oid;
+  personal_rel->oid = rel_oid;
+  personal_rel->aid_columns = NIL;
 
   Relation rel = table_open(rel_oid, AccessShareLock);
   TupleDesc rel_desc = RelationGetDescr(rel);
@@ -33,13 +33,13 @@ static SensitiveRelation *create_sensitive_relation(Oid rel_oid, Oid namespace_o
       aid_col->typmod = att->atttypmod;
       aid_col->collid = att->attcollation;
 
-      sensitive_rel->aid_columns = lappend(sensitive_rel->aid_columns, aid_col);
+      personal_rel->aid_columns = lappend(personal_rel->aid_columns, aid_col);
     }
   }
 
   table_close(rel, AccessShareLock);
 
-  return sensitive_rel;
+  return personal_rel;
 }
 
 static bool has_relation(List *relations, Oid rel_oid)
@@ -47,7 +47,7 @@ static bool has_relation(List *relations, Oid rel_oid)
   ListCell *cell;
   foreach (cell, relations)
   {
-    SensitiveRelation *rel = (SensitiveRelation *)lfirst(cell);
+    PersonalRelation *rel = (PersonalRelation *)lfirst(cell);
     if (rel->oid == rel_oid)
       return true;
   }
@@ -55,7 +55,7 @@ static bool has_relation(List *relations, Oid rel_oid)
   return false;
 }
 
-static bool gather_sensitive_relations_walker(Node *node, List **relations)
+static bool gather_personal_relations_walker(Node *node, List **relations)
 {
   if (node == NULL)
     return false;
@@ -67,26 +67,26 @@ static bool gather_sensitive_relations_walker(Node *node, List **relations)
       return false;
 
     Oid namespace_oid = get_rel_namespace(rte->relid);
-    if (is_sensitive_relation(rte->relid))
+    if (is_personal_relation(rte->relid))
     {
-      SensitiveRelation *rel_data = create_sensitive_relation(rte->relid, namespace_oid);
+      PersonalRelation *rel_data = create_personal_relation(rte->relid, namespace_oid);
       *relations = lappend(*relations, rel_data);
     }
     return false;
   }
   else if (IsA(node, Query))
   {
-    return query_tree_walker((Query *)node, gather_sensitive_relations_walker, relations, QTW_EXAMINE_RTES_BEFORE);
+    return query_tree_walker((Query *)node, gather_personal_relations_walker, relations, QTW_EXAMINE_RTES_BEFORE);
   }
   else
   {
-    return expression_tree_walker(node, gather_sensitive_relations_walker, relations);
+    return expression_tree_walker(node, gather_personal_relations_walker, relations);
   }
 }
 
-List *gather_sensitive_relations(Query *query)
+List *gather_personal_relations(Query *query)
 {
   List *relations = NIL;
-  gather_sensitive_relations_walker((Node *)query, &relations);
+  gather_personal_relations_walker((Node *)query, &relations);
   return relations;
 }
