@@ -31,11 +31,11 @@ CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT,
 CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
 
 -- Config tables.
-CALL diffix.make_personal('public', 'test_customers', '646966666978', 'id');
-CALL diffix.make_personal('public', 'test_purchases', '646966666978', 'cid');
-CALL diffix.make_personal('public', 'test_patients', '646966666978', 'id', 'name');
-CALL diffix.make_personal('public', 'empty_test_customers', '646966666978', 'id');
-CALL diffix.make_personal('public', 'london_customers', '646966666978', 'id');
+CALL diffix.mark_personal('public', 'test_customers', '646966666978', 'id');
+CALL diffix.mark_personal('public', 'test_purchases', '646966666978', 'cid');
+CALL diffix.mark_personal('public', 'test_patients', '646966666978', 'id', 'name');
+CALL diffix.mark_personal('public', 'empty_test_customers', '646966666978', 'id');
+CALL diffix.mark_personal('public', 'london_customers', '646966666978', 'id');
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$

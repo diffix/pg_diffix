@@ -41,7 +41,7 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE PROCEDURE diffix.make_personal(table_namespace text, table_name text, salt text, variadic aid_columns text[])
+CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, salt text, variadic aid_columns text[])
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid 
@@ -71,7 +71,7 @@ AS $$
 $$ LANGUAGE plpgsql
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE PROCEDURE diffix.make_public(table_namespace text, table_name text)
+CREATE OR REPLACE PROCEDURE diffix.mark_public(table_namespace text, table_name text)
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid 

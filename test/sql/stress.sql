@@ -7,7 +7,7 @@ CREATE TABLE test_stress AS (
   FROM generate_series(1, 50000) series(i)
 );
 
-CALL diffix.make_personal('public', 'test_stress', '646966666978', 'id');
+CALL diffix.mark_personal('public', 'test_stress', '646966666978', 'id');
 
 -- Prepare test session.
 SET pg_diffix.noise_layer_sd = 0;

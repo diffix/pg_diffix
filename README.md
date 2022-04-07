@@ -151,13 +151,13 @@ Anonymization ID (AID) columns for a personal table have to be marked with the a
 table can have one or more AID columns.
 
 In order to label a table as `personal`, and set the salt and AID columns, use the
-`diffix.make_personal(namespace, table_name, salt, aid_columns...)` procedure, for example:
+`diffix.mark_personal(namespace, table_name, salt, aid_columns...)` procedure, for example:
 
 ```SQL
-CALL diffix.make_personal('public', 'my_table', 'd1ff1c5', 'id', 'last_name');
+CALL diffix.mark_personal('public', 'my_table', 'd1ff1c5', 'id', 'last_name');
 ```
 
-In order to label a table as `public`, use the `diffix.make_public(namespace, table_name)` procedure.
+In order to label a table as `public`, use the `diffix.mark_public(namespace, table_name)` procedure.
 
 Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. The value of the custom variable `pg_diffix.default_access_level`
 determines the access level for unlabeled regular users.
