@@ -509,7 +509,7 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
 
   if (IsA(node, Aggref))
   {
-    *aggrefs = list_append_unique(*aggrefs, node); /* Uses node equals to compare. */
+    *aggrefs = lappend(*aggrefs, node);
     return false;
   }
 
