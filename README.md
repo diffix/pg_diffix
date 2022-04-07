@@ -147,16 +147,17 @@ following format: `personal:<hex-encoded-salt>`. Being a _security label_, salt 
 32 bytes of **salt** can be given and it is recommended for the salt to have at least 16 cryptographically strong random
 bytes.
 
-```sql
-SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'personal:d1ff1c5'
-```
-
 Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`. A personal
 table can have one or more AID columns.
 
+In order to label a table as `personal`, and set the salt and AID columns, use the
+`diffix.make_personal(table_name, salt, aid_columns...)` procedure, for example:
+
 ```SQL
-SECURITY LABEL FOR pg_diffix ON COLUMN my_table.id IS 'aid';
+CALL diffix.make_personal('my_table', 'd1ff1c5', 'id', 'last_name');
 ```
+
+In order to label a table as `public`, use the `diffix.make_public(table_name)` procedure.
 
 Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. The value of the custom variable `pg_diffix.default_access_level`
 determines the access level for unlabeled regular users.

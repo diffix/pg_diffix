@@ -31,17 +31,11 @@ CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT,
 CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
 
 -- Config tables.
-SECURITY LABEL FOR pg_diffix ON TABLE test_customers IS 'personal:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE test_purchases IS 'personal:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN test_purchases.cid IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE test_patients IS 'personal:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON COLUMN test_patients.name IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE empty_test_customers IS 'personal:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN empty_test_customers.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE london_customers IS 'personal:646966666978';
-SECURITY LABEL FOR pg_diffix ON COLUMN london_customers.id IS 'aid';
+CALL diffix.make_personal('test_customers', '646966666978', 'id');
+CALL diffix.make_personal('test_purchases', '646966666978', 'cid');
+CALL diffix.make_personal('test_patients', '646966666978', 'id', 'name');
+CALL diffix.make_personal('empty_test_customers', '646966666978', 'id');
+CALL diffix.make_personal('london_customers', '646966666978', 'id');
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$

@@ -41,6 +41,44 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
+CREATE OR REPLACE PROCEDURE diffix.make_personal(table_name text, salt text, variadic aid_columns text[])
+AS $$
+  DECLARE
+    table_oid integer := (SELECT oid FROM pg_class WHERE relname = table_name);
+    aid_column text;
+  BEGIN
+    DELETE FROM pg_seclabel WHERE provider = 'pg_diffix' AND objoid=table_oid AND label='aid';
+
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE '
+            || quote_ident(table_name)
+            || ' IS '
+            || quote_literal(concat('personal:', salt));
+
+    FOREACH aid_column IN ARRAY aid_columns LOOP
+      EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN '
+              || quote_ident(table_name)
+              || '.'
+              || quote_ident(aid_column)
+              || ' IS ''aid''';
+    END LOOP;
+  END;
+$$ LANGUAGE plpgsql
+SECURITY INVOKER SET search_path = 'public';
+
+CREATE OR REPLACE PROCEDURE diffix.make_public(table_name text)
+AS $$
+  DECLARE
+    table_oid integer := (SELECT oid FROM pg_class WHERE relname = table_name);
+  BEGIN
+    DELETE FROM pg_seclabel WHERE provider = 'pg_diffix' AND objoid=table_oid AND label='aid';
+
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE '
+            || quote_ident(table_name)
+            || ' IS ''public''';
+  END;
+$$ LANGUAGE plpgsql
+SECURITY INVOKER SET search_path = 'public';
+
 /* ----------------------------------------------------------------
  * Common aggregation interface
  * ----------------------------------------------------------------
