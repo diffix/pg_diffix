@@ -55,6 +55,13 @@ SELECT count(*), city FROM test_customers GROUP BY city;
     10 | Berlin
 (3 rows)
 
+-- Same aggregate can be selected multiple times
+SELECT count(*), count(*) FROM test_customers;
+ count | count 
+-------+-------
+    16 |    16
+(1 row)
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
