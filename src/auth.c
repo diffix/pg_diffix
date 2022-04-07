@@ -47,6 +47,7 @@ static inline char *seclabel_token(const char *str, int n)
 static inline bool is_personal_label(const char *seclabel)
 {
   char *label = seclabel_token(seclabel, 0);
+  Assert(label);
   bool result = strcasecmp(label, "personal") == 0;
   pfree(label);
   return result;
@@ -128,7 +129,7 @@ static char *get_salt_from_seclabel(const char *seclabel)
 {
   char *salt = seclabel_token(seclabel, 1);
   if (salt == NULL)
-    return NULL;
+    FAILWITH_CODE(ERRCODE_INVALID_NAME, "Table has invalid anonymization label.");
 
   /* Truncate the salt to 32-bytes (hex encoded). */
   if (strlen(salt) > 64)
@@ -172,8 +173,7 @@ static void verify_pg_features(Oid relation_id)
 
 static void verify_salt_suffix(const char *seclabel)
 {
-  if (get_salt_from_seclabel(seclabel) == NULL)
-    FAILWITH("Expected format for relations security label: 'personal:<hex-encoded-salt>'");
+  get_salt_from_seclabel(seclabel);
 }
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
