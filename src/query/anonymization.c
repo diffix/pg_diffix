@@ -454,6 +454,9 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
 static AnonymizationContext *make_query_anonymizing(Query *query, List *personal_relations)
 {
   List *aid_refs = gather_aid_refs(query, personal_relations);
+  if (aid_refs == NIL)
+    FAILWITH("No AID found in target relations.");
+
   AnonymizationContext *anon_context = palloc0(sizeof(AnonymizationContext));
 
   /* All AIDs belong to same relation, we can pick any. */
