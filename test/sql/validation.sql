@@ -127,6 +127,12 @@ WITH c AS (SELECT city FROM test_validation) SELECT * FROM c;
 
 SELECT (SELECT city FROM test_validation);
 
+-- Allow discovery commands
+\dt empty_test_customers
+\d empty_test_customers
+\dt+ empty_test_customers
+\d+ empty_test_customers
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------

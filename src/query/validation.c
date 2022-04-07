@@ -32,6 +32,7 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static bool option_matches(DefElem *option, char *name, bool value);
+static bool are_allowed_pg_catalog_cols(Oid relation_oid, const Bitmapset *selected_cols);
 
 void verify_utility_command(Node *utility_stmt)
 {
@@ -81,7 +82,7 @@ bool verify_pg_catalog_access(List *range_tables)
     if (rte->relid != 0)
     {
       const char *namespace_name = get_namespace_name(get_rel_namespace(rte->relid));
-      if (strcmp(namespace_name, "pg_catalog") == 0)
+      if (strcmp(namespace_name, "pg_catalog") == 0 && !are_allowed_pg_catalog_cols(rte->relid, rte->selectedCols))
         return false;
     }
   }
@@ -366,4 +367,50 @@ double numeric_value_to_double(Oid type, Datum value)
 static bool option_matches(DefElem *option, char *name, bool value)
 {
   return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
+}
+
+typedef struct AllowedCols
+{
+  const char *rel_name; /* Name of the relation */
+  const int num_cols;
+  const int cols[100]; /* Indices of the column in the relation */
+} AllowedCols;
+
+static const AllowedCols g_pg_catalog_allowed[] = {
+    {.rel_name = "pg_class", .num_cols = 20, .cols = {8, 9, 10, 12, 13, 14, 16, 20, 21, 23, 24, 26, 27, 28, 30, 31, 33, 34, 39, 40}},
+    {.rel_name = "pg_inherits", .num_cols = 3, .cols = {8, 9, 10}},
+    {.rel_name = "pg_publication", .num_cols = 3, .cols = {8, 9, 11}},
+    {.rel_name = "pg_publication_rel", .num_cols = 2, .cols = {9, 10}},
+    {.rel_name = "pg_statistic_ext", .num_cols = 7, .cols = {8, 9, 10, 11, 13, 14, 15}},
+    {.rel_name = "pg_db_role_setting", .num_cols = 3, .cols = {8, 9, 10}},
+    {.rel_name = "pg_authid", .num_cols = 11, .cols = {8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19}},
+    {.rel_name = "pg_roles", .num_cols = 2, .cols = {8, 20}},
+    {.rel_name = "pg_policy", .num_cols = 7, .cols = {9, 10, 11, 12, 13, 14, 15}},
+    {.rel_name = "pg_description", .num_cols = 4, .cols = {8, 9, 10, 11}},
+    {.rel_name = "pg_type", .num_cols = 2, .cols = {8, 35}},
+    {.rel_name = "pg_collation", .num_cols = 2, .cols = {8, 9}},
+    {.rel_name = "pg_attrdef", .num_cols = 3, .cols = {9, 10, 11}},
+    {.rel_name = "pg_attribute", .num_cols = 13, .cols = {8, 9, 10, 11, 13, 16, 18, 20, 21, 23, 24, 25, 28}},
+    {.rel_name = "pg_am", .num_cols = 2, .cols = {8, 9}},
+    {.rel_name = "pg_namespace", .num_cols = 2, .cols = {8, 9}},
+    {.rel_name = "pg_index", .num_cols = 7, .cols = {8, 9, 12, 13, 16, 17, 21}},
+    {.rel_name = "pg_constraint", .num_cols = 6, .cols = {8, 11, 12, 13, 15, 17}}
+    /**/
+};
+
+static bool are_allowed_pg_catalog_cols(Oid relation_oid, const Bitmapset *selected_cols)
+{
+  const char *rel_name = get_rel_name(relation_oid);
+  Bitmapset *allowed_cols = NULL;
+
+  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed); i++)
+  {
+    if (strcmp(g_pg_catalog_allowed[i].rel_name, rel_name) != 0)
+      continue;
+    for (int j = 0; j < g_pg_catalog_allowed[i].num_cols; j++)
+      allowed_cols = bms_add_member(allowed_cols, g_pg_catalog_allowed[i].cols[j]);
+  }
+  bool allowed = bms_is_subset(selected_cols, allowed_cols);
+  bms_free(allowed_cols);
+  return allowed;
 }

@@ -201,6 +201,43 @@ SELECT (SELECT city FROM test_validation);
  
 (1 row)
 
+-- Allow discovery commands
+\dt empty_test_customers
+                List of relations
+ Schema |         Name         | Type  |  Owner   
+--------+----------------------+-------+----------
+ public | empty_test_customers | table | postgres
+(1 row)
+
+\d empty_test_customers
+         Table "public.empty_test_customers"
+  Column  |  Type   | Collation | Nullable | Default 
+----------+---------+-----------+----------+---------
+ id       | integer |           | not null | 
+ name     | text    |           |          | 
+ city     | text    |           |          | 
+ discount | real    |           |          | 
+Indexes:
+    "empty_test_customers_pkey" PRIMARY KEY, btree (id)
+
+\dt+ empty_test_customers
+                                     List of relations
+ Schema |         Name         | Type  |  Owner   | Persistence |    Size    | Description 
+--------+----------------------+-------+----------+-------------+------------+-------------
+ public | empty_test_customers | table | postgres | permanent   | 8192 bytes | 
+(1 row)
+
+\d+ empty_test_customers
+                             Table "public.empty_test_customers"
+  Column  |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
+----------+---------+-----------+----------+---------+----------+--------------+-------------
+ id       | integer |           | not null |         | plain    |              | 
+ name     | text    |           |          |         | extended |              | 
+ city     | text    |           |          |         | extended |              | 
+ discount | real    |           |          |         | plain    |              | 
+Indexes:
+    "empty_test_customers_pkey" PRIMARY KEY, btree (id)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
