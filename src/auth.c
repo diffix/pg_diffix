@@ -105,7 +105,7 @@ bool is_personal_relation(Oid relation_oid)
 static const char *seclabel_to_salt(const char *seclabel)
 {
   /* Verify that the security label is personal and the salt is non-empty. */
-  if (!is_personal_label(seclabel) || seclabel[strlen(PERSONAL_LABEL_PREFIX)] == 0)
+  if (!is_personal_label(seclabel) || seclabel[strlen(PERSONAL_LABEL_PREFIX)] == '\0')
     FAILWITH_CODE(ERRCODE_INVALID_NAME, "Table has invalid anonymization label.");
   return seclabel + strlen(PERSONAL_LABEL_PREFIX);
 }
