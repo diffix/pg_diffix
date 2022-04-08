@@ -1,5 +1,6 @@
 #include "postgres.h"
 
+#include "catalog/pg_type.h"
 #include "utils/builtins.h"
 #include "utils/typcache.h"
 

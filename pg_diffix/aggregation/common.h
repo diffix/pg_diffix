@@ -1,6 +1,7 @@
 #ifndef PG_DIFFIX_COMMON_H
 #define PG_DIFFIX_COMMON_H
 
+#include "access/attnum.h"
 #include "nodes/pg_list.h"
 
 #include "pg_diffix/aggregation/noise.h"
