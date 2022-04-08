@@ -1,10 +1,7 @@
 #ifndef PG_DIFFIX_UTILS_H
 #define PG_DIFFIX_UTILS_H
 
-#include "access/htup.h"
-#include "access/htup_details.h" /* Convenience import for `heap_getattr`. */
-#include "access/tupdesc.h"
-#include "fmgr.h"
+#include "nodes/pg_list.h"
 #include "utils/datum.h"
 
 /*-------------------------------------------------------------------------
@@ -86,33 +83,6 @@ static inline List *hash_set_union(List *dst_set, const List *src_set)
 #endif
 
 /*-------------------------------------------------------------------------
- * Table utils
- *-------------------------------------------------------------------------
- */
-
-/*
- * Retrieves relation OID from the namespace/relname pair.
- */
-extern Oid get_rel_oid(const char *rel_ns_name, const char *rel_name);
-
-typedef void *(*MapTupleFunc)(HeapTuple heap_tuple, TupleDesc tuple_desc);
-
-/*
- * Opens a table and maps tuples to custom data using `map_tuple`.
- * NULLs returned by `map_tuple` are ignored.
- */
-extern List *scan_table(Oid rel_oid, MapTupleFunc map_tuple);
-
-static inline List *scan_table_by_name(
-    const char *rel_ns_name,
-    const char *rel_name,
-    MapTupleFunc map_tuple)
-{
-  Oid rel_oid = get_rel_oid(rel_ns_name, rel_name);
-  return scan_table(rel_oid, map_tuple);
-}
-
-/*-------------------------------------------------------------------------
  * Errors and logging
  *-------------------------------------------------------------------------
  */
@@ -148,21 +118,5 @@ static inline List *scan_table_by_name(
 #define DEBUG_DUMP_NODE(label, node)
 
 #endif
-
-/*-------------------------------------------------------------------------
- * Aggregation utils
- *-------------------------------------------------------------------------
- */
-
-/*
- * Switches to the aggregation memory context.
- */
-extern MemoryContext switch_to_aggregation_context(PG_FUNCTION_ARGS);
-
-/*
- * Checks if the current aggregation group has no grouping columns.
- * Will not detect an empty grouping when there are multiple grouping sets.
- */
-extern bool is_global_aggregation(PG_FUNCTION_ARGS);
 
 #endif /* PG_DIFFIX_UTILS_H */

@@ -1,5 +1,7 @@
 #include "postgres.h"
 
+#include "catalog/pg_type.h"
+
 #include "pg_diffix/aggregation/aid_tracker.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
