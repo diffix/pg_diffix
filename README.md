@@ -143,9 +143,8 @@ Tables can be labeled as `public` or `personal`. Direct access is allowed to pub
 If a table is unlabeled, its data is presumed to be public.
 
 When a table is labeled as `personal`, salt (secret value that influences noise generation) must be provided using the
-following format: `personal:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
-32 bytes of **salt** can be given and it is recommended for the salt to have at least 16 cryptographically strong random
-bytes.
+following format: `personal:<salt>`. Being a _security label_, salt can't be read by regular users.
+It is recommended for the salt to have at least 16 bytes of entropy.
 
 ```sql
 SECURITY LABEL FOR pg_diffix ON TABLE my_table IS 'personal:d1ff1c5'

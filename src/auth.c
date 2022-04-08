@@ -130,13 +130,6 @@ static char *get_salt_from_seclabel(const char *seclabel)
   char *salt = seclabel_token(seclabel, 1);
   if (salt == NULL)
     FAILWITH_CODE(ERRCODE_INVALID_NAME, "Table has invalid anonymization label.");
-
-  /* Truncate the salt to 32-bytes (hex encoded). */
-  if (strlen(salt) > 64)
-    salt[64] = 0;
-
-  hex_decode(salt, strlen(salt), salt);
-  salt[strlen(salt) / 2] = 0;
   return salt;
 }
 

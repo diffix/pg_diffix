@@ -57,17 +57,17 @@ CREATE TABLE led_with_star_bucket AS TABLE led_with_victim;
 INSERT INTO led_with_star_bucket VALUES
   (22, 'biol', 'f', 'asst'), (23, 'chem', 'm', 'asst'), (24, 'biol', 'f', 'prof');
 
-SECURITY LABEL FOR pg_diffix ON TABLE led_base IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_base IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_base.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE led_with_victim IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_with_victim IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_with_victim.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE led_with_two_victims IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_with_two_victims IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_with_two_victims.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE led_with_three_cs_women IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_with_three_cs_women IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_with_three_cs_women.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE led_with_different_titles IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_with_different_titles IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_with_different_titles.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE led_with_star_bucket IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE led_with_star_bucket IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN led_with_star_bucket.id IS 'aid';
 
 SET ROLE diffix_test;
