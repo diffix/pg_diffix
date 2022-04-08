@@ -16,6 +16,7 @@
 #include "pg_diffix/utils.h"
 
 static const char *PROVIDER_TAG = "pg_diffix";
+static const char *PERSONAL_LABEL_PREFIX = "personal:";
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel);
 
@@ -24,33 +25,9 @@ void auth_init(void)
   register_label_provider(PROVIDER_TAG, object_relabel);
 }
 
-/*
- * Returns the nth token from a seclabel formatted like `token_0:token_1:token_2:...:token_n:...`. The input seclabel is
- * not modified. The returned `token` is palloc'ed. If there is no nth token, NULL is returned.
- */
-static inline char *seclabel_token(const char *str, int n)
-{
-  if (str == NULL)
-    return NULL;
-
-  char *token = palloc(sizeof(char) * (strlen(str) + 1));
-  strcpy(token, str);
-  char *saveptr;
-  token = __strtok_r(token, ":", &saveptr);
-  for (int i = 0; i < n; i++)
-  {
-    token = __strtok_r(NULL, ":", &saveptr);
-  }
-  return token;
-}
-
 static inline bool is_personal_label(const char *seclabel)
 {
-  char *label = seclabel_token(seclabel, 0);
-  Assert(label);
-  bool result = strcasecmp(label, "personal") == 0;
-  pfree(label);
-  return result;
+  return strncasecmp(seclabel, PERSONAL_LABEL_PREFIX, strlen(PERSONAL_LABEL_PREFIX)) == 0;
 }
 
 static inline bool is_public_label(const char *seclabel)
@@ -125,18 +102,18 @@ bool is_personal_relation(Oid relation_oid)
     FAIL_ON_INVALID_LABEL(seclabel);
 }
 
-static char *get_salt_from_seclabel(const char *seclabel)
+static const char *seclabel_to_salt(const char *seclabel)
 {
-  char *salt = seclabel_token(seclabel, 1);
-  if (salt == NULL)
+  /* Verify that the security label is personal and the salt is non-empty. */
+  if (!is_personal_label(seclabel) || seclabel[strlen(PERSONAL_LABEL_PREFIX)] == 0)
     FAILWITH_CODE(ERRCODE_INVALID_NAME, "Table has invalid anonymization label.");
-  return salt;
+  return seclabel + strlen(PERSONAL_LABEL_PREFIX);
 }
 
-char *get_salt_for_relation(Oid relation_oid)
+const char *get_salt_for_relation(Oid relation_oid)
 {
   ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
-  return get_salt_from_seclabel(GetSecurityLabel(&relation_object, PROVIDER_TAG));
+  return seclabel_to_salt(GetSecurityLabel(&relation_object, PROVIDER_TAG));
 }
 
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)
@@ -164,11 +141,6 @@ static void verify_pg_features(Oid relation_id)
     FAILWITH("Anonymization over tables using inheritance is not supported.");
 }
 
-static void verify_salt_suffix(const char *seclabel)
-{
-  get_salt_from_seclabel(seclabel);
-}
-
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
 {
   if (!superuser())
@@ -182,7 +154,7 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
     if (is_personal_label(seclabel))
     {
       verify_pg_features(object->objectId);
-      verify_salt_suffix(seclabel);
+      seclabel_to_salt(seclabel); /* Verify salt exists. */
     }
 
     if (object->classId == RelationRelationId && object->objectSubId == 0)
