@@ -37,7 +37,7 @@ extern bool is_personal_relation(Oid relation_oid);
 /*
  * Returns the salt for a personal relation.
  */
-char *get_salt_for_relation(Oid relation_oid);
+const char *get_salt_for_relation(Oid relation_oid);
 
 /*
  * Returns true if the column has been labeled as an AID, false otherwise.

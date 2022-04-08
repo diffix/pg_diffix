@@ -7,7 +7,7 @@ CREATE TABLE test_stress AS (
   FROM generate_series(1, 50000) series(i)
 );
 
-SECURITY LABEL FOR pg_diffix ON TABLE test_stress IS 'personal:646966666978';
+SECURITY LABEL FOR pg_diffix ON TABLE test_stress IS 'personal:diffix';
 SECURITY LABEL FOR pg_diffix ON COLUMN test_stress.id IS 'aid';
 
 -- Prepare test session.

@@ -6,8 +6,8 @@
  */
 typedef struct DiffixConfig
 {
-  int default_access_level;
-  int session_access_level;
+  int default_access_level; /* Stores default `AccessLevel` value. */
+  int session_access_level; /* Stores current `AccessLevel` value. */
 
   double noise_layer_sd;
 
