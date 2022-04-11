@@ -9,6 +9,8 @@ typedef struct DiffixConfig
   int default_access_level; /* Stores default `AccessLevel` value. */
   int session_access_level; /* Stores current `AccessLevel` value. */
 
+  bool treat_unmarked_tables_as_public;
+
   double noise_layer_sd;
 
   int low_count_min_threshold;

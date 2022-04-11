@@ -138,6 +138,18 @@ void config_init(void)
       NULL,                                /* assign_hook */
       NULL);                               /* show_hook */
 
+  DefineCustomBoolVariable(
+      "pg_diffix.treat_unmarked_tables_as_public",                                 /* name */
+      "Controls whether unmarked tables are readable and treated as public data.", /* short_desc */
+      NULL,                                                                        /* long_desc */
+      &g_config.treat_unmarked_tables_as_public,                                   /* valueAddr */
+      false,                                                                       /* bootValue */
+      PGC_SUSET,                                                                   /* context */
+      0,                                                                           /* flags */
+      NULL,                                                                        /* check_hook */
+      NULL,                                                                        /* assign_hook */
+      NULL);                                                                       /* show_hook */
+
   DefineCustomRealVariable(
       "pg_diffix.noise_layer_sd",                                     /* name */
       "Standard deviation for each noise layer added to aggregates.", /* short_desc */
