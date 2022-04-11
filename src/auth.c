@@ -1,10 +1,12 @@
 #include "postgres.h"
 
 #include "catalog/pg_inherits.h"
+#include "catalog/pg_namespace.h"
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/lsyscache.h"
 
 /* Security labels type definitions */
 #include "catalog/pg_authid.h"
@@ -87,13 +89,22 @@ AccessLevel get_session_access_level(void)
   return (AccessLevel)g_config.session_access_level;
 }
 
+static bool is_pg_catalog_relation(Oid relation_oid)
+{
+  return get_rel_namespace(relation_oid) == PG_CATALOG_NAMESPACE;
+}
+
 bool is_personal_relation(Oid relation_oid)
 {
   ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
 
   if (seclabel == NULL)
-    return false;
+    if (g_config.treat_unmarked_tables_as_public || is_pg_catalog_relation(relation_oid))
+      return false; /* PG_CATALOG relations are checked in `ExecutorCheckPerms` hook. */
+    else
+      FAILWITH_CODE(ERRCODE_INSUFFICIENT_PRIVILEGE,
+                    "Tables without an anonymization label can't be accessed in `publish` mode.");
   else if (is_personal_label(seclabel))
     return true;
   else if (is_public_label(seclabel))

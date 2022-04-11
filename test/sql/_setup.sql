@@ -36,6 +36,7 @@ CALL diffix.mark_personal('public', 'test_purchases', 'diffix', 'cid');
 CALL diffix.mark_personal('public', 'test_patients', 'diffix', 'id', 'name');
 CALL diffix.mark_personal('public', 'empty_test_customers', 'diffix', 'id');
 CALL diffix.mark_personal('public', 'london_customers', 'diffix', 'id');
+CALL diffix.mark_public('public', 'test_products');
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output
 DO $$

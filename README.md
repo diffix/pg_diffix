@@ -191,10 +191,13 @@ Execute `SELECT * FROM diffix.show_settings();` to display the current settings 
 
 #### Data access settings
 
-`pg_diffix.default_access_level` - Determines the access level for unlabeled users; default value is `direct`.
+`pg_diffix.default_access_level` - Determines the access level for unlabeled users. Default value is `direct`.
 
-`pg_diffix.session_access_level` - Sets the access level for the current session; it can never be higher than the access
-level for the current user; can be changed by all users; defaults to maximum access level allowed.
+`pg_diffix.session_access_level` - Sets the access level for the current session. It can never be higher than the access
+level for the current user. Can be changed by all users. Defaults to maximum access level allowed.
+
+`pg_diffix.treat_unmarked_tables_as_public` - Controls whether unmarked tables are readable and treated as public data.
+Default value is `false`.
 
 #### Noise settings
 

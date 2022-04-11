@@ -44,7 +44,7 @@ SECURITY INVOKER SET search_path = '';
 CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, salt text, variadic aid_columns text[])
 AS $$
   DECLARE
-    table_oid integer := (SELECT pg_class.oid 
+    table_oid integer := (SELECT pg_class.oid
                           FROM pg_class, pg_namespace
                           WHERE pg_class.relnamespace = pg_namespace.oid AND relname = table_name AND nspname = table_namespace);
     aid_column text;
@@ -74,13 +74,15 @@ SECURITY INVOKER SET search_path = '';
 CREATE OR REPLACE PROCEDURE diffix.mark_public(table_namespace text, table_name text)
 AS $$
   DECLARE
-    table_oid integer := (SELECT pg_class.oid 
+    table_oid integer := (SELECT pg_class.oid
                           FROM pg_class, pg_namespace
                           WHERE pg_class.relnamespace = pg_namespace.oid AND relname = table_name AND nspname = table_namespace);
   BEGIN
     DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_oid AND label = 'aid';
 
     EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE '
+            || quote_ident(table_namespace)
+            || '.'
             || quote_ident(table_name)
             || ' IS ''public''';
   END;
