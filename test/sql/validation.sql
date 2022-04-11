@@ -10,23 +10,20 @@ CREATE TABLE test_validation (
   last_seen TIMESTAMP
 );
 
-SECURITY LABEL FOR pg_diffix ON TABLE test_validation IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN test_validation.id IS 'aid';
+CALL diffix.mark_personal('public', 'test_validation', 'diffix', 'id');
 
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
 
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN superclass.x IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN subclass.y IS 'aid';
+CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
+CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
 
 ALTER TABLE subclass INHERIT superclass;
 
 -- No-op. Repeated to test the error on conflicting configuration
-SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'personal:diffix';
+CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
+CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
 
 SET ROLE diffix_test;
 

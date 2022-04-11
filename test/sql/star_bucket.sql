@@ -63,18 +63,12 @@ INSERT INTO star_bucket_only VALUES
   (4, 'cs', 'f', 'prof'),
   (5, 'history', 'f', 'asst');
 
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket_base IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket_base.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket_suppressed_1 IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket_suppressed_1.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket_suppressed_2 IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket_suppressed_2.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket_empty IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket_empty.id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON TABLE star_bucket_only IS 'personal:diffix';
-SECURITY LABEL FOR pg_diffix ON COLUMN star_bucket_only.id IS 'aid';
+CALL diffix.mark_personal('public', 'star_bucket_base', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'star_bucket', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'star_bucket_suppressed_1', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'star_bucket_suppressed_2', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'star_bucket_empty', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'star_bucket_only', 'diffix', 'id');
 
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'publish_trusted';

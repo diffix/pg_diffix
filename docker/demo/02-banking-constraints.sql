@@ -1,51 +1,37 @@
 --
 -- accounts
 --
-SECURITY LABEL FOR pg_diffix ON TABLE accounts IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN accounts.account_id IS 'aid';
-
+CALL diffix.mark_personal('public', 'accounts', 'diffix', 'account_id');
 ALTER TABLE accounts ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id);
 
 --
 -- accounts_receivables
 --
-SECURITY LABEL FOR pg_diffix ON TABLE accounts_receivables IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN accounts_receivables.customerid IS 'aid';
+CALL diffix.mark_personal('public', 'accounts_receivables', 'diffix', 'customerid');
 
 --
 -- credit_cards
 --
-SECURITY LABEL FOR pg_diffix ON TABLE credit_cards IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN credit_cards.disp_id IS 'aid';
+CALL diffix.mark_personal('public', 'credit_cards', 'diffix', 'disp_id');
 
 --
 -- clients
 --
-SECURITY LABEL FOR pg_diffix ON TABLE clients IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN clients.client_id IS 'aid';
+CALL diffix.mark_personal('public', 'clients', 'diffix', 'client_id');
 
 ALTER TABLE clients ADD CONSTRAINT clients_pkey PRIMARY KEY (client_id);
 
 --
 -- dispositions
 --
-SECURITY LABEL FOR pg_diffix ON TABLE dispositions IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN dispositions.client_id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON COLUMN dispositions.account_id IS 'aid';
+CALL diffix.mark_personal('public', 'dispositions', 'diffix', 'client_id', 'account_id');
 
 ALTER TABLE dispositions ADD CONSTRAINT dispositions_pkey PRIMARY KEY (disp_id);
 
 --
 -- loans
 --
-SECURITY LABEL FOR pg_diffix ON TABLE loans IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN loans.account_id IS 'aid';
+CALL diffix.mark_personal('public', 'loans', 'diffix', 'account_id');
 
 ALTER TABLE loans ADD CONSTRAINT loans_pkey PRIMARY KEY (loan_id);
 
@@ -57,18 +43,13 @@ SECURITY LABEL FOR pg_diffix ON TABLE loss_events IS 'public';
 --
 -- orders
 --
-SECURITY LABEL FOR pg_diffix ON TABLE orders IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN orders.account_id IS 'aid';
-SECURITY LABEL FOR pg_diffix ON COLUMN orders.account_to IS 'aid';
+CALL diffix.mark_personal('public', 'orders', 'diffix', 'account_id', 'account_to');
 
 ALTER TABLE orders ADD CONSTRAINT orders_pkey PRIMARY KEY (order_id);
 
 --
 -- transactions
 --
-SECURITY LABEL FOR pg_diffix ON TABLE transactions IS 'personal:diffix';
-
-SECURITY LABEL FOR pg_diffix ON COLUMN transactions.account_id IS 'aid';
+CALL diffix.mark_personal('public', 'transactions', 'diffix', 'account_id');
 
 ALTER TABLE transactions ADD CONSTRAINT transactions_pkey PRIMARY KEY (trans_id);
