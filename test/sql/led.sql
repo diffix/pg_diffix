@@ -57,12 +57,12 @@ CREATE TABLE led_with_star_bucket AS TABLE led_with_victim;
 INSERT INTO led_with_star_bucket VALUES
   (22, 'biol', 'f', 'asst'), (23, 'chem', 'm', 'asst'), (24, 'biol', 'f', 'prof');
 
-CALL diffix.mark_personal('public', 'led_base', '646966666978', 'id');
-CALL diffix.mark_personal('public', 'led_with_victim', '646966666978', 'id');
-CALL diffix.mark_personal('public', 'led_with_two_victims', '646966666978', 'id');
-CALL diffix.mark_personal('public', 'led_with_three_cs_women', '646966666978', 'id');
-CALL diffix.mark_personal('public', 'led_with_different_titles', '646966666978', 'id');
-CALL diffix.mark_personal('public', 'led_with_star_bucket', '646966666978', 'id');
+CALL diffix.mark_personal('public', 'led_base', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'led_with_victim', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'led_with_two_victims', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'led_with_three_cs_women', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'led_with_different_titles', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'led_with_star_bucket', 'diffix', 'id');
 
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'publish_trusted';

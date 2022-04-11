@@ -38,6 +38,9 @@ $$;
 SELECT city, count(*) FROM test_customers GROUP BY city;
 SELECT count(*), city FROM test_customers GROUP BY city;
 
+-- Same aggregate can be selected multiple times
+SELECT count(*), count(*) FROM test_customers;
+
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
 ALTER TABLE test_customers DROP COLUMN id;

@@ -126,7 +126,7 @@ typedef struct BucketAttribute
 typedef struct AnonymizationContext
 {
   seed_t sql_seed;           /* Static part of bucket seed */
-  char *salt;                /* Salt to use when preparing the random noise seeds */
+  const char *salt;          /* Salt to use when preparing the random noise seeds */
   AttrNumber *grouping_cols; /* Array of indices into the target list for the grouping columns */
   int grouping_cols_count;   /* Count of grouping columns */
   bool expand_buckets;       /* True if buckets have to be expanded for this query */

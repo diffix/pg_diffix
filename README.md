@@ -143,9 +143,8 @@ Tables can be labeled as `public` or `personal`. Direct access is allowed to pub
 If a table is unlabeled, its data is presumed to be public.
 
 When a table is labeled as `personal`, salt (secret value that influences noise generation) must be provided using the
-following format: `personal:<hex-encoded-salt>`. Being a _security label_, salt can't be read by regular users. Up to
-32 bytes of **salt** can be given and it is recommended for the salt to have at least 16 cryptographically strong random
-bytes.
+following format: `personal:<salt>`. Being a _security label_, salt can't be read by regular users.
+It is recommended for the salt to have at least 16 bytes of entropy.
 
 Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`. A personal
 table can have one or more AID columns.
@@ -154,7 +153,7 @@ In order to label a table as `personal`, and set the salt and AID columns, use t
 `diffix.mark_personal(namespace, table_name, salt, aid_columns...)` procedure, for example:
 
 ```SQL
-CALL diffix.mark_personal('public', 'my_table', 'd1ff1c5', 'id', 'last_name');
+CALL diffix.mark_personal('public', 'my_table', 'diffix', 'id', 'last_name');
 ```
 
 In order to label a table as `public`, use the `diffix.mark_public(namespace, table_name)` procedure.

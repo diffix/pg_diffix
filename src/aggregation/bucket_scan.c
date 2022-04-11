@@ -519,7 +519,6 @@ static bool gather_aggrefs_walker(Node *node, List **aggrefs)
 /*
  * Returns a new target list for Agg without any projections.
  * First entries are grouping labels, followed by aggregate expressions.
- * Anonymizing aggregators are updated to have AnonAggState return type.
  */
 static List *flatten_agg_tlist(Agg *agg, AttrNumber *grouping_cols, int num_labels)
 {
@@ -565,14 +564,6 @@ static List *flatten_agg_tlist(Agg *agg, AttrNumber *grouping_cols, int num_labe
   for (int i = 0; i < num_aggrefs; i++)
   {
     Aggref *aggref = list_nth_node(Aggref, aggrefs, i);
-
-    if (is_anonymizing_agg(aggref->aggfnoid))
-    {
-      /* Convert to AnonAggState because rewriter has left original aggregate types. */
-      aggref->aggtype = g_oid_cache.anon_agg_state;
-      aggref->aggcollid = 0;
-    }
-
     TargetEntry *agg_target_entry = makeTargetEntry((Expr *)aggref, num_labels + i + 1, NULL, false);
     TargetEntry *orig_target_entry = tlist_member((Expr *)aggref, orig_agg_tlist);
 
@@ -691,6 +682,7 @@ static int find_agg_index(List *tlist, Oid fnoid)
 /*
  * Builds a tlist describing the scan slot. Attributes match with the child tlist,
  * except for anonymized aggregates, which are finalized at this stage.
+ * Anonymized aggregates of Agg are updated to have AnonAggState return type.
  */
 static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
 {
@@ -704,10 +696,16 @@ static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
 
     if (i >= num_labels)
     {
-      /* If it's an anonymized aggregate, store final type. */
-      const AnonAggFuncs *agg_funcs = find_agg_funcs(castNode(Aggref, agg_tle->expr)->aggfnoid);
+      Aggref *aggref = castNode(Aggref, agg_tle->expr);
+      const AnonAggFuncs *agg_funcs = find_agg_funcs(aggref->aggfnoid);
       if (agg_funcs != NULL)
+      {
+        /* In index slot's entry we store final type. */
         agg_funcs->final_type(&var->vartype, &var->vartypmod, &var->varcollid);
+        /* In Agg's entry we hold the intermediate AnonAggState. */
+        aggref->aggtype = g_oid_cache.anon_agg_state;
+        aggref->aggcollid = 0;
+      }
     }
 
     TargetEntry *scan_tle = makeTargetEntry((Expr *)var, i + 1, agg_tle->resname, false);
@@ -846,8 +844,7 @@ static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode
   COPY_SCALAR_FIELD(anon_context.grouping_cols_count);
   COPY_SCALAR_FIELD(anon_context.sql_seed);
   COPY_SCALAR_FIELD(anon_context.expand_buckets);
-  int salt_size = strlen(src->anon_context.salt) + 1;
-  COPY_POINTER_FIELD(anon_context.salt, salt_size);
+  COPY_SCALAR_FIELD(anon_context.salt);
 }
 
 static bool bucket_scan_data_equal(const ExtensibleNode *a, const ExtensibleNode *b)
