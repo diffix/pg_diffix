@@ -2,6 +2,7 @@
 
 #include "catalog/pg_collation.h"
 #include "catalog/pg_inherits.h"
+#include "catalog/pg_namespace.h"
 #include "commands/defrem.h"
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
@@ -80,11 +81,9 @@ bool verify_pg_catalog_access(List *range_tables)
   {
     RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
     if (rte->relid != 0)
-    {
-      const char *namespace_name = get_namespace_name(get_rel_namespace(rte->relid));
-      if (strcmp(namespace_name, "pg_catalog") == 0 && !are_allowed_pg_catalog_cols(rte->relid, rte->selectedCols))
+      if (get_rel_namespace(rte->relid) == PG_CATALOG_NAMESPACE &&
+          !are_allowed_pg_catalog_cols(rte->relid, rte->selectedCols))
         return false;
-    }
   }
   return true;
 }
