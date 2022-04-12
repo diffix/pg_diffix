@@ -1,0 +1,36 @@
+LOAD 'pg_diffix';
+----------------------------------------------------------------
+-- Admin functions
+----------------------------------------------------------------
+-- Multiple calls should give consistent results.
+SELECT diffix.hash_record(test_customers) FROM test_customers;
+                        hash_record                         
+------------------------------------------------------------
+ \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+(1 row)
+
+SELECT diffix.hash_record(test_customers), diffix.hash_record(test_customers) FROM test_customers;
+                        hash_record                         |                        hash_record                         
+------------------------------------------------------------+------------------------------------------------------------
+ \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71 | \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+(1 row)
+
+SELECT encode(diffix.hash_record(test_customers), 'hex') FROM test_customers;
+                          encode                          
+----------------------------------------------------------
+ cb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+(1 row)
+
+-- Can hash empty table.
+SELECT diffix.hash_record(empty_test_customers) FROM empty_test_customers;
+                        hash_record                         
+------------------------------------------------------------
+ \xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
+(1 row)
+
+SELECT encode(diffix.hash_record(empty_test_customers), 'hex') FROM empty_test_customers;
+                          encode                          
+----------------------------------------------------------
+ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
+(1 row)
+

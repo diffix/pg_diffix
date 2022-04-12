@@ -41,6 +41,25 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
+CREATE FUNCTION diffix.hash_record_transfn(internal, record)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION diffix.hash_record_finalfn(internal)
+RETURNS bytea
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE AGGREGATE diffix.hash_record(record) (
+  sfunc = diffix.hash_record_transfn,
+  stype = internal,
+  finalfunc = diffix.hash_record_finalfn,
+  finalfunc_modify = read_write
+);
+
 CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, salt text, variadic aid_columns text[])
 AS $$
   DECLARE
