@@ -33,7 +33,7 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static bool option_matches(DefElem *option, char *name, bool value);
-static bool are_allowed_pg_catalog_cols(Oid relation_oid, const Bitmapset *selected_cols);
+static bool is_allowed_pg_catalog_rte(RangeTblEntry *rte);
 
 void verify_utility_command(Node *utility_stmt)
 {
@@ -81,8 +81,7 @@ bool verify_pg_catalog_access(List *range_tables)
   {
     RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
     if (rte->relid != 0)
-      if (get_rel_namespace(rte->relid) == PG_CATALOG_NAMESPACE &&
-          !are_allowed_pg_catalog_cols(rte->relid, rte->selectedCols))
+      if (get_rel_namespace(rte->relid) == PG_CATALOG_NAMESPACE && !is_allowed_pg_catalog_rte(rte))
         return false;
   }
   return true;
@@ -375,25 +374,16 @@ typedef struct AllowedCols
   const char *const col_names[100]; /* Names of columns in the relation */
 } AllowedCols;
 
-static AllowedCols g_pg_catalog_allowed[] = {
+static const char *const g_pg_catalog_allowed_rels[] = {
+    "pg_inherits", "pg_publication", "pg_publication_rel", "pg_db_role_setting", "pg_authid", "pg_roles", "pg_policy",
+    "pg_description", "pg_type", "pg_collation", "pg_attrdef", "pg_attribute", "pg_am", "pg_namespace", "pg_index",
+    "pg_constraint",
+    /**/
+};
+
+static AllowedCols g_pg_catalog_allowed_cols[] = {
     {.rel_name = "pg_class", .col_names = {"oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions"}},
-    {.rel_name = "pg_inherits", .col_names = {"inhrelid", "inhparent", "inhseqno", "inhdetachpending"}},
-    {.rel_name = "pg_publication", .col_names = {"oid", "pubname", "puballtables"}},
-    {.rel_name = "pg_publication_rel", .col_names = {"prpubid", "prrelid"}},
     {.rel_name = "pg_statistic_ext", .col_names = {"oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
-    {.rel_name = "pg_db_role_setting", .col_names = {"setdatabase", "setrole", "setconfig"}},
-    {.rel_name = "pg_authid", .col_names = {"oid", "rolname", "rolsuper", "rolinherit", "rolcreaterole", "rolcreatedb", "rolcanlogin", "rolreplication", "rolbypassrls", "rolconnlimit", "rolvaliduntil"}},
-    {.rel_name = "pg_roles", .col_names = {"rolname", "oid"}},
-    {.rel_name = "pg_policy", .col_names = {"polname", "polrelid", "polcmd", "polpermissive", "polroles", "polqual", "polwithcheck"}},
-    {.rel_name = "pg_description", .col_names = {"objoid", "classoid", "objsubid", "description"}},
-    {.rel_name = "pg_type", .col_names = {"oid", "typcollation"}},
-    {.rel_name = "pg_collation", .col_names = {"oid", "collname"}},
-    {.rel_name = "pg_attrdef", .col_names = {"adrelid", "adnum", "adbin"}},
-    {.rel_name = "pg_attribute", .col_names = {"attrelid", "attname", "atttypid", "attstattarget", "attnum", "atttypmod", "attstorage", "attnotnull", "atthasdef", "attidentity", "attgenerated", "attisdropped", "attcollation"}},
-    {.rel_name = "pg_am", .col_names = {"oid", "amname"}},
-    {.rel_name = "pg_namespace", .col_names = {"oid", "nspname"}},
-    {.rel_name = "pg_index", .col_names = {"indexrelid", "indrelid", "indisunique", "indisprimary", "indisclustered", "indisvalid", "indisreplident"}},
-    {.rel_name = "pg_constraint", .col_names = {"oid", "contype", "condeferrable", "condeferred", "conrelid", "conindid"}}
     /**/
 };
 
@@ -408,18 +398,27 @@ static void prepare_pg_catalog_allowed(Oid relation_oid, AllowedCols *allowed_co
   MemoryContextSwitchTo(old_context);
 }
 
-static bool are_allowed_pg_catalog_cols(Oid relation_oid, const Bitmapset *selected_cols)
+static bool is_allowed_pg_catalog_rte(RangeTblEntry *rte)
 {
+  Oid relation_oid = rte->relid;
   char *rel_name = get_rel_name(relation_oid);
-  bool allowed = false;
 
-  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed); i++)
+  /* First check if the entire relation is allowed. If not, proceed to check the particular selected cols. */
+  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
   {
-    if (strcmp(g_pg_catalog_allowed[i].rel_name, rel_name) != 0)
+    if (strcmp(g_pg_catalog_allowed_rels[i], rel_name) == 0)
+      return true;
+  }
+
+  const Bitmapset *selected_cols = rte->selectedCols;
+  bool allowed = false;
+  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_cols); i++)
+  {
+    if (strcmp(g_pg_catalog_allowed_cols[i].rel_name, rel_name) != 0)
       continue;
-    if (g_pg_catalog_allowed[i].cols == NULL)
-      prepare_pg_catalog_allowed(relation_oid, &g_pg_catalog_allowed[i]);
-    allowed = bms_is_subset(selected_cols, g_pg_catalog_allowed[i].cols);
+    if (g_pg_catalog_allowed_cols[i].cols == NULL)
+      prepare_pg_catalog_allowed(relation_oid, &g_pg_catalog_allowed_cols[i]);
+    allowed = bms_is_subset(selected_cols, g_pg_catalog_allowed_cols[i].cols);
     break;
   }
   pfree(rel_name);
