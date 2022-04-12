@@ -64,9 +64,9 @@ SELECT count(*), count(*) FROM test_customers;
 
 -- Get rejected because of disallowed utility statement
 COPY test_customers TO STDOUT;
-ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
+ERROR:  [PG_DIFFIX] Statement requires direct access level.
 ALTER TABLE test_customers DROP COLUMN id;
-ERROR:  [PG_DIFFIX] Statement requires either SUPERUSER or direct access level.
+ERROR:  [PG_DIFFIX] Statement requires direct access level.
 -- EXPLAIN is censored
 EXPLAIN SELECT city FROM test_customers LIMIT 4;
                   QUERY PLAN                  

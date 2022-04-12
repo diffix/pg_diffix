@@ -37,7 +37,7 @@ static bool are_allowed_pg_catalog_cols(Oid relation_oid, const Bitmapset *selec
 
 void verify_utility_command(Node *utility_stmt)
 {
-  if (get_session_access_level() != ACCESS_DIRECT && !superuser())
+  if (get_session_access_level() != ACCESS_DIRECT)
   {
     switch (utility_stmt->type)
     {
@@ -55,7 +55,7 @@ void verify_utility_command(Node *utility_stmt)
     case T_DeclareCursorStmt:
       break;
     default:
-      FAILWITH("Statement requires either SUPERUSER or direct access level.");
+      FAILWITH("Statement requires direct access level.");
     }
   }
 }

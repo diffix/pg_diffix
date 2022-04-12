@@ -118,7 +118,7 @@ static void prepare_utility(PlannedStmt *pstmt)
 {
   if (IsA(pstmt->utilityStmt, ExplainStmt))
   {
-    if (superuser() || get_session_access_level() == ACCESS_DIRECT)
+    if (get_session_access_level() == ACCESS_DIRECT)
       return;
 
     ExplainStmt *explain = (ExplainStmt *)pstmt->utilityStmt;
@@ -172,7 +172,7 @@ static void pg_diffix_ExecutorStart(QueryDesc *queryDesc, int eflags)
 
 static bool pg_diffix_ExecutorCheckPerms(List *range_tables, bool should_abort)
 {
-  if (get_session_access_level() != ACCESS_DIRECT && !superuser())
+  if (get_session_access_level() != ACCESS_DIRECT)
   {
     if (!verify_pg_catalog_access(range_tables))
     {
