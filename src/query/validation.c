@@ -33,7 +33,7 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static bool option_matches(DefElem *option, char *name, bool value);
-static bool is_allowed_pg_catalog_rte(RangeTblEntry *rte);
+static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols);
 
 void verify_utility_command(Node *utility_stmt)
 {
@@ -81,7 +81,8 @@ bool verify_pg_catalog_access(List *range_tables)
   {
     RangeTblEntry *rte = (RangeTblEntry *)lfirst(cell);
     if (rte->relid != 0)
-      if (get_rel_namespace(rte->relid) == PG_CATALOG_NAMESPACE && !is_allowed_pg_catalog_rte(rte))
+      if (get_rel_namespace(rte->relid) == PG_CATALOG_NAMESPACE &&
+          !is_allowed_pg_catalog_rte(rte->relid, rte->selectedCols))
         return false;
   }
   return true;
@@ -416,23 +417,26 @@ static void prepare_pg_catalog_allowed(Oid relation_oid, AllowedCols *allowed_co
   MemoryContextSwitchTo(old_context);
 }
 
-static bool is_allowed_pg_catalog_rte(RangeTblEntry *rte)
+static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols)
 {
-  Oid relation_oid = rte->relid;
   char *rel_name = get_rel_name(relation_oid);
 
-  /* First check if the entire relation is allowed. If not, proceed to check the particular selected cols. */
+  /* First check if the entire relation is allowed. */
   for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
   {
     if (strcmp(g_pg_catalog_allowed_rels[i], rel_name) == 0)
+    {
+      pfree(rel_name);
       return true;
+    }
   }
-
-  const Bitmapset *selected_cols = rte->selectedCols;
 
   /* Then handle `SELECT count(*) FROM pg_catalog.x`. */
   if (selected_cols == NULL)
+  {
+    pfree(rel_name);
     return true;
+  }
 
   /* Otherwise specific selected columns must be checked against the allow-list. */
   bool allowed = false;
