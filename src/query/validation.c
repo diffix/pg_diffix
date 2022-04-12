@@ -377,13 +377,31 @@ typedef struct AllowedCols
 static const char *const g_pg_catalog_allowed_rels[] = {
     "pg_inherits", "pg_publication", "pg_publication_rel", "pg_db_role_setting", "pg_authid", "pg_roles", "pg_policy",
     "pg_description", "pg_type", "pg_collation", "pg_attrdef", "pg_attribute", "pg_am", "pg_namespace", "pg_index",
-    "pg_constraint",
+    "pg_constraint", "pg_database", "pg_user", "pg_shadow", "pg_tablespace", "pg_shdescription", "pg_settings",
+    "pg_trigger", "pg_extension", "pg_event_trigger", "pg_default_acl", "pg_depend", "pg_available_extensions",
+    "pg_available_extension_versions", "pg_language", "pg_largeobject_metadata", "pg_subscription", "pg_subscription_rel",
+    "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_rewrite", "pg_stat_gssapi", "pg_auth_members",
+    "pg_foreign_server", "pg_foreign_data_wrapper", "pg_foreign_table", "pg_operator", "pg_opfamily", "pg_opclass",
+    "pg_aggregate", "pg_cast", "pg_locks", "pg_prepared_xacts", "pg_prepared_statements", "pg_depend", "pg_shdepend",
+    /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
+    "pg_proc",
     /**/
 };
 
 static AllowedCols g_pg_catalog_allowed_cols[] = {
-    {.rel_name = "pg_class", .col_names = {"oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions"}},
-    {.rel_name = "pg_statistic_ext", .col_names = {"oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
+    /* In `pg_class` there is `reltuples` which must be blocked, causing some less annoying breakage in some clients. */
+    {.rel_name = "pg_class", .col_names = {"tableoid", "oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions", "xmin", "reltoastrelid", "relispopulated", "relacl"}},
+    {.rel_name = "pg_statistic_ext", .col_names = {"tableoid", "oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
+    {.rel_name = "pg_stat_activity", .col_names = {"datname", "pid", "usename", "application_name", "client_addr", "backend_start", "xact_start", "query_start", "state_change", "wait_event_type", "wait_event", "state", "query", "backend_type", "client_hostname", "client_port", "backend_start", "backend_xid", "backend_xmin"}},
+    /* 
+     * In `pg_stat_database` there are also `tup_*` and `blks_*` columns, but blocking them doesn't break clients
+     * dramatically, so opting to leave them out to err on the safe side.
+     */
+    {.rel_name = "pg_stat_database", .col_names = {
+                                         "datname",
+                                         "xact_commit",
+                                         "xact_rollback",
+                                     }},
     /**/
 };
 
