@@ -13,3 +13,9 @@ SELECT encode(diffix.hash_record(test_customers), 'hex') FROM test_customers;
 SELECT diffix.hash_record(empty_test_customers) FROM empty_test_customers;
 SELECT encode(diffix.hash_record(empty_test_customers), 'hex') FROM empty_test_customers;
 
+-- Check seclabels if they match with above hashes.
+SELECT label
+FROM pg_catalog.pg_seclabel
+WHERE provider = 'pg_diffix'
+      AND objsubid = 0
+      AND objoid IN ('test_customers'::regclass::oid, 'empty_test_customers'::regclass::oid);

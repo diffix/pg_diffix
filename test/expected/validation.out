@@ -8,22 +8,22 @@ CREATE TABLE test_validation (
   lunchtime TIME,
   last_seen TIMESTAMP
 );
-CALL diffix.mark_personal('public', 'test_validation', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'test_validation', 'id');
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
-CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
-CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
+CALL diffix.mark_personal('public', 'superclass', 'x');
+CALL diffix.mark_personal('public', 'subclass', 'y');
 ALTER TABLE subclass INHERIT superclass;
 -- No-op. Repeated to test the error on conflicting configuration
-CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
+CALL diffix.mark_personal('public', 'superclass', 'x');
 ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.superclass IS 'personal:diffix'"
-PL/pgSQL function diffix.mark_personal(text,text,text,text[]) line 10 at EXECUTE
-CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
+CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.superclass IS 'personal:7c9fa136d4413fa6173637e883b6998d32e1d675f88cddff9dcbcf33'"
+PL/pgSQL function diffix.mark_personal(text,text,text[]) line 20 at EXECUTE
+CALL diffix.mark_personal('public', 'subclass', 'y');
 ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.subclass IS 'personal:diffix'"
-PL/pgSQL function diffix.mark_personal(text,text,text,text[]) line 10 at EXECUTE
+CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.subclass IS 'personal:0c730b69905c5ef7a4ca5269f72365400bde2dd2c04eaf9bbb3d1c4a'"
+PL/pgSQL function diffix.mark_personal(text,text,text[]) line 20 at EXECUTE
 SET ROLE diffix_test;
 ----------------------------------------------------------------
 -- Trusted mode query restrictions

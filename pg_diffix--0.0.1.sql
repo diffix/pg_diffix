@@ -60,31 +60,30 @@ CREATE AGGREGATE diffix.hash_record(record) (
   finalfunc_modify = read_write
 );
 
-CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, salt text, variadic aid_columns text[])
+CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid
                           FROM pg_class, pg_namespace
                           WHERE pg_class.relnamespace = pg_namespace.oid AND relname = table_name AND nspname = table_namespace);
+    table_fullname text := quote_ident(table_namespace) || '.' || quote_ident(table_name);
+    salt text;
     aid_column text;
   BEGIN
+    IF (SELECT diffix.access_level()) <> 'direct' THEN
+      RAISE EXCEPTION '"diffix.mark_personal" requires direct access mode.';
+    END IF;
+
+    EXECUTE 'SELECT encode(diffix.hash_record(__diffix_record_var__), ''hex'') '
+            || 'FROM ' || table_fullname || ' AS __diffix_record_var__'
+    INTO salt;
+
     DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_oid AND label = 'aid';
 
-    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE '
-            || quote_ident(table_namespace)
-            || '.'
-            || quote_ident(table_name)
-            || ' IS '
-            || quote_literal(concat('personal:', salt));
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE ' || table_fullname || ' IS ' || quote_literal(concat('personal:', salt));
 
     FOREACH aid_column IN ARRAY aid_columns LOOP
-      EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN '
-              || quote_ident(table_namespace)
-              || '.'
-              || quote_ident(table_name)
-              || '.'
-              || quote_ident(aid_column)
-              || ' IS ''aid''';
+      EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_fullname || '.' || quote_ident(aid_column) || ' IS ''aid''';
     END LOOP;
   END;
 $$ LANGUAGE plpgsql

@@ -1,5 +1,5 @@
 LOAD 'pg_diffix';
-SET pg_diffix.noise_layer_sd = 7;
+SET pg_diffix.noise_layer_sd = 5;
 SET pg_diffix.low_count_layer_sd = 3;
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'publish_trusted';
@@ -18,32 +18,32 @@ SELECT diffix.access_level();
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
-    15
+    16
 (1 row)
 
 SELECT COUNT(*) FROM test_purchases;
  count 
 -------
-    23
+     8
 (1 row)
 
 SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
  count | count 
 -------+-------
-    14 |     1
+    15 |     2
 (1 row)
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
  count 
 -------
-     9
+     3
 (1 row)
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- Rome   |     8
- Berlin |    25
+ *      |    21
+ Berlin |     9
 (2 rows)
 
 ----------------------------------------------------------------
@@ -57,7 +57,21 @@ SELECT 1 FROM test_patients;
         1
         1
         1
-(5 rows)
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+(19 rows)
 
 SELECT cast(1 as real) FROM test_patients;
  float4 
@@ -67,25 +81,52 @@ SELECT cast(1 as real) FROM test_patients;
       1
       1
       1
-(5 rows)
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+      1
+(19 rows)
 
 SELECT 1, COUNT(*) FROM test_patients;
  ?column? | count 
 ----------+-------
-        1 |     5
+        1 |    19
 (1 row)
 
 SELECT 1, city FROM test_customers;
  ?column? |  city  
 ----------+--------
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
-        1 | Rome
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
+        1 | *
         1 | Berlin
         1 | Berlin
         1 | Berlin
@@ -95,35 +136,32 @@ SELECT 1, city FROM test_customers;
         1 | Berlin
         1 | Berlin
         1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-        1 | Berlin
-(33 rows)
+(30 rows)
 
 SELECT city, 'aaaa' FROM test_customers;
   city  | ?column? 
 --------+----------
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
- Rome   | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
+ *      | aaaa
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
@@ -133,37 +171,22 @@ SELECT city, 'aaaa' FROM test_customers;
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
- Berlin | aaaa
-(33 rows)
+(30 rows)
 
 ----------------------------------------------------------------
 -- Multi-AID queries
 ----------------------------------------------------------------
 SELECT city FROM test_patients GROUP BY 1;
- city 
-------
+  city  
+--------
  *
-(1 row)
+ Berlin
+(2 rows)
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
  count | count | count 
 -------+-------+-------
-     5 |     5 |     0
+    19 |    19 |     1
 (1 row)
 
 ----------------------------------------------------------------
@@ -191,27 +214,32 @@ SELECT id FROM test_customers;
    
    
    
-   
-   
-   
-   
-   
-   
-   
-   
-(27 rows)
+(19 rows)
 
 SELECT city FROM test_customers;
   city  
 --------
- Rome
- Rome
- Rome
- Rome
- Rome
- Rome
- Rome
- Rome
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  Berlin
  Berlin
  Berlin
@@ -221,23 +249,7 @@ SELECT city FROM test_customers;
  Berlin
  Berlin
  Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
- Berlin
-(33 rows)
+(30 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  

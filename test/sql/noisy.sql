@@ -1,6 +1,6 @@
 LOAD 'pg_diffix';
 
-SET pg_diffix.noise_layer_sd = 7;
+SET pg_diffix.noise_layer_sd = 5;
 SET pg_diffix.low_count_layer_sd = 3;
 
 SET ROLE diffix_test;

@@ -34,3 +34,15 @@ SELECT encode(diffix.hash_record(empty_test_customers), 'hex') FROM empty_test_c
  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
 (1 row)
 
+-- Check seclabels if they match with above hashes.
+SELECT label
+FROM pg_catalog.pg_seclabel
+WHERE provider = 'pg_diffix'
+      AND objsubid = 0
+      AND objoid IN ('test_customers'::regclass::oid, 'empty_test_customers'::regclass::oid);
+                               label                               
+-------------------------------------------------------------------
+ personal:cb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+ personal:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
+(2 rows)
+

@@ -149,11 +149,11 @@ It is recommended for the salt to have at least 16 bytes of entropy.
 Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`. A personal
 table can have one or more AID columns.
 
-In order to label a table as `personal`, and set the salt and AID columns, use the
-`diffix.mark_personal(namespace, table_name, salt, aid_columns...)` procedure, for example:
+In order to label a table as `personal` and set the AID columns, use the
+`diffix.mark_personal(namespace, table_name, aid_columns...)` procedure, for example:
 
 ```SQL
-CALL diffix.mark_personal('public', 'my_table', 'diffix', 'id', 'last_name');
+CALL diffix.mark_personal('public', 'my_table', 'id', 'last_name');
 ```
 
 In order to label a table as `public`, use the `diffix.mark_public(namespace, table_name)` procedure.
