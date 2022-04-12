@@ -441,7 +441,7 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
   data->typlen = args_desc->args[VALUE_INDEX].typlen;
   data->typbyval = args_desc->args[VALUE_INDEX].typbyval;
 
-  state->tracker = DistinctTracker_create(memory_context, 128, data);
+  state->tracker = DistinctTracker_create(memory_context, 4, data);
   state->args_desc = copy_args_desc(args_desc);
 
   MemoryContextSwitchTo(old_context);
