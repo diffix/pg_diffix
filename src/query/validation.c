@@ -421,7 +421,14 @@ static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selecte
 {
   char *rel_name = get_rel_name(relation_oid);
 
-  /* First check if the entire relation is allowed. */
+  /* First handle `SELECT count(*) FROM pg_catalog.x`. */
+  if (selected_cols == NULL)
+  {
+    pfree(rel_name);
+    return true;
+  }
+
+  /* Then check if the entire relation is allowed. */
   for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
   {
     if (strcmp(g_pg_catalog_allowed_rels[i], rel_name) == 0)
@@ -429,13 +436,6 @@ static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selecte
       pfree(rel_name);
       return true;
     }
-  }
-
-  /* Then handle `SELECT count(*) FROM pg_catalog.x`. */
-  if (selected_cols == NULL)
-  {
-    pfree(rel_name);
-    return true;
   }
 
   /* Otherwise specific selected columns must be checked against the allow-list. */
