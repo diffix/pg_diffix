@@ -375,15 +375,14 @@ typedef struct AllowedCols
 } AllowedCols;
 
 static const char *const g_pg_catalog_allowed_rels[] = {
-    "pg_inherits", "pg_publication", "pg_publication_rel", "pg_db_role_setting", "pg_authid", "pg_roles", "pg_policy",
-    "pg_description", "pg_type", "pg_collation", "pg_attrdef", "pg_attribute", "pg_am", "pg_namespace", "pg_index",
-    "pg_constraint", "pg_database", "pg_user", "pg_shadow", "pg_tablespace", "pg_shdescription", "pg_settings",
-    "pg_trigger", "pg_extension", "pg_event_trigger", "pg_default_acl", "pg_depend", "pg_available_extensions",
-    "pg_available_extension_versions", "pg_language", "pg_largeobject_metadata", "pg_subscription", "pg_subscription_rel",
-    "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_rewrite", "pg_stat_gssapi", "pg_auth_members",
-    "pg_foreign_server", "pg_foreign_data_wrapper", "pg_foreign_table", "pg_operator", "pg_opfamily", "pg_opclass",
-    "pg_aggregate", "pg_cast", "pg_locks", "pg_prepared_xacts", "pg_prepared_statements", "pg_depend", "pg_shdepend",
-    "pg_sequence",
+    "pg_aggregate", "pg_am", "pg_attrdef", "pg_attribute", "pg_auth_members", "pg_authid", "pg_available_extension_versions",
+    "pg_available_extensions", "pg_cast", "pg_collation", "pg_constraint", "pg_database", "pg_db_role_setting", "pg_default_acl",
+    "pg_depend", "pg_depend", "pg_description", "pg_event_trigger", "pg_extension", "pg_foreign_data_wrapper",
+    "pg_foreign_server", "pg_foreign_table", "pg_index", "pg_inherits", "pg_language", "pg_largeobject_metadata", "pg_locks",
+    "pg_namespace", "pg_opclass", "pg_operator", "pg_opfamily", "pg_policy", "pg_prepared_statements", "pg_prepared_xacts",
+    "pg_publication", "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_sequence", "pg_settings", "pg_shadow", "pg_shdepend",
+    "pg_shdescription", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace", "pg_trigger",
+    "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user",
     /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
     "pg_proc",
     /**/
