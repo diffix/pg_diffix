@@ -383,6 +383,7 @@ static const char *const g_pg_catalog_allowed_rels[] = {
     "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_rewrite", "pg_stat_gssapi", "pg_auth_members",
     "pg_foreign_server", "pg_foreign_data_wrapper", "pg_foreign_table", "pg_operator", "pg_opfamily", "pg_opclass",
     "pg_aggregate", "pg_cast", "pg_locks", "pg_prepared_xacts", "pg_prepared_statements", "pg_depend", "pg_shdepend",
+    "pg_sequence",
     /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
     "pg_proc",
     /**/
