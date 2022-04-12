@@ -169,11 +169,11 @@ SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
 
 At access levels other than `direct`, various data and features built into PostgreSQL are restricted. Among others:
 
-1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones, are not allowed (unless superuser).
-2. Some of the data in `pg_catalog` tables like `pg_user_functions` is not accessible (unless superuser).
+1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones, are not allowed.
+2. Some of the data in `pg_catalog` tables like `pg_user_functions` is not accessible.
 3. Selected subset of less frequently used PostgreSQL query features like `EXISTS` or `NULLIF` are disabled.
 4. Inheritance involving a personal table is not allowed.
-5. Some of the output of `EXPLAIN` for queries involving a personal table is censored (unless superuser).
+5. Some of the output of `EXPLAIN` for queries involving a personal table is censored.
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 
