@@ -19,7 +19,7 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.show_settings()
+CREATE FUNCTION diffix.show_settings()
 RETURNS table(name text, setting text, short_desc text)
 LANGUAGE SQL
 AS $$
@@ -30,7 +30,7 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.show_labels()
+CREATE FUNCTION diffix.show_labels()
 RETURNS table(object text, label text)
 LANGUAGE SQL
 AS $$
@@ -60,7 +60,7 @@ CREATE AGGREGATE diffix.hash_record(record) (
   finalfunc_modify = read_write
 );
 
-CREATE OR REPLACE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
+CREATE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid
@@ -89,7 +89,7 @@ AS $$
 $$ LANGUAGE plpgsql
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE PROCEDURE diffix.mark_public(table_namespace text, table_name text)
+CREATE PROCEDURE diffix.mark_public(table_namespace text, table_name text)
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid
@@ -238,7 +238,7 @@ CREATE AGGREGATE diffix.is_suppress_bin(*) (
  * ----------------------------------------------------------------
  */
 
-CREATE OR REPLACE FUNCTION diffix.round_by(value numeric, amount numeric)
+CREATE FUNCTION diffix.round_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -250,7 +250,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.round_by(value double precision, amount double precision)
+CREATE FUNCTION diffix.round_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -262,7 +262,7 @@ RETURNS double precision AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.ceil_by(value numeric, amount numeric)
+CREATE FUNCTION diffix.ceil_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -274,7 +274,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.ceil_by(value double precision, amount double precision)
+CREATE FUNCTION diffix.ceil_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -286,7 +286,7 @@ RETURNS double precision AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.floor_by(value numeric, amount numeric)
+CREATE FUNCTION diffix.floor_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -298,7 +298,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE OR REPLACE FUNCTION diffix.floor_by(value double precision, amount double precision)
+CREATE FUNCTION diffix.floor_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
