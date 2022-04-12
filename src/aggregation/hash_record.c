@@ -114,8 +114,9 @@ Datum hash_record_transfn(PG_FUNCTION_ARGS)
 
   for (int i = 0; i < tuple_desc->natts; i++)
   {
+    AttrNumber attnum = i + 1;
     bool is_null = false;
-    Datum datum = heap_getattr(&tuple_data, i + 1, tuple_desc, &is_null);
+    Datum datum = heap_getattr(&tuple_data, attnum, tuple_desc, &is_null);
 
     if (is_null)
       continue;
