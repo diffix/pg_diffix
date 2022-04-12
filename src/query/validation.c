@@ -411,6 +411,12 @@ static bool is_allowed_pg_catalog_rte(RangeTblEntry *rte)
   }
 
   const Bitmapset *selected_cols = rte->selectedCols;
+
+  /* Then handle `SELECT count(*) FROM pg_catalog.x`. */
+  if (selected_cols == NULL)
+    return true;
+
+  /* Otherwise specific selected columns must be checked against the allow-list. */
   bool allowed = false;
   for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_cols); i++)
   {
