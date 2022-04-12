@@ -127,7 +127,7 @@ static ContributionTrackerState *contribution_tracker_new(
 
   state->aid_descriptor = aid_descriptor;
   state->contribution_descriptor = *contribution_descriptor;
-  state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 128, NULL);
+  state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 4, NULL);
   state->aid_seed = 0;
   state->distinct_contributors = 0;
   state->unaccounted_for = 0;
