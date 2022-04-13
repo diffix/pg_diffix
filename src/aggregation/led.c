@@ -147,13 +147,13 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
    * This means that every cache will associate siblings where the respective column is different.
    */
   SiblingsTracker_hash **trackers_per_column = palloc(num_labels * sizeof(SiblingsTracker_hash *));
+  SiblingsTrackerData *data = palloc(num_labels * sizeof(SiblingsTrackerData));
 
   for (int i = 0; i < num_labels; i++)
   {
-    SiblingsTrackerData *data = palloc(sizeof(SiblingsTrackerData));
-    data->bucket_desc = bucket_desc;
-    data->skipped_column = i;
-    trackers_per_column[i] = SiblingsTracker_create(temp_context, num_buckets, data);
+    data[i].bucket_desc = bucket_desc;
+    data[i].skipped_column = i;
+    trackers_per_column[i] = SiblingsTracker_create(temp_context, num_buckets, data + i);
   }
 
   /*
