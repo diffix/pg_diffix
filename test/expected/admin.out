@@ -6,19 +6,19 @@ LOAD 'pg_diffix';
 SELECT diffix.hash_record(test_customers) FROM test_customers;
                         hash_record                         
 ------------------------------------------------------------
- \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+ \xf9fbf989a0811cd4994780ceb97b2b65e4f748970e4a87e0ad57114e
 (1 row)
 
 SELECT diffix.hash_record(test_customers), diffix.hash_record(test_customers) FROM test_customers;
                         hash_record                         |                        hash_record                         
 ------------------------------------------------------------+------------------------------------------------------------
- \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71 | \xcb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+ \xf9fbf989a0811cd4994780ceb97b2b65e4f748970e4a87e0ad57114e | \xf9fbf989a0811cd4994780ceb97b2b65e4f748970e4a87e0ad57114e
 (1 row)
 
 SELECT encode(diffix.hash_record(test_customers), 'hex') FROM test_customers;
                           encode                          
 ----------------------------------------------------------
- cb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+ f9fbf989a0811cd4994780ceb97b2b65e4f748970e4a87e0ad57114e
 (1 row)
 
 -- Can hash empty table.
@@ -42,7 +42,7 @@ WHERE provider = 'pg_diffix'
       AND objoid IN ('test_customers'::regclass::oid, 'empty_test_customers'::regclass::oid);
                                label                               
 -------------------------------------------------------------------
- personal:cb2e60a8854f057fde29fbe0f96ce59ab90649011978ad85d0fdba71
+ personal:f9fbf989a0811cd4994780ceb97b2b65e4f748970e4a87e0ad57114e
  personal:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b
 (2 rows)
 

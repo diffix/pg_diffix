@@ -11,7 +11,7 @@ SELECT * FROM
   (SELECT count(*) AS num_customers FROM test_customers) y;
  num_purchases | num_customers 
 ---------------+---------------
-            31 |            16
+            34 |            18
 (1 row)
 
 SELECT
@@ -25,7 +25,7 @@ FULL OUTER JOIN
 ON patients.city = customers.city;
   city  | num_customers | num_patients 
 --------+---------------+--------------
- Rome   |             8 |            2
+ Rome   |             7 |            2
  Berlin |             7 |            2
  *      |             2 |             
 (3 rows)
@@ -43,7 +43,7 @@ SELECT city, count(*) FROM test_customers GROUP BY city;
   city  | count 
 --------+-------
  *      |     2
- Rome   |     8
+ Rome   |     7
  Berlin |     7
 (3 rows)
 
@@ -51,7 +51,7 @@ SELECT count(*), city FROM test_customers GROUP BY city;
  count |  city  
 -------+--------
      2 | *
-     8 | Rome
+     7 | Rome
      7 | Berlin
 (3 rows)
 
@@ -59,7 +59,7 @@ SELECT count(*), city FROM test_customers GROUP BY city;
 SELECT count(*), count(*) FROM test_customers;
  count | count 
 -------+-------
-    16 |    16
+    18 |    18
 (1 row)
 
 -- Get rejected because of disallowed utility statement

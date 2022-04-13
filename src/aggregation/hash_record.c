@@ -1,13 +1,8 @@
 #include "postgres.h"
 
-#include "access/htup.h"
-#include "access/htup_details.h"
-#include "access/tupdesc.h"
 #include "common/sha2.h"
 #include "fmgr.h"
-#include "nodes/nodes.h"
-#include "utils/builtins.h"
-#include "utils/typcache.h"
+#include "utils/fmgroids.h"
 
 #include "pg_diffix/utils.h"
 
@@ -69,7 +64,7 @@ static HashState *hash_state_new(PG_FUNCTION_ARGS)
 
 static inline void hash_state_update(HashState *hash_state, const uint8 *data, size_t data_len)
 {
-  if (unlikely(pg_cryptohash_update(hash_state, data, data_len) < 0))
+  if (pg_cryptohash_update(hash_state, data, data_len) < 0)
     FAILWITH("Failed updating hash function.");
 }
 
@@ -101,44 +96,13 @@ Datum hash_record_transfn(PG_FUNCTION_ARGS)
 {
   HashState *hash_state = get_hash_state(fcinfo);
 
-  HeapTupleHeader tuple = PG_GETARG_HEAPTUPLEHEADER(1);
-  Oid tuple_type = HeapTupleHeaderGetTypeId(tuple);
-  int32 tuple_typmod = HeapTupleHeaderGetTypMod(tuple);
-  TupleDesc tuple_desc = lookup_rowtype_tupdesc(tuple_type, tuple_typmod);
-
-  HeapTupleData tuple_data;
-  tuple_data.t_len = HeapTupleHeaderGetDatumLength(tuple);
-  ItemPointerSetInvalid(&(tuple_data.t_self));
-  tuple_data.t_tableOid = InvalidOid;
-  tuple_data.t_data = tuple;
-
-  for (int i = 0; i < tuple_desc->natts; i++)
+  if (!PG_ARGISNULL(1))
   {
-    AttrNumber attnum = i + 1;
-    bool is_null = false;
-    Datum datum = heap_getattr(&tuple_data, attnum, tuple_desc, &is_null);
-
-    if (is_null)
-      continue;
-
-    if (TupleDescAttr(tuple_desc, i)->attbyval)
-    {
-      hash_state_update(hash_state, (const uint8 *)&datum, sizeof(Datum));
-    }
-    else
-    {
-      int16 att_len = TupleDescAttr(tuple_desc, i)->attlen;
-
-      /* We want to make sure data is detoasted to get reliable results. */
-      if (att_len == -1)
-        datum = (Datum)PG_DETOAST_DATUM(datum);
-
-      size_t data_len = datumGetSize(datum, false, att_len);
-      hash_state_update(hash_state, (const uint8 *)datum, data_len);
-    }
+    char *tuple_str = OidOutputFunctionCall(F_RECORD_OUT, PG_GETARG_DATUM(1));
+    hash_state_update(hash_state, (const uint8 *)tuple_str, strlen(tuple_str));
+    pfree(tuple_str);
   }
 
-  ReleaseTupleDesc(tuple_desc);
   PG_RETURN_POINTER(hash_state);
 }
 
