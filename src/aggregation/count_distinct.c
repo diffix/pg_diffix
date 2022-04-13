@@ -466,8 +466,9 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   const CountDistinctState *src_state = (const CountDistinctState *)src_base_state;
 
   Assert(dst_state->args_desc->num_args == src_state->args_desc->num_args);
-  size_t args_desc_size = sizeof(ArgsDescriptor) + dst_state->args_desc->num_args * sizeof(ArgDescriptor);
-  Assert(memcmp(dst_state->args_desc, src_state->args_desc, args_desc_size) == 0);
+  Assert(0 == memcmp(dst_state->args_desc,
+                     src_state->args_desc,
+                     sizeof(ArgsDescriptor) + dst_state->args_desc->num_args * sizeof(ArgDescriptor)));
   Assert(DATA(dst_state->tracker)->typbyval == DATA(src_state->tracker)->typbyval);
   Assert(DATA(dst_state->tracker)->typlen == DATA(src_state->tracker)->typlen);
 
