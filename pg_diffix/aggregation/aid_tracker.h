@@ -25,9 +25,9 @@ typedef struct AidTrackerHashEntry
 
 typedef struct AidTrackerState
 {
-  AidDescriptor aid_descriptor; /* Behavior for AIDs */
-  AidTracker_hash *aid_set;     /* Hash set of all AIDs */
-  seed_t aid_seed;              /* Current AID seed */
+  MakeAidFunc aid_maker;    /* Creator of AIDs from Datums */
+  AidTracker_hash *aid_set; /* Hash set of all AIDs */
+  seed_t aid_seed;          /* Current AID seed */
 } AidTrackerState;
 
 /*
