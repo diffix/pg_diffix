@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+#include "catalog/pg_type.h"
+
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/count.h"
 #include "pg_diffix/aggregation/noise.h"
