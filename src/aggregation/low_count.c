@@ -69,7 +69,7 @@ static void agg_transition(AnonAggState *base_state, int num_args, NullableDatum
     if (!args[aid_index].isnull)
     {
       AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-      aid_t aid = aid_tracker->aid_descriptor.make_aid(args[aid_index].value);
+      aid_t aid = aid_tracker->aid_mapper(args[aid_index].value);
       aid_tracker_update(aid_tracker, aid);
     }
   }

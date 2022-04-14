@@ -5,13 +5,8 @@
 
 typedef hash_t aid_t;
 
-typedef aid_t (*MakeAidFunc)(Datum datum);
+typedef aid_t (*MapAidFunc)(Datum datum);
 
-typedef struct AidDescriptor
-{
-  MakeAidFunc make_aid; /* Maps Datum to an AID value */
-} AidDescriptor;
-
-extern AidDescriptor get_aid_descriptor(Oid aid_type);
+extern MapAidFunc get_aid_mapper(Oid aid_type);
 
 #endif /* PG_DIFFIX_AID_H */

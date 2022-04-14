@@ -16,11 +16,11 @@
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-static AidTrackerState *aid_tracker_new(AidDescriptor aid_descriptor)
+static AidTrackerState *aid_tracker_new(MapAidFunc aid_mapper)
 {
   AidTrackerState *state = palloc0(sizeof(AidTrackerState));
 
-  state->aid_descriptor = aid_descriptor;
+  state->aid_mapper = aid_mapper;
   state->aid_set = AidTracker_create(CurrentMemoryContext, 4, NULL);
   state->aid_seed = 0;
 
@@ -45,7 +45,7 @@ List *create_aid_trackers(ArgsDescriptor *args_desc, int aids_offset)
   for (int arg_index = aids_offset; arg_index < args_desc->num_args; arg_index++)
   {
     Oid aid_type = args_desc->args[arg_index].type_oid;
-    AidTrackerState *tracker = aid_tracker_new(get_aid_descriptor(aid_type));
+    AidTrackerState *tracker = aid_tracker_new(get_aid_mapper(aid_type));
     trackers = lappend(trackers, tracker);
   }
 

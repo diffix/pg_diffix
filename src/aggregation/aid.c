@@ -24,26 +24,19 @@ static aid_t make_text_aid(Datum datum)
   return hash_bytes((unsigned char *)str, strlen(str));
 }
 
-AidDescriptor get_aid_descriptor(Oid aid_type)
+MapAidFunc get_aid_mapper(Oid aid_type)
 {
-  AidDescriptor descriptor = {0};
-
   switch (aid_type)
   {
   case INT4OID:
-    descriptor.make_aid = make_int4_aid;
-    break;
+    return make_int4_aid;
   case INT8OID:
-    descriptor.make_aid = make_int8_aid;
-    break;
+    return make_int8_aid;
   case TEXTOID:
   case VARCHAROID:
-    descriptor.make_aid = make_text_aid;
-    break;
+    return make_text_aid;
   default:
     ereport(ERROR, (errmsg("Unsupported AID type (OID %u)", aid_type)));
-    break;
+    return NULL;
   }
-
-  return descriptor;
 }
