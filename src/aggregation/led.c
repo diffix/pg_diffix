@@ -153,7 +153,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   {
     data[i].bucket_desc = bucket_desc;
     data[i].skipped_column = i;
-    trackers_per_column[i] = SiblingsTracker_create(temp_context, num_buckets, data + i);
+    trackers_per_column[i] = SiblingsTracker_create(temp_context, num_buckets, &data[i]);
   }
 
   /*
