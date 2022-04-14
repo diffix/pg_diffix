@@ -285,7 +285,7 @@ static void count_value_transition(AnonAggState *base_state, int num_args, Nulla
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
     if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_maker(args[aid_index].value);
+      aid_t aid = contribution_tracker->aid_mapper(args[aid_index].value);
       if (args[COUNT_VALUE_INDEX].isnull)
         /* No contribution since argument is NULL, only keep track of the AID value. */
         contribution_tracker_update_aid(contribution_tracker, aid);
@@ -334,7 +334,7 @@ static void count_star_transition(AnonAggState *base_state, int num_args, Nullab
     ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
     if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_maker(args[aid_index].value);
+      aid_t aid = contribution_tracker->aid_mapper(args[aid_index].value);
       contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
     }
     else

@@ -503,7 +503,7 @@ static List *add_aid_value_to_set(List *aid_values_set, NullableDatum aid_arg, O
 {
   if (!aid_arg.isnull)
   {
-    aid_t aid_value = get_aid_maker(aid_type)(aid_arg.value);
+    aid_t aid_value = get_aid_mapper(aid_type)(aid_arg.value);
     aid_values_set = hash_set_add(aid_values_set, aid_value);
   }
   return aid_values_set;

@@ -62,7 +62,7 @@ typedef struct ContributionTrackerHashEntry
 
 typedef struct ContributionTrackerState
 {
-  MakeAidFunc aid_maker;                          /* Creator of AIDs from Datums */
+  MapAidFunc aid_mapper;                          /* Creator of AIDs from Datums */
   ContributionDescriptor contribution_descriptor; /* Behavior for contributions */
   ContributionTracker_hash *contribution_table;   /* Hash set of all AIDs */
   seed_t aid_seed;                                /* Current AID seed */

@@ -5,8 +5,8 @@
 
 typedef hash_t aid_t;
 
-typedef aid_t (*MakeAidFunc)(Datum datum);
+typedef aid_t (*MapAidFunc)(Datum datum);
 
-extern MakeAidFunc get_aid_maker(Oid aid_type);
+extern MapAidFunc get_aid_mapper(Oid aid_type);
 
 #endif /* PG_DIFFIX_AID_H */

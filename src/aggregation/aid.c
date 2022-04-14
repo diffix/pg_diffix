@@ -24,7 +24,7 @@ static aid_t make_text_aid(Datum datum)
   return hash_bytes((unsigned char *)str, strlen(str));
 }
 
-MakeAidFunc get_aid_maker(Oid aid_type)
+MapAidFunc get_aid_mapper(Oid aid_type)
 {
   switch (aid_type)
   {

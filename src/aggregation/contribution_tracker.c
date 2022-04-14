@@ -119,13 +119,13 @@ void update_or_add_top_contributor(
 #include "lib/simplehash.h"
 
 static ContributionTrackerState *contribution_tracker_new(
-    MakeAidFunc aid_maker,
+    MapAidFunc aid_mapper,
     const ContributionDescriptor *contribution_descriptor)
 {
   uint32 top_capacity = g_config.outlier_count_max + g_config.top_count_max;
   ContributionTrackerState *state = palloc0(sizeof(ContributionTrackerState) + top_capacity * sizeof(Contributor));
 
-  state->aid_maker = aid_maker;
+  state->aid_mapper = aid_mapper;
   state->contribution_descriptor = *contribution_descriptor;
   state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 4, NULL);
   state->aid_seed = 0;
@@ -208,7 +208,7 @@ List *create_contribution_trackers(
   for (int arg_index = aids_offset; arg_index < args_desc->num_args; arg_index++)
   {
     Oid aid_type = args_desc->args[arg_index].type_oid;
-    ContributionTrackerState *tracker = contribution_tracker_new(get_aid_maker(aid_type), descriptor);
+    ContributionTrackerState *tracker = contribution_tracker_new(get_aid_mapper(aid_type), descriptor);
     trackers = lappend(trackers, tracker);
   }
 
