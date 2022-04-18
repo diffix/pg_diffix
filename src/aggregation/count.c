@@ -187,7 +187,8 @@ static bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
 typedef struct CountState
 {
   AnonAggState base;
-  List *contribution_trackers;
+  int trackers_count;
+  ContributionTrackerState *trackers[];
 } CountState;
 
 static void count_final_type(Oid *type, int32 *typmod, Oid *collid)
@@ -201,9 +202,14 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  CountState *state = palloc0(sizeof(CountState));
-  state->contribution_trackers = create_contribution_trackers(args_desc, aids_offset, &count_descriptor);
-  Assert(args_desc->num_args == list_length(state->contribution_trackers) + aids_offset);
+  int trackers_count = args_desc->num_args - aids_offset;
+  CountState *state = palloc0(sizeof(CountState) + trackers_count * sizeof(ContributionTrackerState *));
+  state->trackers_count = trackers_count;
+  for (int i = 0; i < trackers_count; i++)
+  {
+    Oid aid_type = args_desc->args[i + aids_offset].type_oid;
+    state->trackers[i] = contribution_tracker_new(get_aid_mapper(aid_type), &count_descriptor);
+  }
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
@@ -217,11 +223,9 @@ static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDesc
   int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
-  ListCell *cell = NULL;
-  foreach (cell, state->contribution_trackers)
+  for (int i = 0; i < state->trackers_count; i++)
   {
-    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
-    CountResult result = count_calculate_result(bucket_seed, bucket_desc->anon_context->salt, contribution_tracker);
+    CountResult result = count_calculate_result(bucket_seed, bucket_desc->anon_context->salt, state->trackers[i]);
 
     if (result.not_enough_aid_values)
       return Int64GetDatum(min_count);
@@ -238,28 +242,26 @@ static void count_merge(AnonAggState *dst_base_state, const AnonAggState *src_ba
   CountState *dst_state = (CountState *)dst_base_state;
   const CountState *src_state = (const CountState *)src_base_state;
 
-  Assert(list_length(dst_state->contribution_trackers) == list_length(src_state->contribution_trackers));
+  Assert(dst_state->trackers_count == src_state->trackers_count);
 
-  ListCell *dst_cell = NULL;
-  const ListCell *src_cell = NULL;
-  forboth(dst_cell, dst_state->contribution_trackers, src_cell, src_state->contribution_trackers)
+  for (int i = 0; i < src_state->trackers_count; i++)
   {
-    ContributionTrackerState *dst_contribution_tracker = (ContributionTrackerState *)lfirst(dst_cell);
-    const ContributionTrackerState *src_contribution_tracker = (const ContributionTrackerState *)lfirst(src_cell);
+    ContributionTrackerState *dst_tracker = dst_state->trackers[i];
+    const ContributionTrackerState *src_tracker = src_state->trackers[i];
 
     ContributionTracker_iterator iterator;
-    ContributionTracker_start_iterate(src_contribution_tracker->contribution_table, &iterator);
+    ContributionTracker_start_iterate(src_tracker->contribution_table, &iterator);
     ContributionTrackerHashEntry *entry = NULL;
-    while ((entry = ContributionTracker_iterate(src_contribution_tracker->contribution_table, &iterator)) != NULL)
+    while ((entry = ContributionTracker_iterate(src_tracker->contribution_table, &iterator)) != NULL)
     {
       if (entry->has_contribution)
         contribution_tracker_update_contribution(
-            dst_contribution_tracker, entry->contributor.aid, entry->contributor.contribution);
+            dst_tracker, entry->contributor.aid, entry->contributor.contribution);
       else
-        contribution_tracker_update_aid(dst_contribution_tracker, entry->contributor.aid);
+        contribution_tracker_update_aid(dst_tracker, entry->contributor.aid);
     }
 
-    dst_contribution_tracker->unaccounted_for += src_contribution_tracker->unaccounted_for;
+    dst_tracker->unaccounted_for += src_tracker->unaccounted_for;
   }
 }
 
@@ -275,26 +277,24 @@ static void count_value_transition(AnonAggState *base_state, int num_args, Nulla
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(args, COUNT_VALUE_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(args, COUNT_VALUE_AIDS_OFFSET, state->trackers_count))
     return;
 
-  ListCell *cell = NULL;
-  foreach (cell, state->contribution_trackers)
+  for (int i = 0; i < state->trackers_count; i++)
   {
-    int aid_index = foreach_current_index(cell) + COUNT_VALUE_AIDS_OFFSET;
-    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
+    int aid_index = i + COUNT_VALUE_AIDS_OFFSET;
     if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_mapper(args[aid_index].value);
+      aid_t aid = state->trackers[i]->aid_mapper(args[aid_index].value);
       if (args[COUNT_VALUE_INDEX].isnull)
         /* No contribution since argument is NULL, only keep track of the AID value. */
-        contribution_tracker_update_aid(contribution_tracker, aid);
+        contribution_tracker_update_aid(state->trackers[i], aid);
       else
-        contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
+        contribution_tracker_update_contribution(state->trackers[i], aid, one_contribution);
     }
     else if (!args[COUNT_VALUE_INDEX].isnull)
     {
-      contribution_tracker->unaccounted_for++;
+      state->trackers[i]->unaccounted_for++;
     }
   }
 }
@@ -324,22 +324,20 @@ static void count_star_transition(AnonAggState *base_state, int num_args, Nullab
 {
   CountState *state = (CountState *)base_state;
 
-  if (all_aids_null(args, COUNT_STAR_AIDS_OFFSET, list_length(state->contribution_trackers)))
+  if (all_aids_null(args, COUNT_STAR_AIDS_OFFSET, state->trackers_count))
     return;
 
-  ListCell *cell = NULL;
-  foreach (cell, state->contribution_trackers)
+  for (int i = 0; i < state->trackers_count; i++)
   {
-    int aid_index = foreach_current_index(cell) + COUNT_STAR_AIDS_OFFSET;
-    ContributionTrackerState *contribution_tracker = (ContributionTrackerState *)lfirst(cell);
+    int aid_index = i + COUNT_STAR_AIDS_OFFSET;
     if (!args[aid_index].isnull)
     {
-      aid_t aid = contribution_tracker->aid_mapper(args[aid_index].value);
-      contribution_tracker_update_contribution(contribution_tracker, aid, one_contribution);
+      aid_t aid = state->trackers[i]->aid_mapper(args[aid_index].value);
+      contribution_tracker_update_contribution(state->trackers[i], aid, one_contribution);
     }
     else
     {
-      contribution_tracker->unaccounted_for++;
+      state->trackers[i]->unaccounted_for++;
     }
   }
 }
