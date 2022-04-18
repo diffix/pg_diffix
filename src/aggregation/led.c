@@ -4,6 +4,7 @@
 
 #include "nodes/pg_list.h"
 #include "utils/datum.h"
+#include "utils/memutils.h"
 
 #include "pg_diffix/aggregation/led.h"
 #include "pg_diffix/utils.h"

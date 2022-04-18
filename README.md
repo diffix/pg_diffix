@@ -40,7 +40,8 @@ Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
 ## Preloading the extension
 
-To enable automatic activation on every session start, you need to configure [library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+To enable automatic activation on every session start, you need to configure
+[library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
 
 In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
 
@@ -54,9 +55,11 @@ If you have multiple libraries you want to preload, separate them with commas.
 
 ### `make installcheck`
 
-Once you have a running server with the extension installed, execute `make installcheck` to run the tests. You must ensure you have all the required permissions for this to succeed, for example:
+Once you have a running server with the extension installed, execute `make installcheck` to run the tests.
+You must ensure you have all the required permissions for this to succeed, for example:
 
-1. In your `pg_hba.conf` your PostgreSQL superuser to have `trust` authentication `METHOD`. `systemctl restart postgresql.service` in case you needed to modify
+1. In your `pg_hba.conf` your PostgreSQL superuser to have `trust` authentication `METHOD`.
+   If modified, run `systemctl restart postgresql.service` to apply changes.
 2. Invoke using `PGUSER=<postgres-superuser> make installcheck`
 
 or if available, just make your usual PostgreSQL user a `SUPERUSER`.
@@ -105,7 +108,7 @@ Two users are created, with password `demo`:
   - `banking_publish` with anonymized access to `banking`
   - `banking` with direct (non-anonymized) access to `banking`
 
-**Note:** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
+**NOTE** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
 
 ```sh
 # Build the image
@@ -140,26 +143,22 @@ To remove an anonymization label from an object, set it to `NULL`.
 Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
 
 Tables can be labeled as `public` or `personal`. Direct access is allowed to public data even for restricted users.
-If a table is unlabeled, its data is presumed to be public.
+Unlabeled tables can not be queried (unless `treat_unmarked_tables_as_public` is set to `true`).
 
-When a table is labeled as `personal`, salt (secret value that influences noise generation) must be provided using the
-following format: `personal:<salt>`. Being a _security label_, salt can't be read by regular users.
-It is recommended for the salt to have at least 16 bytes of entropy.
+Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`.
+A personal table can have one or more AID columns.
 
-Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`. A personal
-table can have one or more AID columns.
-
-In order to label a table as `personal`, and set the salt and AID columns, use the
-`diffix.mark_personal(namespace, table_name, salt, aid_columns...)` procedure, for example:
+In order to label a table as `personal` and AID columns, use the
+`diffix.mark_personal(namespace, table_name, aid_columns...)` procedure, for example:
 
 ```SQL
-CALL diffix.mark_personal('public', 'my_table', 'diffix', 'id', 'last_name');
+CALL diffix.mark_personal('public', 'my_table', 'id', 'last_name');
 ```
 
 In order to label a table as `public`, use the `diffix.mark_public(namespace, table_name)` procedure.
 
-Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`. The value of the custom variable `pg_diffix.default_access_level`
-determines the access level for unlabeled regular users.
+Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`.
+The value of the custom variable `pg_diffix.default_access_level` determines the access level for unlabeled regular users.
 
 ```SQL
 SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
@@ -177,17 +176,21 @@ At access levels other than `direct`, various data and features built into Postg
 
 **NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
 
-Row level security (RLS) can be enabled and used on personal tables. It is advised that the active policies are vetted from the point of view of anonymity.
+Row level security (RLS) can be enabled and used on personal tables.
+It is advised that the active policies are vetted from the point of view of anonymity.
 
-It is also strongly advised to vet any other extensions which are enabled alongside `pg_diffix`, as well as any user-defined functions and aggregate functions.
+It is also strongly advised to vet any other extensions which are enabled alongside `pg_diffix`,
+as well as any user-defined functions and aggregate functions.
 
 ### System settings
 
-The module exposes a bunch of custom variables, under the `pg_diffix` prefix, that can be set in the configuration file
-to control the system behaviour for all users. Superusers can change these variables at run-time for their own session,
+The module exposes a number of custom variables under the `pg_diffix` prefix.
+Superusers can change these variables at runtime for their own session,
 while regular users only have read access to them (with few notable exceptions).
+To use different values for all future sessions, they have to be set in the configuration file.
 
-Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension. **NOTE** if the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
+Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension.
+If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 #### Data access settings
 

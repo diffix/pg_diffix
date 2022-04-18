@@ -11,6 +11,8 @@ typedef struct DiffixConfig
 
   bool treat_unmarked_tables_as_public;
 
+  char *salt;
+
   double noise_layer_sd;
 
   int low_count_min_threshold;

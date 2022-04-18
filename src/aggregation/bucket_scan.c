@@ -844,7 +844,6 @@ static void bucket_scan_data_copy(ExtensibleNode *dst_node, const ExtensibleNode
   COPY_SCALAR_FIELD(anon_context.grouping_cols_count);
   COPY_SCALAR_FIELD(anon_context.sql_seed);
   COPY_SCALAR_FIELD(anon_context.expand_buckets);
-  COPY_SCALAR_FIELD(anon_context.salt); /* Salt is stored in per-query memory context, no need to copy the contents. */
 }
 
 static bool bucket_scan_data_equal(const ExtensibleNode *a, const ExtensibleNode *b)

@@ -1,5 +1,7 @@
 #include "postgres.h"
 
+#include "catalog/pg_type.h"
+
 #include "pg_diffix/aggregation/aid_tracker.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
@@ -12,12 +14,12 @@ typedef struct AidResult
   bool low_count;
 } AidResult;
 
-static AidResult calculate_aid_result(seed_t bucket_seed, const char *salt, const AidTrackerState *tracker)
+static AidResult calculate_aid_result(seed_t bucket_seed, const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
 
   seed_t seeds[] = {bucket_seed, tracker->aid_seed};
-  result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds), salt);
+  result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
   result.low_count = tracker->aid_set->members < result.threshold;
 
   return result;
@@ -85,7 +87,7 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
 
   for (int i = 0; i < state->trackers_count; i++)
   {
-    AidResult result = calculate_aid_result(bucket_seed, bucket_desc->anon_context->salt, state->trackers[i]);
+    AidResult result = calculate_aid_result(bucket_seed, state->trackers[i]);
     low_count = low_count || result.low_count;
   }
 

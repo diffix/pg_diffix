@@ -14,7 +14,6 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
-#include "pg_diffix/auth.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_functions.h"
 #include "pg_diffix/query/anonymization.h"
@@ -458,9 +457,6 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *personal
     FAILWITH("No AID found in target relations.");
 
   AnonymizationContext *anon_context = palloc0(sizeof(AnonymizationContext));
-
-  /* All AIDs belong to same relation, we can pick any. */
-  anon_context->salt = get_salt_for_relation(((AidRef *)linitial(aid_refs))->relation->oid);
 
   bool initial_has_aggs = query->hasAggs;
   bool initial_has_group_clause = query->groupClause != NIL;

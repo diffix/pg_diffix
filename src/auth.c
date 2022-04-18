@@ -18,7 +18,6 @@
 #include "pg_diffix/utils.h"
 
 static const char *PROVIDER_TAG = "pg_diffix";
-static const char *PERSONAL_LABEL_PREFIX = "personal:";
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel);
 
@@ -29,7 +28,7 @@ void auth_init(void)
 
 static inline bool is_personal_label(const char *seclabel)
 {
-  return strncasecmp(seclabel, PERSONAL_LABEL_PREFIX, strlen(PERSONAL_LABEL_PREFIX)) == 0;
+  return strcasecmp(seclabel, "personal") == 0;
 }
 
 static inline bool is_public_label(const char *seclabel)
@@ -113,20 +112,6 @@ bool is_personal_relation(Oid relation_oid)
     FAIL_ON_INVALID_LABEL(seclabel);
 }
 
-static const char *seclabel_to_salt(const char *seclabel)
-{
-  /* Verify that the security label is personal and the salt is non-empty. */
-  if (!is_personal_label(seclabel) || seclabel[strlen(PERSONAL_LABEL_PREFIX)] == '\0')
-    FAILWITH_CODE(ERRCODE_INVALID_NAME, "Table has invalid anonymization label.");
-  return seclabel + strlen(PERSONAL_LABEL_PREFIX);
-}
-
-const char *get_salt_for_relation(Oid relation_oid)
-{
-  ObjectAddress relation_object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = 0};
-  return seclabel_to_salt(GetSecurityLabel(&relation_object, PROVIDER_TAG));
-}
-
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)
 {
   ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = attnum};
@@ -165,7 +150,6 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
     if (is_personal_label(seclabel))
     {
       verify_pg_features(object->objectId);
-      seclabel_to_salt(seclabel); /* Verify salt exists. */
     }
 
     if (object->classId == RelationRelationId && object->objectSubId == 0)

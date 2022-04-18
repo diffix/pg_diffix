@@ -10,20 +10,20 @@ CREATE TABLE test_validation (
   last_seen TIMESTAMP
 );
 
-CALL diffix.mark_personal('public', 'test_validation', 'diffix', 'id');
+CALL diffix.mark_personal('public', 'test_validation', 'id');
 
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
 
-CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
-CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
+CALL diffix.mark_personal('public', 'superclass', 'x');
+CALL diffix.mark_personal('public', 'subclass', 'y');
 
 ALTER TABLE subclass INHERIT superclass;
 
 -- No-op. Repeated to test the error on conflicting configuration
-CALL diffix.mark_personal('public', 'superclass', 'diffix', 'x');
-CALL diffix.mark_personal('public', 'subclass', 'diffix', 'y');
+CALL diffix.mark_personal('public', 'superclass', 'x');
+CALL diffix.mark_personal('public', 'subclass', 'y');
 
 SET ROLE diffix_test;
 

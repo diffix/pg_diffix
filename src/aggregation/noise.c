@@ -10,12 +10,12 @@
 
 #if PG_MAJORVERSION_NUM == 13
 
-static hash_t crypto_hash_salted_seed(seed_t seed, const char *salt)
+static hash_t crypto_hash_salted_seed(seed_t seed)
 {
   pg_sha256_ctx hash_ctx;
   pg_sha256_init(&hash_ctx);
 
-  pg_sha256_update(&hash_ctx, (const uint8 *)salt, strlen(salt));
+  pg_sha256_update(&hash_ctx, (const uint8 *)g_config.salt, strlen(g_config.salt));
   pg_sha256_update(&hash_ctx, (const uint8 *)&seed, sizeof(seed));
 
   uint8 crypto_hash[PG_SHA256_DIGEST_LENGTH];
@@ -29,7 +29,7 @@ static hash_t crypto_hash_salted_seed(seed_t seed, const char *salt)
 
 #include "common/cryptohash.h"
 
-static hash_t crypto_hash_salted_seed(seed_t seed, const char *salt)
+static hash_t crypto_hash_salted_seed(seed_t seed)
 {
   pg_cryptohash_ctx *hash_ctx = pg_cryptohash_create(PG_SHA256);
   if (hash_ctx == NULL)
@@ -37,7 +37,7 @@ static hash_t crypto_hash_salted_seed(seed_t seed, const char *salt)
 
   uint8 crypto_hash[PG_SHA256_DIGEST_LENGTH];
   bool hash_error = pg_cryptohash_init(hash_ctx) < 0 ||
-                    pg_cryptohash_update(hash_ctx, (const uint8 *)salt, strlen(salt)) < 0 ||
+                    pg_cryptohash_update(hash_ctx, (const uint8 *)g_config.salt, strlen(g_config.salt)) < 0 ||
                     pg_cryptohash_update(hash_ctx, (const uint8 *)&seed, sizeof(seed)) < 0 ||
                     pg_cryptohash_final(hash_ctx, crypto_hash, sizeof(crypto_hash)) < 0;
 
@@ -56,9 +56,9 @@ static hash_t crypto_hash_salted_seed(seed_t seed, const char *salt)
  * Prepares a seed for generating a new noise value by mixing it with
  * the configured salt hash and the current step name hash.
  */
-static seed_t prepare_seed(seed_t seed, const char *salt, const char *step_name)
+static seed_t prepare_seed(seed_t seed, const char *step_name)
 {
-  hash_t salted_seed_hash = crypto_hash_salted_seed(seed, salt);
+  hash_t salted_seed_hash = crypto_hash_salted_seed(seed);
   hash_t step_hash = hash_string(step_name);
   return salted_seed_hash ^ step_hash;
 }
@@ -71,12 +71,12 @@ static seed_t prepare_seed(seed_t seed, const char *salt, const char *step_name)
  * To get a normally distributed float, we use the Box-Muller method on two uniformly distributed integers.
  */
 
-int generate_uniform_noise(seed_t seed, const char *salt, const char *step_name, int min, int max)
+int generate_uniform_noise(seed_t seed, const char *step_name, int min, int max)
 {
   Assert(max >= min);
   Assert(min >= 0);
 
-  seed = prepare_seed(seed, salt, step_name);
+  seed = prepare_seed(seed, step_name);
 
   /* Mix higher and lower dwords together. */
   uint32 uniform = (uint32)((seed >> 32) ^ seed);
@@ -90,9 +90,9 @@ int generate_uniform_noise(seed_t seed, const char *salt, const char *step_name,
   return min + (int)bounded_uniform;
 }
 
-static double generate_normal_noise(seed_t seed, const char *salt, const char *step_name, double sd)
+static double generate_normal_noise(seed_t seed, const char *step_name, double sd)
 {
-  seed = prepare_seed(seed, salt, step_name);
+  seed = prepare_seed(seed, step_name);
 
   /* Get the input uniform values to the Box-Muller method from the upper and lower dwords. */
   const double MAX_UINT32 = 4294967295.0;
@@ -104,20 +104,19 @@ static double generate_normal_noise(seed_t seed, const char *salt, const char *s
 }
 
 double generate_layered_noise(const seed_t *seeds, int seeds_count,
-                              const char *salt, const char *step_name, double layer_sd)
+                              const char *step_name, double layer_sd)
 {
   double noise = 0;
   for (int i = 0; i < seeds_count; i++)
-    noise += generate_normal_noise(seeds[i], salt, step_name, layer_sd);
+    noise += generate_normal_noise(seeds[i], step_name, layer_sd);
   return noise;
 }
 
-int generate_lcf_threshold(const seed_t *seeds, int seeds_count,
-                           const char *salt)
+int generate_lcf_threshold(const seed_t *seeds, int seeds_count)
 {
   double threshold_mean = (double)g_config.low_count_min_threshold +
                           g_config.low_count_mean_gap * g_config.low_count_layer_sd;
-  double noise = generate_layered_noise(seeds, seeds_count, salt, "suppress", g_config.low_count_layer_sd);
+  double noise = generate_layered_noise(seeds, seeds_count, "suppress", g_config.low_count_layer_sd);
   int noisy_threshold = (int)(threshold_mean + noise);
   return Max(noisy_threshold, g_config.low_count_min_threshold);
 }
