@@ -41,7 +41,7 @@ typedef struct LowCountState
 {
   AnonAggState base;
   int trackers_count;
-  AidTrackerState *trackers[];
+  AidTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
 } LowCountState;
 
 static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)

@@ -188,7 +188,7 @@ typedef struct CountState
 {
   AnonAggState base;
   int trackers_count;
-  ContributionTrackerState *trackers[];
+  ContributionTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
 } CountState;
 
 static void count_final_type(Oid *type, int32 *typmod, Oid *collid)
