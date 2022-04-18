@@ -99,25 +99,17 @@ bool is_personal_relation(Oid relation_oid)
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
 
   if (seclabel == NULL)
-  {
     if (g_config.treat_unmarked_tables_as_public || is_pg_catalog_relation(relation_oid))
       return false; /* PG_CATALOG relations are checked in `ExecutorCheckPerms` hook. */
     else
       FAILWITH_CODE(ERRCODE_INSUFFICIENT_PRIVILEGE,
                     "Tables without an anonymization label can't be accessed in `publish` mode.");
-  }
   else if (is_personal_label(seclabel))
-  {
     return true;
-  }
   else if (is_public_label(seclabel))
-  {
     return false;
-  }
   else
-  {
     FAIL_ON_INVALID_LABEL(seclabel);
-  }
 }
 
 bool is_aid_column(Oid relation_oid, AttrNumber attnum)

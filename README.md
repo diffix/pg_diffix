@@ -143,7 +143,7 @@ To remove an anonymization label from an object, set it to `NULL`.
 Execute `SELECT * FROM diffix.show_labels();` to display the current labels in use by the extension.
 
 Tables can be labeled as `public` or `personal`. Direct access is allowed to public data even for restricted users.
-If a table is unlabeled, its data is presumed to be personal (unless `treat_unmarked_tables_as_public` is set to `true`).
+Unlabeled tables can not be queried (unless `treat_unmarked_tables_as_public` is set to `true`).
 
 Anonymization ID (AID) columns for a personal table have to be marked with the anonymization label `aid`.
 A personal table can have one or more AID columns.
