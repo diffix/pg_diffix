@@ -42,15 +42,22 @@ static void agg_final_type(Oid *type, int32 *typmod, Oid *collid)
 typedef struct LowCountState
 {
   AnonAggState base;
-  List *aid_trackers;
+  int trackers_count;
+  AidTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
 } LowCountState;
 
 static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescriptor *args_desc)
 {
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
-  LowCountState *state = palloc0(sizeof(LowCountState));
-  state->aid_trackers = create_aid_trackers(args_desc, AIDS_OFFSET);
+  int trackers_count = args_desc->num_args - AIDS_OFFSET;
+  LowCountState *state = palloc0(sizeof(LowCountState) + trackers_count * sizeof(AidTrackerState *));
+  state->trackers_count = trackers_count;
+  for (int i = 0; i < trackers_count; i++)
+  {
+    Oid aid_type = args_desc->args[i + AIDS_OFFSET].type_oid;
+    state->trackers[i] = aid_tracker_new(get_aid_mapper(aid_type));
+  }
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
@@ -60,17 +67,13 @@ static void agg_transition(AnonAggState *base_state, int num_args, NullableDatum
 {
   LowCountState *state = (LowCountState *)base_state;
 
-  Assert(num_args == list_length(state->aid_trackers) + AIDS_OFFSET);
-
-  ListCell *cell = NULL;
-  foreach (cell, state->aid_trackers)
+  for (int i = 0; i < state->trackers_count; i++)
   {
-    int aid_index = foreach_current_index(cell) + AIDS_OFFSET;
+    int aid_index = i + AIDS_OFFSET;
     if (!args[aid_index].isnull)
     {
-      AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-      aid_t aid = aid_tracker->aid_mapper(args[aid_index].value);
-      aid_tracker_update(aid_tracker, aid);
+      aid_t aid = state->trackers[i]->aid_mapper(args[aid_index].value);
+      aid_tracker_update(state->trackers[i], aid);
     }
   }
 }
@@ -82,11 +85,9 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   bool low_count = false;
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
-  ListCell *cell;
-  foreach (cell, state->aid_trackers)
+  for (int i = 0; i < state->trackers_count; i++)
   {
-    AidTrackerState *aid_tracker = (AidTrackerState *)lfirst(cell);
-    AidResult result = calculate_aid_result(bucket_seed, aid_tracker);
+    AidResult result = calculate_aid_result(bucket_seed, state->trackers[i]);
     low_count = low_count || result.low_count;
   }
 
@@ -99,21 +100,19 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
   LowCountState *dst_state = (LowCountState *)dst_base_state;
   const LowCountState *src_state = (const LowCountState *)src_base_state;
 
-  Assert(list_length(dst_state->aid_trackers) == list_length(src_state->aid_trackers));
+  Assert(dst_state->trackers_count == src_state->trackers_count);
 
-  ListCell *dst_cell = NULL;
-  const ListCell *src_cell = NULL;
-  forboth(dst_cell, dst_state->aid_trackers, src_cell, src_state->aid_trackers)
+  for (int i = 0; i < src_state->trackers_count; i++)
   {
-    AidTrackerState *dst_aid_tracker = (AidTrackerState *)lfirst(dst_cell);
-    const AidTrackerState *src_aid_tracker = (const AidTrackerState *)lfirst(src_cell);
+    AidTrackerState *dst_tracker = dst_state->trackers[i];
+    const AidTrackerState *src_tracker = src_state->trackers[i];
 
     AidTracker_iterator iterator;
-    AidTracker_start_iterate(src_aid_tracker->aid_set, &iterator);
+    AidTracker_start_iterate(src_tracker->aid_set, &iterator);
     AidTrackerHashEntry *entry = NULL;
-    while ((entry = AidTracker_iterate(src_aid_tracker->aid_set, &iterator)) != NULL)
+    while ((entry = AidTracker_iterate(src_tracker->aid_set, &iterator)) != NULL)
     {
-      aid_tracker_update(dst_aid_tracker, entry->aid);
+      aid_tracker_update(dst_tracker, entry->aid);
     }
   }
 }

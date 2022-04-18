@@ -87,12 +87,11 @@ extern void contribution_tracker_update_contribution(
     contribution_t contribution);
 
 /*
- * Gets or creates the multi-AID aggregation state from the function arguments.
+ * Creates a new state for tracking aggregation contributions.
  */
-extern List *create_contribution_trackers(
-    ArgsDescriptor *args_desc,
-    int aids_offset,
-    const ContributionDescriptor *descriptor);
+extern ContributionTrackerState *contribution_tracker_new(
+    MapAidFunc aid_mapper,
+    const ContributionDescriptor *contribution_descriptor);
 
 extern void add_top_contributor(
     const ContributionDescriptor *descriptor,

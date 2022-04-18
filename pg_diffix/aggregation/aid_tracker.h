@@ -1,8 +1,6 @@
 #ifndef PG_DIFFIX_AID_TRACKER_H
 #define PG_DIFFIX_AID_TRACKER_H
 
-#include "nodes/pg_list.h"
-
 #include "pg_diffix/aggregation/aid.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
@@ -36,8 +34,8 @@ typedef struct AidTrackerState
 extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
 
 /*
- * Creates the multi-AID aggregation state from the function arguments.
+ * Creates a new state for tracking AID values.
  */
-extern List *create_aid_trackers(ArgsDescriptor *args_desc, int aids_offset);
+extern AidTrackerState *aid_tracker_new(MapAidFunc aid_mapper);
 
 #endif /* PG_DIFFIX_AID_TRACKER_H */

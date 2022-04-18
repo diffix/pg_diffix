@@ -118,7 +118,7 @@ void update_or_add_top_contributor(
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-static ContributionTrackerState *contribution_tracker_new(
+ContributionTrackerState *contribution_tracker_new(
     MapAidFunc aid_mapper,
     const ContributionDescriptor *contribution_descriptor)
 {
@@ -195,22 +195,4 @@ void contribution_tracker_update_contribution(
       &state->contribution_descriptor,
       &state->top_contributors,
       entry->contributor);
-}
-
-List *create_contribution_trackers(
-    ArgsDescriptor *args_desc,
-    int aids_offset,
-    const ContributionDescriptor *descriptor)
-{
-  Assert(args_desc->num_args > aids_offset);
-
-  List *trackers = NIL;
-  for (int arg_index = aids_offset; arg_index < args_desc->num_args; arg_index++)
-  {
-    Oid aid_type = args_desc->args[arg_index].type_oid;
-    ContributionTrackerState *tracker = contribution_tracker_new(get_aid_mapper(aid_type), descriptor);
-    trackers = lappend(trackers, tracker);
-  }
-
-  return trackers;
 }
