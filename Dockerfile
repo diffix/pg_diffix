@@ -2,12 +2,12 @@ FROM postgres:13 AS builder
 
 RUN set -ex \
   && apt-get update \
-  && apt-get install -y build-essential postgresql-server-dev-13 \
+  && apt-get install -y build-essential libssl-dev postgresql-server-dev-13 \
   && mkdir -p /usr/src/pg_diffix
 
 WORKDIR /usr/src/pg_diffix
 COPY . .
-RUN make && make install
+RUN make TARGET="release" && make install
 
 FROM postgres:13 as pg_diffix
 
