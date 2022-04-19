@@ -1,25 +1,23 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_diffix" to load this file. \quit
 
-CREATE SCHEMA diffix;
+REVOKE ALL ON SCHEMA @extschema@ FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA @extschema@ FROM PUBLIC;
 
-REVOKE ALL ON SCHEMA diffix FROM PUBLIC;
-REVOKE ALL ON ALL TABLES IN SCHEMA diffix FROM PUBLIC;
-
-GRANT USAGE ON SCHEMA diffix TO PUBLIC;
+GRANT USAGE ON SCHEMA @extschema@ TO PUBLIC;
 
 /* ----------------------------------------------------------------
  * Utilities
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.access_level()
+CREATE FUNCTION access_level()
 RETURNS text
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.show_settings()
+CREATE FUNCTION show_settings()
 RETURNS table(name text, setting text, short_desc text)
 LANGUAGE SQL
 AS $$
@@ -30,7 +28,7 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.show_labels()
+CREATE FUNCTION show_labels()
 RETURNS table(object text, label text)
 LANGUAGE SQL
 AS $$
@@ -41,7 +39,7 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
-CREATE PROCEDURE diffix.mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
+CREATE PROCEDURE mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid
@@ -50,8 +48,8 @@ AS $$
     table_fullname text := quote_ident(table_namespace) || '.' || quote_ident(table_name);
     aid_column text;
   BEGIN
-    IF (SELECT diffix.access_level()) <> 'direct' THEN
-      RAISE EXCEPTION '"diffix.mark_personal" requires direct access mode.';
+    IF (SELECT @extschema@.access_level()) <> 'direct' THEN
+      RAISE EXCEPTION '"mark_personal" requires direct access mode.';
     END IF;
 
     DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_oid AND label = 'aid';
@@ -65,7 +63,7 @@ AS $$
 $$ LANGUAGE plpgsql
 SECURITY INVOKER SET search_path = '';
 
-CREATE PROCEDURE diffix.mark_public(table_namespace text, table_name text)
+CREATE PROCEDURE mark_public(table_namespace text, table_name text)
 AS $$
   DECLARE
     table_oid integer := (SELECT pg_class.oid
@@ -107,43 +105,43 @@ SECURITY INVOKER SET search_path = '';
  */
 CREATE TYPE AnonAggState;
 
-CREATE FUNCTION diffix.anon_agg_state_input(cstring)
+CREATE FUNCTION anon_agg_state_input(cstring)
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.anon_agg_state_output(AnonAggState)
+CREATE FUNCTION anon_agg_state_output(AnonAggState)
 RETURNS cstring
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE TYPE AnonAggState (
-  INPUT = diffix.anon_agg_state_input,
-  OUTPUT = diffix.anon_agg_state_output,
+  INPUT = anon_agg_state_input,
+  OUTPUT = anon_agg_state_output,
   LIKE = internal
 );
 
-CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, variadic aids "any")
+CREATE FUNCTION anon_agg_state_transfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.anon_agg_state_transfn(AnonAggState, value "any", variadic aids "any")
+CREATE FUNCTION anon_agg_state_transfn(AnonAggState, value "any", variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, variadic aids "any")
+CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.anon_agg_state_finalfn(AnonAggState, value "any", variadic aids "any")
+CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, value "any", variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
@@ -160,34 +158,34 @@ SECURITY INVOKER SET search_path = '';
  * to force a unique state for each anonymizing aggregator.
  */
 
-CREATE AGGREGATE diffix.low_count(variadic aids "any") (
-  sfunc = diffix.anon_agg_state_transfn,
+CREATE AGGREGATE low_count(variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
-  finalfunc = diffix.anon_agg_state_finalfn,
+  finalfunc = anon_agg_state_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
 
-CREATE AGGREGATE diffix.anon_count_distinct(value "any", variadic aids "any") (
-  sfunc = diffix.anon_agg_state_transfn,
+CREATE AGGREGATE anon_count_distinct(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
-  finalfunc = diffix.anon_agg_state_finalfn,
+  finalfunc = anon_agg_state_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
 
-CREATE AGGREGATE diffix.anon_count_star(variadic aids "any") (
-  sfunc = diffix.anon_agg_state_transfn,
+CREATE AGGREGATE anon_count_star(variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
-  finalfunc = diffix.anon_agg_state_finalfn,
+  finalfunc = anon_agg_state_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
 
-CREATE AGGREGATE diffix.anon_count_value(value "any", variadic aids "any") (
-  sfunc = diffix.anon_agg_state_transfn,
+CREATE AGGREGATE anon_count_value(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
-  finalfunc = diffix.anon_agg_state_finalfn,
+  finalfunc = anon_agg_state_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
@@ -197,14 +195,14 @@ CREATE AGGREGATE diffix.anon_count_value(value "any", variadic aids "any") (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.placeholder_func(anyelement)
+CREATE FUNCTION placeholder_func(anyelement)
 RETURNS anyelement
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE AGGREGATE diffix.is_suppress_bin(*) (
-  sfunc = diffix.placeholder_func,
+CREATE AGGREGATE is_suppress_bin(*) (
+  sfunc = placeholder_func,
   stype = boolean,
   initcond = false
 );
@@ -214,7 +212,7 @@ CREATE AGGREGATE diffix.is_suppress_bin(*) (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION diffix.round_by(value numeric, amount numeric)
+CREATE FUNCTION round_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -226,7 +224,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.round_by(value double precision, amount double precision)
+CREATE FUNCTION round_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -238,7 +236,7 @@ RETURNS double precision AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.ceil_by(value numeric, amount numeric)
+CREATE FUNCTION ceil_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -250,7 +248,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.ceil_by(value double precision, amount double precision)
+CREATE FUNCTION ceil_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -262,7 +260,7 @@ RETURNS double precision AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.floor_by(value numeric, amount numeric)
+CREATE FUNCTION floor_by(value numeric, amount numeric)
 RETURNS numeric AS $$
   BEGIN
 	IF amount <= 0 THEN
@@ -274,7 +272,7 @@ RETURNS numeric AS $$
 $$ LANGUAGE plpgsql IMMUTABLE STRICT
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION diffix.floor_by(value double precision, amount double precision)
+CREATE FUNCTION floor_by(value double precision, amount double precision)
 RETURNS double precision AS $$
   BEGIN
 	IF amount <= 0 THEN
