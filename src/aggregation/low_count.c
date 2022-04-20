@@ -91,7 +91,6 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
     low_count = low_count || result.low_count;
   }
 
-  *is_null = false;
   return DatumGetBool(low_count);
 }
 

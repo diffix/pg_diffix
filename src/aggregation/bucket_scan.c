@@ -316,6 +316,7 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
       AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[i]);
       Assert(agg_state != NULL);
       Assert(agg_state->agg_funcs == att->agg.funcs);
+      is_null[i] = false;
       values[i] = att->agg.funcs->finalize(agg_state, bucket, bucket_desc, &is_null[i]);
     }
     else
