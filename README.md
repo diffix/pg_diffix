@@ -11,21 +11,12 @@ For detailed information on configuring and using the extension, check out the [
 
 PostgreSQL version 13 or higher is required.
 
-The source is compiled with:
-
-```sh
-$ make
-# or `make TARGET=release` for release version
-```
+The source is compiled with: `make` or `make TARGET=release` for release version.
 
 You should already have the `postgresql-server-dev-x` package installed if you have postgres version `x`.
 If not, you must install it in order to compile the source.
 
-The compiled extension is installed with:
-
-```sh
-$ make install
-```
+The compiled extension is installed with: `make install`.
 
 You probably need to run it with superuser permission as `sudo make install`.
 
@@ -46,9 +37,7 @@ To enable automatic activation on every session start, you need to configure
 
 In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
 
-```
-session_preload_libraries = 'pg_diffix'
-```
+`session_preload_libraries = 'pg_diffix'`
 
 If you have multiple libraries you want to preload, separate them with commas.
 
@@ -68,10 +57,8 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 ### `PGXN Test Tools`
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
-```sh
-$ docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
-    sh -c 'cd /repo && pg-start 13 && pg-build-test'
-```
+`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
+  sh -c 'cd /repo && pg-start 13 && pg-build-test'`.
 
 ## Docker images
 
@@ -84,19 +71,17 @@ It does not include any additional database or user out of the box.
 
 The example below shows how to build the image and run a minimally configured container.
 
-```sh
-# Build the image
-$ make image
+Build the image:
 
-# Run the container in foreground and expose in port 10432
-$ docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
-```
+`make image`
+
+Run the container in foreground and expose in port 10432:
+
+`docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix`
 
 From another shell you can connect to the container via `psql`:
 
-```sh
-psql -h localhost -p 10432 -d postgres -U postgres
-```
+`psql -h localhost -p 10432 -d postgres -U postgres`
 
 For more advanced usage see the [official image reference](https://hub.docker.com/_/postgres).
 
@@ -111,19 +96,19 @@ Two users are created, with password `demo`:
 
 **NOTE** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
 
-```sh
-# Build the image
-$ make demo-image
+Build the image:
 
-# Run the container in foreground and expose in port 10432
-$ docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
+`make demo-image`
 
-# Connect to the banking database (from another shell) for anonymized access
-$ psql -h localhost -p 10432 -d banking -U banking_publish
-```
+Run the container in foreground and expose in port 10432:
+
+`docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
+
+Connect to the banking database (from another shell) for anonymized access:
+
+`psql -h localhost -p 10432 -d banking -U banking_publish`
 
 To keep the container running you can start it in detached mode and with a restart policy:
 
-```sh
-$ docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
-```
+`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres \
+  -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
