@@ -1,0 +1,50 @@
+{
+  "name": "pg_diffix",
+  "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
+  "version": "0.0.3",
+  "maintainer": "Open Diffix <hello@open-diffix.org>",
+  "license": {
+    "restricted": "https://github.com/diffix/pg_diffix/blob/master/LICENSE.md"
+  },
+  "release_status": "unstable",
+  "provides": {
+     "pg_diffix": {
+        "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
+        "file": "src/pg_diffix.c",
+        "docfile": "docs/user_guide.md",
+        "version": "0.0.3"
+     }
+  },
+  "prereqs": {
+    "runtime": {
+       "requires": {
+          "PostgreSQL": "13.0.0"
+       }
+    }
+  },
+  "resources": {
+    "homepage": "https://open-diffix.org/",
+    "bugtracker": {
+       "web": "https://github.com/diffix/pg_diffix/issues",
+       "mailto": "hello@open-diffix.org"
+    },
+    "repository": {
+    "url":  "git://github.com/diffix/pg_diffix.git",
+    "web":  "https://github.com/diffix/pg_diffix/",
+    "type": "git"
+    }
+  },
+  "tags": [
+    "anonymity",
+    "anonymous",
+    "anonymization",
+    "anonymize",
+    "privacy",
+    "privacy-protection",
+    "privacy-tools"
+ ],
+  "meta-spec": {
+     "version": "1.0.0",
+     "url": "https://pgxn.org/meta/spec.txt"
+  }
+}
