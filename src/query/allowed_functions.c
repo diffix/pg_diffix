@@ -31,8 +31,9 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
-static const char *const g_implicit_range_builtins[] = {
-    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
+/* Only those allowed in `publish_untrusted` access level. */
+static const char *const g_implicit_range_builtins_untrusted[] = {
+    "dround", "numeric_round", "dfloor", "numeric_floor",
     /**/
 };
 
@@ -46,6 +47,14 @@ static const Oid *const g_implicit_range_udfs[] = {
     &g_oid_cache.round_by_dd,
     &g_oid_cache.ceil_by_nn,
     &g_oid_cache.ceil_by_dd,
+    &g_oid_cache.floor_by_nn,
+    &g_oid_cache.floor_by_dd,
+};
+
+/* Only those allowed in `publish_untrusted` access level. */
+static const Oid *const g_implicit_range_udfs_untrusted[] = {
+    &g_oid_cache.round_by_nn,
+    &g_oid_cache.round_by_dd,
     &g_oid_cache.floor_by_nn,
     &g_oid_cache.floor_by_dd,
 };
@@ -83,11 +92,11 @@ bool is_allowed_cast(Oid funcoid)
   return is_funcname_member_of(funcoid, g_allowed_casts, ARRAY_LENGTH(g_allowed_casts));
 }
 
-bool is_implicit_range_udf(Oid funcoid)
+bool is_implicit_range_udf_untrusted(Oid funcoid)
 {
-  for (int i = 0; i < ARRAY_LENGTH(g_implicit_range_udfs); i++)
+  for (int i = 0; i < ARRAY_LENGTH(g_implicit_range_udfs_untrusted); i++)
   {
-    if (*g_implicit_range_udfs[i] == funcoid)
+    if (*g_implicit_range_udfs_untrusted[i] == funcoid)
       return true;
   }
   return false;
@@ -95,8 +104,11 @@ bool is_implicit_range_udf(Oid funcoid)
 
 bool is_allowed_function(Oid funcoid)
 {
-  if (is_implicit_range_udf(funcoid))
-    return true;
+  for (int i = 0; i < ARRAY_LENGTH(g_implicit_range_udfs); i++)
+  {
+    if (*g_implicit_range_udfs[i] == funcoid)
+      return true;
+  }
 
   if (is_funcname_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
     return true;
@@ -116,7 +128,7 @@ bool is_substring_builtin(Oid funcoid)
   return is_funcname_member_of(funcoid, g_substring_builtins, ARRAY_LENGTH(g_substring_builtins));
 }
 
-bool is_implicit_range_builtin(Oid funcoid)
+bool is_implicit_range_builtin_untrusted(Oid funcoid)
 {
-  return is_funcname_member_of(funcoid, g_implicit_range_builtins, ARRAY_LENGTH(g_implicit_range_builtins));
+  return is_funcname_member_of(funcoid, g_implicit_range_builtins_untrusted, ARRAY_LENGTH(g_implicit_range_builtins_untrusted));
 }

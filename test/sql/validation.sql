@@ -245,12 +245,10 @@ SELECT diffix.access_level();
 -- Get accepted
 SELECT substring(city, 1, 2) from test_validation;
 SELECT floor(discount) from test_validation;
-SELECT ceil(discount) from test_validation;
 SELECT round(discount) from test_validation;
 SELECT discount from test_validation;
 SELECT diffix.floor_by(discount, 2) from test_validation;
 SELECT diffix.round_by(discount, 2) from test_validation;
-SELECT diffix.ceil_by(discount, 2) from test_validation;
 SELECT diffix.floor_by(discount, 20) from test_validation;
 SELECT diffix.floor_by(discount, 2.0) from test_validation;
 SELECT diffix.floor_by(discount, 0.2) from test_validation;
@@ -265,3 +263,5 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
+SELECT ceil(discount) from test_validation;
+SELECT diffix.ceil_by(discount, 2) from test_validation;
