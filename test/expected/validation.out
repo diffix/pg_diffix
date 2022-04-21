@@ -465,11 +465,6 @@ SELECT floor(discount) from test_validation;
 -------
 (0 rows)
 
-SELECT ceil(discount) from test_validation;
- ceil 
-------
-(0 rows)
-
 SELECT round(discount) from test_validation;
  round 
 -------
@@ -488,11 +483,6 @@ SELECT diffix.floor_by(discount, 2) from test_validation;
 SELECT diffix.round_by(discount, 2) from test_validation;
  round_by 
 ----------
-(0 rows)
-
-SELECT diffix.ceil_by(discount, 2) from test_validation;
- ceil_by 
----------
 (0 rows)
 
 SELECT diffix.floor_by(discount, 20) from test_validation;
@@ -541,4 +531,12 @@ LINE 1: SELECT diffix.floor_by(discount, 5000000000.1) from test_val...
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
 LINE 1: SELECT width_bucket(discount, 2, 200, 5) from test_validatio...
+               ^
+SELECT ceil(discount) from test_validation;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT ceil(discount) from test_validation;
+               ^
+SELECT diffix.ceil_by(discount, 2) from test_validation;
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+LINE 1: SELECT diffix.ceil_by(discount, 2) from test_validation;
                ^
