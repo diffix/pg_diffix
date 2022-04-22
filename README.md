@@ -90,9 +90,10 @@ For more advanced usage see the [official image reference](https://hub.docker.co
 The demo image extends the base image with a sample dataset and a user configured with `publish_trusted` access.
 
 Once started, the container creates and populates the `banking` database.
-Two users are created, with password `demo`:
-  - `banking_publish` with anonymized access to `banking`
+Three users are created, with password `demo`:
   - `banking` with direct (non-anonymized) access to `banking`
+  - `banking_trusted` with anonymized access to `banking` in trusted mode
+  - `banking_untrusted` with anonymized access to `banking` untrusted mode
 
 **NOTE** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
 
@@ -106,7 +107,7 @@ Run the container in foreground and expose in port 10432:
 
 Connect to the banking database (from another shell) for anonymized access:
 
-`psql -h localhost -p 10432 -d banking -U banking_publish`
+`psql -h localhost -p 10432 -d banking -U banking_trusted`
 
 To keep the container running you can start it in detached mode and with a restart policy:
 

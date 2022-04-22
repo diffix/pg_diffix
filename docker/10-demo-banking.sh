@@ -19,13 +19,19 @@ banking_password=${BANKING_PASSWORD:-demo}
 
 sql -c "CREATE USER banking WITH PASSWORD '$banking_password';"
 
-sql -c "CREATE USER banking_publish WITH PASSWORD '$banking_password';"
+sql -c "CREATE USER banking_trusted WITH PASSWORD '$banking_password';"
+
+sql -c "CREATE USER banking_untrusted WITH PASSWORD '$banking_password';"
 
 sql <<-EOSQL
   GRANT CONNECT ON DATABASE banking TO banking;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking;
 
-  GRANT CONNECT ON DATABASE banking TO banking_publish;
-  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_publish;
-  SECURITY LABEL FOR pg_diffix ON ROLE banking_publish IS 'publish_trusted';
+  GRANT CONNECT ON DATABASE banking TO banking_trusted;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_trusted;
+  SECURITY LABEL FOR pg_diffix ON ROLE banking_trusted IS 'publish_trusted';
+
+  GRANT CONNECT ON DATABASE banking TO banking_untrusted;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_untrusted;
+  SECURITY LABEL FOR pg_diffix ON ROLE banking_untrusted IS 'publish_untrusted';
 EOSQL
