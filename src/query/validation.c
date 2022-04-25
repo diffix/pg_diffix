@@ -16,7 +16,7 @@
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 

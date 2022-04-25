@@ -1,5 +1,5 @@
-#ifndef PG_DIFFIX_ALLOWED_FUNCTIONS_H
-#define PG_DIFFIX_ALLOWED_FUNCTIONS_H
+#ifndef PG_DIFFIX_ALLOWED_OBJECTS_H
+#define PG_DIFFIX_ALLOWED_OBJECTS_H
 
 #include "nodes/bitmapset.h"
 
@@ -36,4 +36,4 @@ extern bool is_implicit_range_builtin_untrusted(Oid funcoid);
  */
 extern bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols);
 
-#endif /* PG_DIFFIX_ALLOWED_FUNCTIONS_H */
+#endif /* PG_DIFFIX_ALLOWED_OBJECTS_H */
