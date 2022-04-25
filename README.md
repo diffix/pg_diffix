@@ -57,8 +57,7 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 ### `PGXN Test Tools`
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
-`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
-  sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
+`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
 
 ## Docker images
 
@@ -110,5 +109,4 @@ Connect to the banking database (from another shell) for anonymized access:
 
 To keep the container running you can start it in detached mode and with a restart policy:
 
-`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres \
-  -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
+`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
