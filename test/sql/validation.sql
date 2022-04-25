@@ -216,11 +216,11 @@ WITH c AS (SELECT length(city) FROM test_validation) SELECT * FROM c;
 SELECT (SELECT length(city) FROM test_validation);
 
 -- Get rejected because of accessing pg_catalog tables with sensitive stats
-SELECT * FROM pg_stats;
-SELECT * FROM pg_statistic;
-SELECT * FROM pg_stat_user_functions;
-SELECT * FROM pg_stat_user_indexes;
-SELECT * FROM pg_class;
+SELECT * FROM pg_stats LIMIT 10;
+SELECT * FROM pg_statistic LIMIT 10;
+SELECT * FROM pg_stat_user_functions LIMIT 10;
+SELECT * FROM pg_stat_user_indexes LIMIT 10;
+SELECT * FROM pg_class LIMIT 10;
 
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
