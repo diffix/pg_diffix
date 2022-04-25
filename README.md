@@ -58,7 +58,7 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
 `docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
-  sh -c 'cd /repo && pg-start 13 && pg-build-test'`.
+  sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
 
 ## Docker images
 
