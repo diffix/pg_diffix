@@ -130,6 +130,10 @@ SELECT (SELECT city FROM test_validation);
 \dt+ empty_test_customers
 \d+ empty_test_customers
 
+-- Settings and labels UDFs work
+SELECT * FROM diffix.show_settings() LIMIT 2;
+SELECT * FROM diffix.show_labels() LIMIT 2;
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------

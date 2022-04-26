@@ -74,11 +74,8 @@ static AllowedCols g_pg_catalog_allowed_cols[] = {
      * In `pg_stat_database` there are also `tup_*` and `blks_*` columns, but blocking them doesn't break clients
      * dramatically, so opting to leave them out to err on the safe side.
      */
-    {.rel_name = "pg_stat_database", .col_names = {
-                                         "datname",
-                                         "xact_commit",
-                                         "xact_rollback",
-                                     }},
+    {.rel_name = "pg_stat_database", .col_names = {"datname", "xact_commit", "xact_rollback"}},
+    {.rel_name = "pg_seclabel", .col_names = {"classoid", "objoid", "objsubid", "label", "provider"}},
     /**/
 };
 
