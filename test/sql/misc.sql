@@ -4,7 +4,7 @@ SET pg_diffix.low_count_min_threshold = 2;
 SET pg_diffix.low_count_layer_sd = 0;
 
 SET ROLE diffix_test;
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 
 ----------------------------------------------------------------
 -- Post processing anonymized results

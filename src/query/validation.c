@@ -329,7 +329,7 @@ void verify_bucket_expressions(Query *query)
   {
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
-    if (access_level == ACCESS_PUBLISH_UNTRUSTED)
+    if (access_level == ACCESS_ANONYMIZED_UNTRUSTED)
       verify_generalization(expr);
   }
 }
