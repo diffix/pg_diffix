@@ -13,11 +13,10 @@
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
-#include "utils/memutils.h"
 
 #include "pg_diffix/auth.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/validation.h"
 #include "pg_diffix/utils.h"
 
@@ -33,7 +32,6 @@ static void verify_rtable(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static bool option_matches(DefElem *option, char *name, bool value);
-static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols);
 
 void verify_utility_command(Node *utility_stmt)
 {
@@ -366,89 +364,4 @@ double numeric_value_to_double(Oid type, Datum value)
 static bool option_matches(DefElem *option, char *name, bool value)
 {
   return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
-}
-
-typedef struct AllowedCols
-{
-  const char *rel_name;             /* Name of the relation */
-  Bitmapset *cols;                  /* Indices of the allowed columns of the relation */
-  const char *const col_names[100]; /* Names of columns in the relation */
-} AllowedCols;
-
-static const char *const g_pg_catalog_allowed_rels[] = {
-    "pg_aggregate", "pg_am", "pg_attrdef", "pg_attribute", "pg_auth_members", "pg_authid", "pg_available_extension_versions",
-    "pg_available_extensions", "pg_cast", "pg_collation", "pg_constraint", "pg_database", "pg_db_role_setting", "pg_default_acl",
-    "pg_depend", "pg_depend", "pg_description", "pg_event_trigger", "pg_extension", "pg_foreign_data_wrapper",
-    "pg_foreign_server", "pg_foreign_table", "pg_index", "pg_inherits", "pg_language", "pg_largeobject_metadata", "pg_locks",
-    "pg_namespace", "pg_opclass", "pg_operator", "pg_opfamily", "pg_policy", "pg_prepared_statements", "pg_prepared_xacts",
-    "pg_publication", "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_sequence", "pg_settings", "pg_shadow", "pg_shdepend",
-    "pg_shdescription", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace", "pg_trigger",
-    "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user",
-    /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
-    "pg_proc",
-    /**/
-};
-
-static AllowedCols g_pg_catalog_allowed_cols[] = {
-    /* In `pg_class` there is `reltuples` which must be blocked, causing some less annoying breakage in some clients. */
-    {.rel_name = "pg_class", .col_names = {"tableoid", "oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions", "xmin", "reltoastrelid", "relispopulated", "relacl"}},
-    {.rel_name = "pg_statistic_ext", .col_names = {"tableoid", "oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
-    {.rel_name = "pg_stat_activity", .col_names = {"datname", "pid", "usename", "application_name", "client_addr", "backend_start", "xact_start", "query_start", "state_change", "wait_event_type", "wait_event", "state", "query", "backend_type", "client_hostname", "client_port", "backend_start", "backend_xid", "backend_xmin"}},
-    /* 
-     * In `pg_stat_database` there are also `tup_*` and `blks_*` columns, but blocking them doesn't break clients
-     * dramatically, so opting to leave them out to err on the safe side.
-     */
-    {.rel_name = "pg_stat_database", .col_names = {
-                                         "datname",
-                                         "xact_commit",
-                                         "xact_rollback",
-                                     }},
-    /**/
-};
-
-static void prepare_pg_catalog_allowed(Oid relation_oid, AllowedCols *allowed_cols)
-{
-  MemoryContext old_context = MemoryContextSwitchTo(TopMemoryContext);
-  for (int i = 0; allowed_cols->col_names[i] != NULL; i++)
-  {
-    int attnum = get_attnum(relation_oid, allowed_cols->col_names[i]) - FirstLowInvalidHeapAttributeNumber;
-    allowed_cols->cols = bms_add_member(allowed_cols->cols, attnum);
-  }
-  MemoryContextSwitchTo(old_context);
-}
-
-static bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols)
-{
-  char *rel_name = get_rel_name(relation_oid);
-
-  /* First handle `SELECT count(*) FROM pg_catalog.x`. */
-  if (selected_cols == NULL)
-  {
-    pfree(rel_name);
-    return true;
-  }
-
-  /* Then check if the entire relation is allowed. */
-  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
-  {
-    if (strcmp(g_pg_catalog_allowed_rels[i], rel_name) == 0)
-    {
-      pfree(rel_name);
-      return true;
-    }
-  }
-
-  /* Otherwise specific selected columns must be checked against the allow-list. */
-  bool allowed = false;
-  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_cols); i++)
-  {
-    if (strcmp(g_pg_catalog_allowed_cols[i].rel_name, rel_name) != 0)
-      continue;
-    if (g_pg_catalog_allowed_cols[i].cols == NULL)
-      prepare_pg_catalog_allowed(relation_oid, &g_pg_catalog_allowed_cols[i]);
-    allowed = bms_is_subset(selected_cols, g_pg_catalog_allowed_cols[i].cols);
-    break;
-  }
-  pfree(rel_name);
-  return allowed;
 }

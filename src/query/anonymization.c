@@ -15,7 +15,7 @@
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/oid_cache.h"
-#include "pg_diffix/query/allowed_functions.h"
+#include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/anonymization.h"
 #include "pg_diffix/query/relation.h"
 #include "pg_diffix/query/validation.h"

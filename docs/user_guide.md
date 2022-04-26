@@ -111,10 +111,11 @@ low count filter threshold. Default value is 2.0.
 `pg_diffix.low_count_layer_sd` - The standard deviation for each noise layer used when calculating the low count filter
 threshold. Default value is 1.0.
 
-`pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result might contain the suppress bin, which
-provides the combined anonymized count of all the bins that were suppressed (low count filtered). The suppress bin shows
-all column values as `NULL` (`*` for text-typed columns, customizable via `pg_diffix.text_label_for_suppress_bin`). Note
-that the suppress bin may itself be suppressed.
+`pg_diffix.compute_suppress_bin` - If `True`, some rows in the returned result might belong to the suppress bin,
+combining data of all the suppressed (rejected by the low count filter) protected entities. For an aggregating query,
+the suppress bin will be returned in the first row, while for a non-aggregating query - in multiple initial rows. In
+both cases, these rows have all column values `NULL` (`*` for text-typed columns, customizable via
+`pg_diffix.text_label_for_suppress_bin`). Note that the suppress bin may itself be suppressed and not returned at all.
 
 `pg_diffix.text_label_for_suppress_bin` - The value to use for the text-typed grouping labels in the suppress bin row.
 Default value is `*`.

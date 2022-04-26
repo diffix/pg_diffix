@@ -239,6 +239,21 @@ Indexes:
 Indexes:
     "empty_test_customers_pkey" PRIMARY KEY, btree (id)
 
+-- Settings and labels UDFs work
+SELECT * FROM diffix.show_settings() LIMIT 2;
+              name              | setting |                                   short_desc                                   
+--------------------------------+---------+--------------------------------------------------------------------------------
+ pg_diffix.compute_suppress_bin | on      | Whether the suppress bin should be computed and included in the query results.
+ pg_diffix.default_access_level | direct  | Access level for unlabeled users.
+(2 rows)
+
+SELECT * FROM diffix.show_labels() LIMIT 2;
+                  object                  |  label   
+------------------------------------------+----------
+ table public.test_customers              | personal
+ column id of table public.test_customers | aid
+(2 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
