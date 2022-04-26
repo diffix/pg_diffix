@@ -31,8 +31,7 @@ extern bool is_substring_builtin(Oid funcoid);
 extern bool is_implicit_range_builtin_untrusted(Oid funcoid);
 
 /*
- * Returns whether the OID points to a relation in the `pg_catalog`, for which accessing the
- * `selected_cols` is allowed.
+ * Returns whether selecting `selected_cols` from a relation in the `pg_catalog` is allowed.
  */
 extern bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols);
 
