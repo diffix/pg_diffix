@@ -15,8 +15,8 @@ static const int MAX_NUMERIC_CONFIG = 1000;
 
 static const struct config_enum_entry access_level_options[] = {
     {"direct", ACCESS_DIRECT, false},
-    {"publish_trusted", ACCESS_PUBLISH_TRUSTED, false},
-    {"publish_untrusted", ACCESS_PUBLISH_UNTRUSTED, false},
+    {"anonymized_trusted", ACCESS_ANONYMIZED_TRUSTED, false},
+    {"anonymized_untrusted", ACCESS_ANONYMIZED_UNTRUSTED, false},
     {NULL, 0, false},
 };
 

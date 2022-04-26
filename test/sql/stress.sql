@@ -12,7 +12,7 @@ CALL diffix.mark_personal('public', 'test_stress', 'id');
 -- Prepare test session.
 SET pg_diffix.noise_layer_sd = 0;
 SET pg_diffix.low_count_layer_sd = 0;
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 
 -- Sanity checks.
 SELECT diffix.access_level();

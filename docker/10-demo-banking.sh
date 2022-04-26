@@ -27,5 +27,5 @@ sql <<-EOSQL
 
   GRANT CONNECT ON DATABASE banking TO banking_publish;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_publish;
-  SECURITY LABEL FOR pg_diffix ON ROLE banking_publish IS 'publish_trusted';
+  SECURITY LABEL FOR pg_diffix ON ROLE banking_publish IS 'anonymized_trusted';
 EOSQL

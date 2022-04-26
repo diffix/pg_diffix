@@ -15,7 +15,7 @@ extern bool is_allowed_cast(Oid funcoid);
 
 /*
  * Returns whether the OID points to a UDF being a implicit_range function, e.g. `ceil_by(x, 2.0)`,
- * allowed when called in `publish_untrusted` access level.
+ * allowed when called in `anonymized_untrusted` access level.
  */
 extern bool is_implicit_range_udf_untrusted(Oid funcoid);
 
@@ -26,7 +26,7 @@ extern bool is_substring_builtin(Oid funcoid);
 
 /*
  * Returns whether the OID points to a built-in implicit_range function, e.g. `ceil(x)`,
- * allowed when called in `publish_untrusted` access level.
+ * allowed when called in `anonymized_untrusted` access level.
  */
 extern bool is_implicit_range_builtin_untrusted(Oid funcoid);
 

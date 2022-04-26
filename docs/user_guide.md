@@ -51,11 +51,11 @@ CALL diffix.mark_personal('public', 'my_table', 'id', 'last_name');
 
 In order to label a table as `public`, use the `diffix.mark_public(namespace, table_name)` procedure.
 
-Regular users can be marked with the anoymization labels `direct`, `publish_trusted` or `publish_untrusted`.
+Regular users can be marked with the anoymization labels `direct`, `anonymized_trusted` or `anonymized_untrusted`.
 The value of the custom variable `pg_diffix.default_access_level` determines the access level for unlabeled regular users.
 
 ```SQL
-SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'publish_trusted';
+SECURITY LABEL FOR pg_diffix ON ROLE analyst IS 'anonymized_trusted';
 ```
 
 ### Restricted features and extensions

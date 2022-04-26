@@ -28,11 +28,11 @@ SET ROLE diffix_test;
 ----------------------------------------------------------------
 -- Trusted mode query restrictions
 ----------------------------------------------------------------
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT diffix.access_level();
-  access_level   
------------------
- publish_trusted
+    access_level    
+--------------------
+ anonymized_trusted
 (1 row)
 
 ----------------------------------------------------------------
@@ -462,11 +462,11 @@ LINE 1: SELECT count(distinct tableoid) FROM test_validation;
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------
-SET pg_diffix.session_access_level = 'publish_untrusted';
+SET pg_diffix.session_access_level = 'anonymized_untrusted';
 SELECT diffix.access_level();
-   access_level    
--------------------
- publish_untrusted
+     access_level     
+----------------------
+ anonymized_untrusted
 (1 row)
 
 -- Get accepted

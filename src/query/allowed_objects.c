@@ -34,7 +34,7 @@ static const char *const g_substring_builtins[] = {
     /**/
 };
 
-/* Only those allowed in `publish_untrusted` access level. */
+/* Only those allowed in `anonymized_untrusted` access level. */
 static const char *const g_implicit_range_builtins_untrusted[] = {
     "dround", "numeric_round", "dfloor", "numeric_floor",
     /**/
@@ -70,7 +70,7 @@ static AllowedCols g_pg_catalog_allowed_cols[] = {
     {.rel_name = "pg_class", .col_names = {"tableoid", "oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions", "xmin", "reltoastrelid", "relispopulated", "relacl"}},
     {.rel_name = "pg_statistic_ext", .col_names = {"tableoid", "oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
     {.rel_name = "pg_stat_activity", .col_names = {"datname", "pid", "usename", "application_name", "client_addr", "backend_start", "xact_start", "query_start", "state_change", "wait_event_type", "wait_event", "state", "query", "backend_type", "client_hostname", "client_port", "backend_start", "backend_xid", "backend_xmin"}},
-    /* 
+    /*
      * In `pg_stat_database` there are also `tup_*` and `blks_*` columns, but blocking them doesn't break clients
      * dramatically, so opting to leave them out to err on the safe side.
      */
@@ -100,7 +100,7 @@ static const Oid *const g_implicit_range_udfs[] = {
     &g_oid_cache.floor_by_dd,
 };
 
-/* Only those allowed in `publish_untrusted` access level. */
+/* Only those allowed in `anonymized_untrusted` access level. */
 static const Oid *const g_implicit_range_udfs_untrusted[] = {
     &g_oid_cache.round_by_nn,
     &g_oid_cache.round_by_dd,
