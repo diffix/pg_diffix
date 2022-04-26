@@ -6,12 +6,13 @@ If you have any questions, please contact us at [hello@open-diffix.org](mailto:h
 
 # PG Diffix
 
-`pg_diffix` is a PostgreSQL extension for strong dynamic anonymization. It enables you to query your PostgreSQL
-database (nearly) as you’re used to, but makes sure you receive fully anonymous output.
-For details, visit the [Open Diffix](https://www.open-diffix.org/) website.
+`pg_diffix` is a PostgreSQL extension for strong dynamic anonymization. It ensures that answers to simple SQL queries are anonymous. For more information, visit the [Open Diffix](https://www.open-diffix.org/) website.
 
 Check out the [tutorial](docs/tutorial.md) for an example on how to use `pg_diffix`.
-For detailed information on configuring and using the extension, check out the [user guide](docs/user_guide.md).
+See the [user guide](docs/user_guide.md) for details on configuring and using the extension.
+
+
+TODO: change tutorial to notebook.
 
 ## Installation
 
