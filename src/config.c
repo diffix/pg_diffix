@@ -183,7 +183,7 @@ void config_init(void)
       "Lower bound of the low count filter threshold.", /* short_desc */
       NULL,                                             /* long_desc */
       &g_config.low_count_min_threshold,                /* valueAddr */
-      2,                                                /* bootValue */
+      3,                                                /* bootValue */
       2,                                                /* minValue */
       MAX_NUMERIC_CONFIG,                               /* maxValue */
       PGC_SUSET,                                        /* context */
@@ -254,7 +254,7 @@ and the mean of the low count filter threshold.", /* short_desc */
       "Minimum top contributors count (inclusive).", /* short_desc */
       "Must not be greater than top_count_max.",     /* long_desc */
       &g_config.top_count_min,                       /* valueAddr */
-      4,                                             /* bootValue */
+      3,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */
@@ -268,7 +268,7 @@ and the mean of the low count filter threshold.", /* short_desc */
       "Maximum top contributors count (inclusive).", /* short_desc */
       "Must not be smaller than top_count_min.",     /* long_desc */
       &g_config.top_count_max,                       /* valueAddr */
-      6,                                             /* bootValue */
+      4,                                             /* bootValue */
       1,                                             /* minValue */
       MAX_NUMERIC_CONFIG,                            /* maxValue */
       PGC_SUSET,                                     /* context */

@@ -26,7 +26,7 @@ ON patients.city = customers.city;
   city  | num_customers | num_patients 
 --------+---------------+--------------
  Rome   |             7 |            2
- Berlin |            10 |            2
+ Berlin |             9 |            6
  *      |             2 |             
 (3 rows)
 
@@ -44,7 +44,7 @@ SELECT city, count(*) FROM test_customers GROUP BY city;
 --------+-------
  *      |     2
  Rome   |     7
- Berlin |    10
+ Berlin |     9
 (3 rows)
 
 SELECT count(*), city FROM test_customers GROUP BY city;
@@ -52,7 +52,7 @@ SELECT count(*), city FROM test_customers GROUP BY city;
 -------+--------
      2 | *
      7 | Rome
-    10 | Berlin
+     9 | Berlin
 (3 rows)
 
 -- Same aggregate can be selected multiple times
