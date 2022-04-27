@@ -1,7 +1,7 @@
 {
   "name": "pg_diffix",
   "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "maintainer": "Open Diffix <hello@open-diffix.org>",
   "license": {
     "restricted": "https://github.com/diffix/pg_diffix/blob/master/LICENSE.md"
@@ -12,7 +12,7 @@
         "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
         "file": "src/pg_diffix.c",
         "docfile": "docs/user_guide.md",
-        "version": "0.0.3"
+        "version": "0.0.4"
      }
   },
   "prereqs": {
