@@ -6,7 +6,7 @@ If you have any questions, please contact us at [hello@open-diffix.org](mailto:h
 
 # Extension configuration
 
-This document provides detailed information about the configuration, behavior and recommended usage of this extension __diffix_anonymization__.
+This document provides detailed information about the configuration, behavior and recommended usage of this extension __pg_diffix__.
 
 ## Background reading
 
@@ -159,8 +159,67 @@ as well as any user-defined functions and aggregate functions.
 
 ## How to select AID columns
 
-zzzz
+Every personal (anonymized) table must have at least one column that identifies the protected entity or entities. We refer to this column as an AID (Anonymizing ID) column. A good AID is one where the value is different for each distinct protected entity, and each protected entity is represented by one value. A good AID should also have very few if any `NULL` values.
+
+Although a protected entity does not need to be a person, for readability the following assumes that this is the case.
+
+The AID is used by Diffix primarily for two purposes. The first, and most important, is to properly suppress buckets (output aggregates) that contain too few individuals. The other is to add enough noise to hide the contribution of any given individual.
+
+Examples of AID columns include account numbers, credit card numbers, mobile phone identifiers, email addresses, and login names. Note that these examples are often not perfect AIDs. A given individual might have several accounts. A login name may be shared by several individuals.
+
+### Imperfect AID columns
+
+Given that AIDs may not be perfect, some care must be taken in the selection of AID columns. The main situation to avoid is one where 1) an individual can have several AID values, and 2) there is another column that may effectively identify the individual, especially a column with publicly known information like family name or street address.
+
+For example, imagine the following query in a table where `account_number` is the AID column:
+
+```sql
+SELECT last_name, religion, count(*)
+FROM table
+GROUP BY last_name, religion
+```
+
+If an individual has several accounts, and their `last_name` is unique in the table, then they may be the only individual in the bucket with that last name because Diffix will interpret the bucket as having several distinct individuals (due to there being several distinct `account_number` values for this individual).
+
+In this example, we refer to `last_name` as the isolating column. Other columns could server the role as the isolating column, for instance `street_address`.
+
+There are several ways to avoid this.
+
+__Remove the isolating column.__ Without the isolating column, the individual cannot be isolated like this. As a general rule, it is always good practice to remove columns that do not have analytic value.
+
+__Label the isolating column as an additional AID column.__ This solves the privacy problem at the expense of poorer analytic utility. For instance, if `last_name` is labeled as an AID column, then all individuals with the same last name would be treated as a single individual by Diffix. This leads to unnecessary suppression and additional noise. As a general rule, one should avoid labeling columns as AID columns if the column values frequently pertain to multiple individuals.
+
+__Label some other appropriate column as an additional AID column.__  It might be that there is another column, in addition to `account_number`, that works pretty well as an AID column. For example, `email_address` or `phone_number`. If the individual with multiple accounts used the same `email_address`, then the bucket would be suppressed. Of course, it is possible that the individual used a different email for each account, in which case this fix wouldn't help. As a general rule, labeling multiple AID columns for the same protected entity, where each AID column is quite good but not perfect, leads to slightly stronger anonymity and only slightly poorer analytic utility.
+
+__Generalize the isolating column.__ Some isolating columns may have analytic value, for instance `street_address` denotes location. If `street_address` was generalized to `zip_code`, then some analytic utility is retained while preventing the specific privacy problem. As a general rule, increased generalization, so long as it does not hurt analytic utility, is good practice.
+
+__Increase the suppression threshold.__ If it is known that more than, for instance, five accounts for a given individual is extremely rare, then by setting the suppression threshold to six (`pg_diffix.low_count_min_threshold`), then the problem is almost completely mitigated. This is an effective approach, but increases suppression overall.
+
+### Multiple instances of the same type of protected entity
+
+Tables that convey relationships or interactions between individuals have multiple instances of the same type of protected entity as identified by the same type of identifier. For instance, a table with banking transactions can have a `send_account` and `receive_account`. If the protected entity is account, then both `send_account` and `receive_account` must be labeled as AID columns.
+
+Other examples include `send_email` and `receive_email`, `player1` and `player2` (in a sporting match with two players), and `friend1` and `friend2` (in a social network).
+
+### Multiple different types of protected entities
+
+Some tables may contain different types of protected entities.
+
+One example is where the protected entities are all persons, but with different roles. For instance `doctor_id` and `patient_id`, or `customer_id` and `salesperson_id`. (The AID name spaces may be the same or different, it doesn't really matter in the context of this discussion.)
+
+Another example is when there are groups of people that should be protected. Typical examples are families (which can be indirectly coded as for instance a street address) or couples (i.e. a joint bank account). 
+
+In other cases, one of the protected entities may not be a person at all. In particular, a company may wish to protect certain proprietary information. An example here might be a company with many local stores, which doesn't want to reveal information about individual store activity. In this case, the AID columns might be `customer_id` and `store_branch_id`.
+
+Note that analytic utility can be substantially degraded when a protected entity has relatively few distinct instances in the table. In some cases it may make more sense to build a table with the larger protected entity removed altogether. Finally, note that if a large protected entity is removed, then there may be other columns that are strongly correlated with the protected entity that should also be removed. For instance, if there is a `transaction_zip_code` column, and most zip codes have no more than one store, then the `transaction_zip_code` column should be removed along with `store_branch_id`.
 
 ## How to set suppression threshold
 
-zzzz
+The purpose of suppression in Diffix is to prevent the release of information pertaining to a single individual. In the GDPR, this is called _singling out_. Narrowly construed, releasing information pertaining to two individuals is not singling out, and so GDPR is not violated. Practically speaking, however, releasing information about two people or even four or five people might be regarded as a privacy violation, especially if the people are closely related (a couple or family).
+
+When selecting a suppression threshold (`pg_diffix.low_count_min_threshold`), there are four main considerations:
+
+1. What is the largest threshold that satisfies analytic goals? There is no reason to have a smaller threshold than that which satisfies analytic goals.
+2. What is the largest group of individuals that need to be protected? In other words, what is the largest group whereby the release of information about the group can be interpreted as equivalent to the release of information about an individual in the group?
+3. Are there imperfections in the AID that need to be covered by a larger suppression threshold (see (previous section)[how-to-select-aid-columns]).
+4. What is the public perception of how large an aggregate should be? Public opinion is an important consideration. If for instance the public would be nervous about aggregates of five individuals, even though strictly speaking individual privacy is protected, then setting the threshold to a larger value may make sense.
