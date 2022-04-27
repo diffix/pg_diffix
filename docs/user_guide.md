@@ -141,6 +141,8 @@ Default value is `*`.
 
 ## Restricted features and extensions
 
+**TODO:** I think this kind of information is better put in the notebook tutorial?
+
 For users other than `direct`, various data and features built into PostgreSQL are restricted. Among others:
 
 1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones, are not allowed.
