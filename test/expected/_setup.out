@@ -6,7 +6,8 @@ INSERT INTO test_customers VALUES
   (0, NULL, NULL, NULL), (1, 'Berlin', 1.0, 'Earth'), (2, 'Berlin', 1.0, 'Earth'), (3, 'Rome', 0.5, 'Earth'),
   (4, 'London', 2.0, 'Earth'), (5, 'Berlin', 2.0, 'Earth'), (6, 'Rome', 1.0, 'Earth'), (7, 'Rome', 0.5, 'Earth'),
   (8, 'Berlin', 0.0, 'Earth'), (9, 'Rome', 1.0, 'Earth'), (10, 'Berlin', 2.0, 'Earth'), (11, 'Rome', 1.5, 'Earth'),
-  (12, 'Rome', 0.5, 'Earth'), (13, 'Rome', 0.5, 'Earth'), (14, 'Berlin', 1.5, 'Earth'), (15, 'Berlin', 1.0, 'Earth');
+  (12, 'Rome', 0.5, 'Earth'), (13, 'Rome', 0.5, 'Earth'), (14, 'Berlin', 1.5, 'Earth'), (15, 'Berlin', 1.0, 'Earth'),
+  (16, 'Berlin', 1.0, 'Earth'), (17, 'Madrid', 2.0, 'Earth');
 CREATE TABLE test_products (id INTEGER PRIMARY KEY, name TEXT, price REAL);
 INSERT INTO test_products VALUES (0, NULL, NULL), (1, 'Food', 1.5),
   (2, 'Car', 100.0), (3, 'House', 400.0), (4, 'Movie', 10.0);

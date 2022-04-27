@@ -103,7 +103,7 @@ Default value is `false`.
 #### Low count filter settings
 
 `pg_diffix.low_count_min_threshold` - The lower bound for the number of distinct AID values that must be present in a
-bucket for it to pass the low count filter. Default value is 2.
+bucket for it to pass the low count filter. Default value is 3, must be greater than or equal to 2.
 
 `pg_diffix.low_count_mean_gap` - The number of standard deviations between the lower bound and the mean of the
 low count filter threshold. Default value is 2.0.
@@ -126,8 +126,6 @@ Default value is `*`.
 
 `pg_diffix.outlier_count_max` - Default value is 2. Must not be smaller than `outlier_count_min`.
 
-`pg_diffix.top_count_min` - Default value is 4. Must not be greater than `top_count_max`.
+`pg_diffix.top_count_min` - Default value is 3. Must not be greater than `top_count_max`, must be greater than or equal to 1.
 
-`pg_diffix.top_count_max` - Default value is 6. Must not be smaller than `top_count_min`.
-
-**NOTE** The outlier interval `(outlier_count_min, outlier_count_max)` must not be wider than the `(top_count_min, top_count_max)` interval.
+`pg_diffix.top_count_max` - Default value is 4. Must not be smaller than `top_count_min`.
