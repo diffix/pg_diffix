@@ -129,5 +129,3 @@ Default value is `*`.
 `pg_diffix.top_count_min` - Default value is 3. Must not be greater than `top_count_max`, must be greater than or equal 1.
 
 `pg_diffix.top_count_max` - Default value is 4. Must not be smaller than `top_count_min`.
-
-**NOTE** The outlier interval `(outlier_count_min, outlier_count_max)` must not be wider than the `(top_count_min, top_count_max)` interval.
