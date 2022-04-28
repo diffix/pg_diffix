@@ -11,9 +11,6 @@ If you have any questions, please contact us at [hello@open-diffix.org](mailto:h
 Check out the [tutorial](docs/tutorial.md) for an example on how to use `pg_diffix`.
 See the [user guide](docs/user_guide.md) for details on configuring and using the extension.
 
-
-TODO: change tutorial to notebook.
-
 ## Installation
 
 PostgreSQL version 13 or higher is required.

@@ -6,46 +6,50 @@ If you have any questions, please contact us at [hello@open-diffix.org](mailto:h
 
 # Extension configuration
 
-This document provides detailed information about the configuration, behavior and recommended usage of this extension __pg_diffix__.
+This document provides detailed information about the configuration, behavior and recommended usage of this extension.
 
 ## Background reading
 
-The [Open Diffix website](https://www.open-diffix.org) has general information about the Open Diffix project. The [website FAQ](https://www.open-diffix.org/faq) is a good starting point. [This article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) is a high-level overview of the anonymization mechanisms used by Diffix. [This paper](https://arxiv.org/abs/2201.04351) is a complete specification and privacy analysis of Diffix (version Elm).
+The [Open Diffix website](https://www.open-diffix.org) has general information about the Open Diffix project. The [website FAQ](https://www.open-diffix.org/faq) is a good starting point. [This article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) is a high-level overview of the anonymization mechanisms used by Diffix (version Elm). [This paper](https://arxiv.org/abs/2201.04351) is a complete specification and privacy analysis of Diffix Elm.
 
 ## Configuration objects
 
-Extension behavior is controlled by `security labels` and `settings`. Security labels specific to this extension are assigned to tables, columns, and roles (users). Settings are general parameters associated with system operation. Settings can be assigned in the configuration file and are instantiated per session.
+Extension behavior is controlled by __security labels__ and __settings__. Security labels specific to this extension are assigned to tables, columns, and roles (users). Settings are general parameters associated with system operation. Settings can be assigned in the configuration file and are instantiated per session.
 
 Only superusers can assign security labels and settings. To remove a security label from an object, set it to `NULL`.
 
-The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
+The command `SELECT diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
 
-The command `SELECT * FROM diffix.access_level();` displays the current security labels assigned to the role associated with the active session.
+The command `SELECT diffix.access_level();` displays the current security labels assigned to the role associated with the active session.
 
-The command `SELECT * FROM diffix.show_settings();` displays the settings in use by the extension for the active session.
+The command `SELECT diffix.show_settings();` displays the settings in use by the extension for the active session.
 
 NOTE: If no configuration is done, then by default no anonymization takes place. All users will have full access to table contents.
 
 For more information about PostgreSQL security labels, see the official [documentation page](https://www.postgresql.org/docs/current/sql-security-label.html).
 
+## Secret Salt
+
+TODO
+
 ## Security labels
 
 ### Security labels for roles (users)
 
-A user may have one of three security labels, `direct`, `anonymized_trusted`, and `anonymized_untrusted`. Users with security label `direct` have full access to the data: no anonymization takes place. The other two labels determine whether a user that is subject to anonymization is treated as _trusted_ or _untrusted_.
+A user's security label encodes one of three access levels, `direct`, `anonymized_trusted`, and `anonymized_untrusted`. Users with access level `direct` have full access to the data: no anonymization takes place. The other two labels determine whether Diffix Elm treats the user as _trusted_ or _untrusted_ when anonymizing.
 
-* For trusted users, Diffix prevents _accidental_ release of personal data. So long as trusted users do not try to bypass Diffix anonymization, answers to queries are anonymous.
-* For untrusted users, Diffix prevents _intentional_ release of personal data. Even for users that are malicious and try to break Diffix anonymization, answer to queries are anonymous.
+* For trusted users, Diffix Elm prevents _accidental_ release of personal data. So long as trusted users do not try to bypass Diffix Elm anonymization, answers to queries are anonymous.
+* For untrusted users, Diffix Elm prevents _intentional_ release of personal data. Even for users that are malicious and try to break Diffix Elm anonymization, answer to queries are anonymous.
 
 Trusted users have fewer SQL restrictions than untrusted users, and therefore have better analytic utility.
 
-For example, the command to assign the security label `anonymized_untrusted` to the `public_access` is:
+For example, the command to assign the access level `anonymized_untrusted` to the role `public_access` is:
 
 ```SQL
 SECURITY LABEL FOR pg_diffix ON ROLE public_access IS 'anonymized_untrusted';
 ```
 
-The value of the setting variable `pg_diffix.default_access_level` determines the default user class for unlabeled regular users (i.e. not superusers). It is set to `direct` by default.
+The value of the setting variable `pg_diffix.default_access_level` determines the default user class users. It is set to `direct` by default.
 
 ### Security labels for tables
 
@@ -62,9 +66,9 @@ Note that unlabeled tables can not be queried by `anonymized_trusted` and `anony
 
 Each personal table has one or more _protected entities_ associated with it. A protected entity is normally a person or a something associated with a person (a device or an account), but it could also be other things such as a household, a store, or a company.
 
-Each protected entity must have at least one column that contains the identifier of the protected entity. We refer to these columns generally as AID columns (Anonymization ID). See (How to select AID columns)[#how-to-select-aid-columns] for more guidance.
+Each protected entity must have at least one column that contains the identifier of the protected entity. We refer to these columns generally as AID columns (Anonymization ID). See [How to select AID columns](#how-to-select-aid-columns) for more guidance.
 
-NOTE: if AID columns are not correctly labeled, the extension may fail to anonymize appropriately.
+__NOTE:__ if AID columns are not correctly labeled, the extension may fail to anonymize appropriately.
 
 The procedure `diffix.mark_personal(namespace, table_name, aid_columns...)` is used to label a table as personal and to label its AID columns.
 
@@ -89,28 +93,28 @@ Superusers can change these variables at runtime for their own session,
 while regular users only have read access to them (with few notable exceptions).
 To use different values for all future sessions, they have to be set in the configuration file.
 
-Execute `SELECT * FROM diffix.show_settings();` to display the current settings of the extension.
+Execute `SELECT diffix.show_settings();` to display the current settings of the extension.
 If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 ### Default behavior settings
 
-`pg_diffix.default_access_level` - Determines the default security label for unlabeled users. Default value is `direct`.
+`pg_diffix.default_access_level` - Determines the default access level for unlabeled users. Default value is `direct`.
 
-`pg_diffix.session_access_level` - The security label that is active for the user's current session. This is initially set to the security label associated with the user, but the user can modify it to a value that has lower privilege than the user's normal security label. Privilege levels from high to low are `direct`, `anonymized_trusted`, `anonymized_untrusted`.
+`pg_diffix.session_access_level` - The access level that is active for the user's current session. This is initially set to the access level associated with the user, but the user can modify it to a value that has lower privilege than the user's normal access level. Privilege levels from high to low are `direct`, `anonymized_trusted`, `anonymized_untrusted`.
 
-`pg_diffix.treat_unmarked_tables_as_public` - Determines the default security label for tables. If set to `true`, then the default security label is `public`.  The default value is `false`.
+`pg_diffix.treat_unmarked_tables_as_public` - If set to `true`, then tables are `public` by default. Otherwise tables are unlabeled by default. The default value is `false`.
 
 ### Anonymization strength settings
 
-Diffix has eight constants that determine the "strength" of anonymization. These impact the amount of noise, the number-of-persons threshold below which suppression takes place, and the behavior of flattening (see [this article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) for an overview of these concepts).
+Diffix Elm has a number of constants that determine the "strength" of anonymization. These impact the amount of noise, the number-of-persons threshold below which suppression takes place, and the behavior of flattening (see [this article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) for an overview of these concepts).
 
-Seven of these eight constants are set to values that provide sufficiently strong anonymity in virtually any realistic scenario. These seven constants rarely if ever need to be modified. Doing so only reduces data quality with little meaningful strengthening of anonymity.
+All but one of these constants are set to values that provide sufficiently strong anonymity in virtually any realistic scenario. These other constants rarely if ever need to be modified. Doing so only reduces data quality with little meaningful strengthening of anonymity.
 
-The one anonymization constant that sometimes requires adjustment is `pg_diffix.low_count_min_threshold`. This sets the lower bound for the number of distinct AID values that must be present in a aggregate bucket to avoid suppression. Any buckets with fewer than `pg_diffix.low_count_min_threshold` distinct AIDs will be suppressed. See (How to set suppression threshold)[#how-to-set-suppression-threshold] for further guidance.
+The one anonymization constant that sometimes requires adjustment is `pg_diffix.low_count_min_threshold`. This sets the lower bound for the number of distinct AID values that must be present in a aggregate bin to avoid suppression. Any bins with fewer than `pg_diffix.low_count_min_threshold` distinct AIDs will be suppressed. See [How to set suppression threshold](#how-to-set-suppression-threshold) for further guidance.
 
 Default value is 3. Minimum allowed setting is 2.
 
-#### Other seven settings
+#### Remaining anonymization strength settings
 
 `pg_diffix.noise_layer_sd` - Standard deviation for each noise layer added to aggregates. Default value is 1.0. Minimum allowed setting is 1.0.
 
@@ -141,7 +145,7 @@ Default value is `*`.
 
 ## Restricted features and extensions
 
-**TODO:** I think this kind of information is better put in the notebook tutorial?
+**TODO:** I think this kind of information is better put in the notebook tutorial? Or if you want it here it seems incomplete or something. Needs work...
 
 For users other than `direct`, various data and features built into PostgreSQL are restricted. Among others:
 
@@ -165,7 +169,7 @@ Every personal (anonymized) table must have at least one column that identifies 
 
 Although a protected entity does not need to be a person, for readability the following assumes that this is the case.
 
-The AID is used by Diffix primarily for two purposes. The first, and most important, is to properly suppress buckets (output aggregates) that contain too few individuals. The other is to add enough noise to hide the contribution of any given individual.
+The AID is used by Diffix Elm primarily for two purposes. The first, and most important, is to properly suppress bins (output aggregates) that contain too few individuals. The other is to add enough noise to hide the contribution of any given individual.
 
 Examples of AID columns include account numbers, credit card numbers, mobile phone identifiers, email addresses, and login names. Note that these examples are often not perfect AIDs. A given individual might have several accounts. A login name may be shared by several individuals.
 
@@ -181,17 +185,17 @@ FROM table
 GROUP BY last_name, religion
 ```
 
-If an individual has several accounts, and their `last_name` is unique in the table, then they may be the only individual in the bucket with that last name because Diffix will interpret the bucket as having several distinct individuals (due to there being several distinct `account_number` values for this individual).
+If an individual has several accounts, and their `last_name` is unique in the table, then they may be the only individual in the bin with that last name because Diffix Elm will interpret the bin as having several distinct individuals (due to there being several distinct `account_number` values for this individual).
 
-In this example, we refer to `last_name` as the isolating column. Other columns could server the role as the isolating column, for instance `street_address`.
+In this example, we refer to `last_name` as the isolating column. Other columns could serve the role as the isolating column, for instance `street_address`.
 
 There are several ways to avoid this.
 
 __Remove the isolating column.__ Without the isolating column, the individual cannot be isolated like this. As a general rule, it is always good practice to remove columns that do not have analytic value.
 
-__Label the isolating column as an additional AID column.__ This solves the privacy problem at the expense of poorer analytic utility. For instance, if `last_name` is labeled as an AID column, then all individuals with the same last name would be treated as a single individual by Diffix. This leads to unnecessary suppression and additional noise. As a general rule, one should avoid labeling columns as AID columns if the column values frequently pertain to multiple individuals.
+__Label the isolating column as an additional AID column.__ This solves the privacy problem at the expense of poorer analytic utility. For instance, if `last_name` is labeled as an AID column, then all individuals with the same last name would be treated as a single individual by Diffix Elm. This leads to unnecessary suppression and additional noise. As a general rule, one should avoid labeling columns as AID columns if the column values frequently pertain to multiple individuals.
 
-__Label some other appropriate column as an additional AID column.__  It might be that there is another column, in addition to `account_number`, that works pretty well as an AID column. For example, `email_address` or `phone_number`. If the individual with multiple accounts used the same `email_address`, then the bucket would be suppressed. Of course, it is possible that the individual used a different email for each account, in which case this fix wouldn't help. As a general rule, labeling multiple AID columns for the same protected entity, where each AID column is quite good but not perfect, leads to slightly stronger anonymity and only slightly poorer analytic utility.
+__Label some other appropriate column as an additional AID column.__  It might be that there is another column, in addition to `account_number`, that works pretty well as an AID column. For example, `email_address` or `phone_number`. If the individual with multiple accounts used the same `email_address`, then the bin would be suppressed. Of course, it is possible that the individual used a different email for each account, in which case this fix wouldn't help. As a general rule, labeling multiple AID columns for the same protected entity, where each AID column is quite good but not perfect, leads to slightly stronger anonymity and only slightly poorer analytic utility.
 
 __Generalize the isolating column.__ Some isolating columns may have analytic value, for instance `street_address` denotes location. If `street_address` was generalized to `zip_code`, then some analytic utility is retained while preventing the specific privacy problem. As a general rule, increased generalization, so long as it does not hurt analytic utility, is good practice.
 
@@ -207,21 +211,21 @@ Other examples include `send_email` and `receive_email`, `player1` and `player2`
 
 Some tables may contain different types of protected entities.
 
-One example is where the protected entities are all persons, but with different roles. For instance `doctor_id` and `patient_id`, or `customer_id` and `salesperson_id`. (The AID name spaces may be the same or different, it doesn't really matter in the context of this discussion.)
+One example is where the protected entities are all persons, but with different roles. For instance `doctor_id` and `patient_id`, or `customer_id` and `salesperson_id`.
 
 Another example is when there are groups of people that should be protected. Typical examples are families (which can be indirectly coded as for instance a street address) or couples (i.e. a joint bank account). 
 
 In other cases, one of the protected entities may not be a person at all. In particular, a company may wish to protect certain proprietary information. An example here might be a company with many local stores, which doesn't want to reveal information about individual store activity. In this case, the AID columns might be `customer_id` and `store_branch_id`.
 
-Note that analytic utility can be substantially degraded when a protected entity has relatively few distinct instances in the table. In some cases it may make more sense to build a table with the larger protected entity removed altogether. Finally, note that if a large protected entity is removed, then there may be other columns that are strongly correlated with the protected entity that should also be removed. For instance, if there is a `transaction_zip_code` column, and most zip codes have no more than one store, then the `transaction_zip_code` column should be removed along with `store_branch_id`.
+Note that analytic utility can be substantially degraded when a protected entity has relatively few distinct instances in the table (a _sparse_ protected entity). In some cases it may make more sense to build a table with the sparse protected entity removed altogether. Finally, note that if a sparse protected entity is removed, then there may be other columns that are strongly correlated with the protected entity that should also be removed. For instance, if there is a `transaction_zip_code` column, and most zip codes have no more than one store, then the `transaction_zip_code` column should be removed along with `store_branch_id`.
 
 ## How to set suppression threshold
 
-The purpose of suppression in Diffix is to prevent the release of information pertaining to a single individual. In the GDPR, this is called _singling out_. Narrowly construed, releasing information pertaining to two individuals is not singling out, and so GDPR is not violated. Practically speaking, however, releasing information about two people or even four or five people might be regarded as a privacy violation, especially if the people are closely related (a couple or family).
+The purpose of suppression in Diffix Elm is to prevent the release of information pertaining to a single individual. In the GDPR, this is called _singling out_. Narrowly construed, releasing information pertaining to two individuals is not singling out, and so GDPR is not violated. Practically speaking, however, releasing information about two people or even four or five people might be regarded as a privacy violation, especially if the people are closely related (a couple or family).
 
 When selecting a suppression threshold (`pg_diffix.low_count_min_threshold`), there are four main considerations:
 
 1. What is the largest threshold that satisfies analytic goals? There is no reason to have a smaller threshold than that which satisfies analytic goals.
 2. What is the largest group of individuals that need to be protected? In other words, what is the largest group whereby the release of information about the group can be interpreted as equivalent to the release of information about an individual in the group?
-3. Are there imperfections in the AID that need to be covered by a larger suppression threshold (see (previous section)[how-to-select-aid-columns]).
+3. Are there imperfections in the AID that need to be covered by a larger suppression threshold (see [previous section](how-to-select-aid-columns)).
 4. What is the public perception of how large an aggregate should be? Public opinion is an important consideration. If for instance the public would be nervous about aggregates of five individuals, even though strictly speaking individual privacy is protected, then setting the threshold to a larger value may make sense.
