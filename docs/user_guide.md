@@ -18,11 +18,11 @@ Extension behavior is controlled by __security labels__ and __settings__. Securi
 
 Only superusers can assign security labels and settings. To remove a security label from an object, set it to `NULL`.
 
-The command `SELECT diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
+The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
 
 The command `SELECT diffix.access_level();` displays the current security labels assigned to the role associated with the active session.
 
-The command `SELECT diffix.show_settings();` displays the settings in use by the extension for the active session.
+The command `SELECT * FROM diffix.show_settings();` displays the settings in use by the extension for the active session.
 
 NOTE: If no configuration is done, then by default no anonymization takes place. All users will have full access to table contents.
 
