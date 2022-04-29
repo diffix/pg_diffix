@@ -20,7 +20,8 @@ Only superusers can assign security labels and settings. To remove a security la
 
 The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
 
-The command `SELECT diffix.access_level();` displays the current security labels assigned to the role associated with the active session.
+The command `SELECT diffix.access_level();` displays the access level of the active session.
+The access level depends on the current role's security label and the `session_access_level`/`default_access_level` settings.
 
 The command `SELECT * FROM diffix.show_settings();` displays the settings in use by the extension for the active session.
 
