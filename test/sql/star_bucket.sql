@@ -71,7 +71,7 @@ CALL diffix.mark_personal('public', 'star_bucket_empty', 'id');
 CALL diffix.mark_personal('public', 'star_bucket_only', 'id');
 
 SET ROLE diffix_test;
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 
 ----------------------------------------------------------------
 -- Grouping queries with count

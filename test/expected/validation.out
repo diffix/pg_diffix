@@ -28,11 +28,11 @@ SET ROLE diffix_test;
 ----------------------------------------------------------------
 -- Trusted mode query restrictions
 ----------------------------------------------------------------
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT diffix.access_level();
-  access_level   
------------------
- publish_trusted
+    access_level    
+--------------------
+ anonymized_trusted
 (1 row)
 
 ----------------------------------------------------------------
@@ -239,6 +239,21 @@ Indexes:
 Indexes:
     "empty_test_customers_pkey" PRIMARY KEY, btree (id)
 
+-- Settings and labels UDFs work
+SELECT * FROM diffix.show_settings() LIMIT 2;
+              name              | setting |                                   short_desc                                   
+--------------------------------+---------+--------------------------------------------------------------------------------
+ pg_diffix.compute_suppress_bin | on      | Whether the suppress bin should be computed and included in the query results.
+ pg_diffix.default_access_level | direct  | Access level for unlabeled users.
+(2 rows)
+
+SELECT * FROM diffix.show_labels() LIMIT 2;
+                  object                  |  label   
+------------------------------------------+----------
+ table public.test_customers              | personal
+ column id of table public.test_customers | aid
+(2 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -404,15 +419,15 @@ ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
 LINE 1: SELECT (SELECT length(city) FROM test_validation);
                        ^
 -- Get rejected because of accessing pg_catalog tables with sensitive stats
-SELECT * FROM pg_stats;
+SELECT * FROM pg_stats LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
-SELECT * FROM pg_statistic;
+SELECT * FROM pg_statistic LIMIT 10;
 ERROR:  permission denied for table pg_statistic
-SELECT * FROM pg_stat_user_functions;
+SELECT * FROM pg_stat_user_functions LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
-SELECT * FROM pg_stat_user_indexes;
+SELECT * FROM pg_stat_user_indexes LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
-SELECT * FROM pg_class;
+SELECT * FROM pg_class LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
@@ -447,11 +462,11 @@ LINE 1: SELECT count(distinct tableoid) FROM test_validation;
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------
-SET pg_diffix.session_access_level = 'publish_untrusted';
+SET pg_diffix.session_access_level = 'anonymized_untrusted';
 SELECT diffix.access_level();
-   access_level    
--------------------
- publish_untrusted
+     access_level     
+----------------------
+ anonymized_untrusted
 (1 row)
 
 -- Get accepted

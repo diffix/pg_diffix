@@ -61,8 +61,7 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 ### `PGXN Test Tools`
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
-`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools \
-  sh -c 'cd /repo && pg-start 13 && pg-build-test'`.
+`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
 
 ## Docker images
 
@@ -91,12 +90,13 @@ For more advanced usage see the [official image reference](https://hub.docker.co
 
 ### Demo image
 
-The demo image extends the base image with a sample dataset and a user configured with `publish_trusted` access.
+The demo image extends the base image with a sample dataset and a user for each access level.
 
 Once started, the container creates and populates the `banking` database.
-Two users are created, with password `demo`:
-  - `banking_publish` with anonymized access to `banking`
-  - `banking` with direct (non-anonymized) access to `banking`
+Three users are created, all of them with password `demo`:
+  - `trusted_user` with anonymized access to `banking` in trusted mode
+  - `untrusted_user` with anonymized access to `banking` in untrusted mode
+  - `direct_user` with direct (non-anonymized) access to `banking`
 
 **NOTE** The required file `docker/demo/01-banking-data.sql` is managed by [Git LFS](https://git-lfs.github.com).
 
@@ -110,9 +110,8 @@ Run the container in foreground and expose in port 10432:
 
 Connect to the banking database (from another shell) for anonymized access:
 
-`psql -h localhost -p 10432 -d banking -U banking_publish`
+`psql -h localhost -p 10432 -d banking -U trusted_user`
 
 To keep the container running you can start it in detached mode and with a restart policy:
 
-`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres \
-  -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
+`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`

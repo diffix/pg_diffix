@@ -31,7 +31,7 @@ SET ROLE diffix_test;
 -- Trusted mode query restrictions
 ----------------------------------------------------------------
 
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT diffix.access_level();
 
 ----------------------------------------------------------------
@@ -130,6 +130,10 @@ SELECT (SELECT city FROM test_validation);
 \dt+ empty_test_customers
 \d+ empty_test_customers
 
+-- Settings and labels UDFs work
+SELECT * FROM diffix.show_settings() LIMIT 2;
+SELECT * FROM diffix.show_labels() LIMIT 2;
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -216,11 +220,11 @@ WITH c AS (SELECT length(city) FROM test_validation) SELECT * FROM c;
 SELECT (SELECT length(city) FROM test_validation);
 
 -- Get rejected because of accessing pg_catalog tables with sensitive stats
-SELECT * FROM pg_stats;
-SELECT * FROM pg_statistic;
-SELECT * FROM pg_stat_user_functions;
-SELECT * FROM pg_stat_user_indexes;
-SELECT * FROM pg_class;
+SELECT * FROM pg_stats LIMIT 10;
+SELECT * FROM pg_statistic LIMIT 10;
+SELECT * FROM pg_stat_user_functions LIMIT 10;
+SELECT * FROM pg_stat_user_indexes LIMIT 10;
+SELECT * FROM pg_class LIMIT 10;
 
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
@@ -239,7 +243,7 @@ SELECT count(distinct tableoid) FROM test_validation;
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------
 
-SET pg_diffix.session_access_level = 'publish_untrusted';
+SET pg_diffix.session_access_level = 'anonymized_untrusted';
 SELECT diffix.access_level();
 
 -- Get accepted

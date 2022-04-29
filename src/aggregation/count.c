@@ -52,22 +52,43 @@ static void determine_outlier_top_counts(
 
   if (total_adjustment > 0)
   {
+    /* 
+     * At this point we know `0 < total_adjustment <= outlier_range + top_range` (*) because:
+     * `total_adjustment = outlier_count_max + top_count_max - total_count
+     *                  <= outlier_count_max + top_count_max - outlier_count_min - top_count_min`.
+     */
     int outlier_range = g_config.outlier_count_max - g_config.outlier_count_min;
+    int top_range = g_config.top_count_max - g_config.top_count_min;
+    /* `top_adjustment` will be half of `total_adjustment` rounded up, so it takes priority as it should. */
+    int outlier_adjustment = total_adjustment / 2;
+    int top_adjustment = total_adjustment - outlier_adjustment;
 
-    if (outlier_range > g_config.top_count_max - g_config.top_count_min)
+    /* Adjust, depending on how the adjustments "fit" in the ranges. */
+    if (outlier_range >= outlier_adjustment && top_range >= top_adjustment)
     {
-      FAILWITH("Invalid config: (outlier_count_min, outlier_count_max) wider than (top_count_min, top_count_max)");
+      /* Both ranges are compacted at same rate. */
+      compact_outlier_count_max -= outlier_adjustment;
+      compact_top_count_max -= top_adjustment;
     }
-
-    if (outlier_range < total_adjustment / 2)
+    else if (outlier_range < outlier_adjustment && top_range >= top_adjustment)
     {
-      compact_outlier_count_max -= outlier_range;
+      /* `outlier_count` is compacted as much as possible by `outlier_range`, `top_count` takes the surplus adjustment. */
+      compact_outlier_count_max = g_config.outlier_count_min;
       compact_top_count_max -= total_adjustment - outlier_range;
+    }
+    else if (outlier_range >= outlier_adjustment && top_range < top_adjustment)
+    {
+      /* Vice versa. */
+      compact_outlier_count_max -= total_adjustment - top_range;
+      compact_top_count_max = g_config.top_count_min;
     }
     else
     {
-      compact_outlier_count_max -= total_adjustment / 2;
-      compact_top_count_max -= total_adjustment - total_adjustment / 2;
+      /*
+       * Not possible. Otherwise `outlier_range + top_range < outlier_adjustment + top_adjustment = total_adjustment`
+       * but we knew the opposite was true in (*) above.
+       */
+      FAILWITH("Internal error - impossible interval compacting");
     }
   }
 

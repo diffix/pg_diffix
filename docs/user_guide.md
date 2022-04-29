@@ -72,7 +72,7 @@ __NOTE:__ if AID columns are not correctly labeled, the extension may fail to an
 
 The procedure `diffix.mark_personal(namespace, table_name, aid_columns...)` is used to label a table as personal and to label its AID columns.
 
-For example, 
+For example,
 
 ```SQL
 CALL diffix.mark_personal('public', 'employee_info', 'employee_id');
@@ -213,7 +213,7 @@ Some tables may contain different types of protected entities.
 
 One example is where the protected entities are all persons, but with different roles. For instance `doctor_id` and `patient_id`, or `customer_id` and `salesperson_id`.
 
-Another example is when there are groups of people that should be protected. Typical examples are families (which can be indirectly coded as for instance a street address) or couples (i.e. a joint bank account). 
+Another example is when there are groups of people that should be protected. Typical examples are families (which can be indirectly coded as for instance a street address) or couples (i.e. a joint bank account).
 
 In other cases, one of the protected entities may not be a person at all. In particular, a company may wish to protect certain proprietary information. An example here might be a company with many local stores, which doesn't want to reveal information about individual store activity. In this case, the AID columns might be `customer_id` and `store_branch_id`.
 

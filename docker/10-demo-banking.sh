@@ -17,15 +17,20 @@ sql -f "/docker-entrypoint-initdb.d/demo/00-banking-schema.sql" \
 
 banking_password=${BANKING_PASSWORD:-demo}
 
-sql -c "CREATE USER banking WITH PASSWORD '$banking_password';"
-
-sql -c "CREATE USER banking_publish WITH PASSWORD '$banking_password';"
+sql -c "CREATE USER direct_user WITH PASSWORD '$banking_password';"
+sql -c "CREATE USER trusted_user WITH PASSWORD '$banking_password';"
+sql -c "CREATE USER untrusted_user WITH PASSWORD '$banking_password';"
 
 sql <<-EOSQL
-  GRANT CONNECT ON DATABASE banking TO banking;
-  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking;
+  GRANT CONNECT ON DATABASE banking TO direct_user;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO direct_user;
+  SECURITY LABEL FOR pg_diffix ON ROLE direct_user IS 'direct';
 
-  GRANT CONNECT ON DATABASE banking TO banking_publish;
-  GRANT SELECT ON ALL TABLES IN SCHEMA public TO banking_publish;
-  SECURITY LABEL FOR pg_diffix ON ROLE banking_publish IS 'publish_trusted';
+  GRANT CONNECT ON DATABASE banking TO trusted_user;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO trusted_user;
+  SECURITY LABEL FOR pg_diffix ON ROLE trusted_user IS 'anonymized_trusted';
+
+  GRANT CONNECT ON DATABASE banking TO untrusted_user;
+  GRANT SELECT ON ALL TABLES IN SCHEMA public TO untrusted_user;
+  SECURITY LABEL FOR pg_diffix ON ROLE untrusted_user IS 'anonymized_untrusted';
 EOSQL

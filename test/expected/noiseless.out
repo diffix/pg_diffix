@@ -6,14 +6,14 @@ SET pg_diffix.outlier_count_max = 1;
 SET pg_diffix.top_count_min = 3;
 SET pg_diffix.top_count_max = 3;
 SET ROLE diffix_test;
-SET pg_diffix.session_access_level = 'publish_trusted';
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 ----------------------------------------------------------------
 -- Sanity checks
 ----------------------------------------------------------------
 SELECT diffix.access_level();
-  access_level   
------------------
- publish_trusted
+    access_level    
+--------------------
+ anonymized_trusted
 (1 row)
 
 ----------------------------------------------------------------
@@ -22,7 +22,7 @@ SELECT diffix.access_level();
 SELECT COUNT(*) FROM test_customers;
  count 
 -------
-    16
+    18
 (1 row)
 
 SELECT COUNT(*) FROM test_purchases;
@@ -34,7 +34,7 @@ SELECT COUNT(*) FROM test_purchases;
 SELECT COUNT(city), COUNT(DISTINCT city) FROM test_customers;
  count | count 
 -------+-------
-    15 |     2
+    17 |     2
 (1 row)
 
 SELECT COUNT(DISTINCT cid) FROM test_purchases;
@@ -46,9 +46,9 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- *      |     2
+ *      |     3
  Rome   |     7
- Berlin |     7
+ Berlin |     8
 (3 rows)
 
 ----------------------------------------------------------------
@@ -97,6 +97,7 @@ SELECT 1, city FROM test_customers;
 ----------+--------
         1 | *
         1 | *
+        1 | *
         1 | Rome
         1 | Rome
         1 | Rome
@@ -111,13 +112,15 @@ SELECT 1, city FROM test_customers;
         1 | Berlin
         1 | Berlin
         1 | Berlin
-(16 rows)
+        1 | Berlin
+(18 rows)
 
 SELECT city, 'aaaa' FROM test_customers;
   city  | ?column? 
 --------+----------
  *      | aaaa
  *      | aaaa
+ *      | aaaa
  Rome   | aaaa
  Rome   | aaaa
  Rome   | aaaa
@@ -132,7 +135,8 @@ SELECT city, 'aaaa' FROM test_customers;
  Berlin | aaaa
  Berlin | aaaa
  Berlin | aaaa
-(16 rows)
+ Berlin | aaaa
+(18 rows)
 
 ----------------------------------------------------------------
 -- Multi-AID queries
@@ -172,13 +176,16 @@ SELECT id FROM test_customers;
    
    
    
-(16 rows)
+   
+   
+(18 rows)
 
 SELECT city FROM test_customers;
   city  
 --------
  *
  *
+ *
  Rome
  Rome
  Rome
@@ -193,7 +200,8 @@ SELECT city FROM test_customers;
  Berlin
  Berlin
  Berlin
-(16 rows)
+ Berlin
+(18 rows)
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
   city  
@@ -230,18 +238,17 @@ SELECT COUNT(DISTINCT planet) FROM test_customers;
 SELECT city, COUNT(DISTINCT city) FROM test_customers GROUP BY 1;
   city  | count 
 --------+-------
- *      |     2
- Rome   |     2
- Berlin |     2
+ *      |     3
+ Rome   |     3
+ Berlin |     3
 (3 rows)
 
 SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  discount | count 
 ----------+-------
-          |     2
-      1.5 |     2
+          |     4
       0.5 |     4
-        1 |     5
-        2 |     2
-(5 rows)
+        1 |     6
+        2 |     4
+(4 rows)
 

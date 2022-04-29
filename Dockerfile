@@ -2,7 +2,7 @@ FROM postgres:13 AS builder
 
 RUN set -ex \
   && apt-get update \
-  && apt-get install -y build-essential libssl-dev postgresql-server-dev-13 \
+  && apt-get install -y build-essential libssl-dev postgresql-server-dev-13 jq \
   && mkdir -p /usr/src/pg_diffix
 
 WORKDIR /usr/src/pg_diffix
