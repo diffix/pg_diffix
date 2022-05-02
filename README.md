@@ -15,24 +15,23 @@ For detailed information on configuring and using the extension, check out the [
 
 ## Installation
 
-PostgreSQL version 13 or higher is required.
-
-The source is compiled with: `make` or `make TARGET=release` for release version.
-
-You should already have the `postgresql-server-dev-x` package installed if you have postgres version `x`.
+PostgreSQL version 13 or higher is required. You also need `make`, `jq`, and a recent C compiler.
+You should already have the `postgresql-server-dev-x` package installed if you have PostgreSQL version `x`.
 If not, you must install it in order to compile the source.
 
-The compiled extension is installed with: `make install`.
+The source is compiled with: `make` (or `make TARGET=release` for release version).
+The compiled extension is installed with: `make install` (which requires superuser permissions).
 
-You probably need to run it with superuser permission as `sudo make install`.
+The extension is also available on [PGXN](https://pgxn.org/dist/pg_diffix/), and can be installed using
+[PGXN Client](https://pgxn.github.io/pgxnclient/).
 
-In `psql`, you have to install the extension with `CREATE EXTENSION pg_diffix;`.
+When connected to the target database with `psql`, you have to set up the extension with `CREATE EXTENSION pg_diffix;`.
 
 ## Using the extension
 
 Load the extension with `LOAD 'pg_diffix';`, unless you configured it to preload using [these instructions](#preloading-the-extension).
 
-Once installed, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
+Once loaded, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
 Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
