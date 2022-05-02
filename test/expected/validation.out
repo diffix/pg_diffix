@@ -8,22 +8,22 @@ CREATE TABLE test_validation (
   lunchtime TIME,
   last_seen TIMESTAMP
 );
-CALL diffix.mark_personal('public', 'test_validation', 'id');
+CALL diffix.mark_personal('test_validation', 'id');
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
-CALL diffix.mark_personal('public', 'superclass', 'x');
-CALL diffix.mark_personal('public', 'subclass', 'y');
+CALL diffix.mark_personal('superclass', 'x');
+CALL diffix.mark_personal('subclass', 'y');
 ALTER TABLE subclass INHERIT superclass;
 -- No-op. Repeated to test the error on conflicting configuration
-CALL diffix.mark_personal('public', 'superclass', 'x');
+CALL diffix.mark_personal('superclass', 'x');
 ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.superclass IS 'personal'"
-PL/pgSQL function diffix.mark_personal(text,text,text[]) line 15 at EXECUTE
-CALL diffix.mark_personal('public', 'subclass', 'y');
+CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE superclass IS 'personal'"
+PL/pgSQL function diffix.mark_personal(text,text[]) line 7 at EXECUTE
+CALL diffix.mark_personal('subclass', 'y');
 ERROR:  [PG_DIFFIX] Anonymization over tables using inheritance is not supported.
-CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE public.subclass IS 'personal'"
-PL/pgSQL function diffix.mark_personal(text,text,text[]) line 15 at EXECUTE
+CONTEXT:  SQL statement "SECURITY LABEL FOR pg_diffix ON TABLE subclass IS 'personal'"
+PL/pgSQL function diffix.mark_personal(text,text[]) line 7 at EXECUTE
 SET ROLE diffix_test;
 ----------------------------------------------------------------
 -- Trusted mode query restrictions
