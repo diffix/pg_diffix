@@ -5,7 +5,7 @@ CREATE TABLE test_stress AS (
     i AS id, left(md5(random()::text), 4) AS t, (random() * 10.0)::real AS r, round(random() * 1000)::integer AS i
   FROM generate_series(1, 50000) series(i)
 );
-CALL diffix.mark_personal('public', 'test_stress', 'id');
+CALL diffix.mark_personal('test_stress', 'id');
 -- Prepare test session.
 SET pg_diffix.noise_layer_sd = 0;
 SET pg_diffix.low_count_layer_sd = 0;

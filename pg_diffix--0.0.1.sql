@@ -39,47 +39,29 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
-CREATE PROCEDURE mark_personal(table_namespace text, table_name text, variadic aid_columns text[])
+CREATE PROCEDURE mark_personal(table_name text, variadic aid_columns text[])
 AS $$
   DECLARE
-    table_oid integer := (SELECT pg_class.oid
-                          FROM pg_class, pg_namespace
-                          WHERE pg_class.relnamespace = pg_namespace.oid AND relname = table_name AND nspname = table_namespace);
-    table_fullname text := quote_ident(table_namespace) || '.' || quote_ident(table_name);
     aid_column text;
   BEGIN
-    IF (SELECT @extschema@.access_level()) <> 'direct' THEN
-      RAISE EXCEPTION '"mark_personal" requires direct access mode.';
-    END IF;
+    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_name::regclass::oid AND label = 'aid';
 
-    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_oid AND label = 'aid';
-
-    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE ' || table_fullname || ' IS ''personal''';
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE ' || table_name || ' IS ''personal''';
 
     FOREACH aid_column IN ARRAY aid_columns LOOP
-      EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_fullname || '.' || quote_ident(aid_column) || ' IS ''aid''';
+      EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_name || '.' || aid_column || ' IS ''aid''';
     END LOOP;
   END;
-$$ LANGUAGE plpgsql
-SECURITY INVOKER SET search_path = '';
+$$ LANGUAGE plpgsql;
 
-CREATE PROCEDURE mark_public(table_namespace text, table_name text)
+CREATE PROCEDURE mark_public(table_name text)
 AS $$
-  DECLARE
-    table_oid integer := (SELECT pg_class.oid
-                          FROM pg_class, pg_namespace
-                          WHERE pg_class.relnamespace = pg_namespace.oid AND relname = table_name AND nspname = table_namespace);
   BEGIN
-    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_oid AND label = 'aid';
+    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_name::regclass::oid AND label = 'aid';
 
-    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE '
-            || quote_ident(table_namespace)
-            || '.'
-            || quote_ident(table_name)
-            || ' IS ''public''';
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE ' || table_name || ' IS ''public''';
   END;
-$$ LANGUAGE plpgsql
-SECURITY INVOKER SET search_path = '';
+$$ LANGUAGE plpgsql;
 
 /* ----------------------------------------------------------------
  * Common aggregation interface

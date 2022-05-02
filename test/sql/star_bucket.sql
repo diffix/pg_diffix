@@ -63,12 +63,12 @@ INSERT INTO star_bucket_only VALUES
   (4, 'cs', 'f', 'prof'),
   (5, 'history', 'f', 'asst');
 
-CALL diffix.mark_personal('public', 'star_bucket_base', 'id');
-CALL diffix.mark_personal('public', 'star_bucket', 'id');
-CALL diffix.mark_personal('public', 'star_bucket_suppressed_1', 'id');
-CALL diffix.mark_personal('public', 'star_bucket_suppressed_2', 'id');
-CALL diffix.mark_personal('public', 'star_bucket_empty', 'id');
-CALL diffix.mark_personal('public', 'star_bucket_only', 'id');
+CALL diffix.mark_personal('star_bucket_base', 'id');
+CALL diffix.mark_personal('star_bucket', 'id');
+CALL diffix.mark_personal('star_bucket_suppressed_1', 'id');
+CALL diffix.mark_personal('star_bucket_suppressed_2', 'id');
+CALL diffix.mark_personal('star_bucket_empty', 'id');
+CALL diffix.mark_personal('star_bucket_only', 'id');
 
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';

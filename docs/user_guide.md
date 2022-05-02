@@ -59,7 +59,7 @@ Tables may have one of two security labels, `public` or `personal`.
 * Tables labeled as `personal` are anonymized by the extension (for `anonymized_trusted` and `anonymized_untrusted` users, not `direct` users).
 * Tables labeled as `public` are not anonymized: all users have full access to these tables.
 
-The procedure `diffix.mark_public(namespace, table_name)` labels a table as `public`.
+The procedure `diffix.mark_public(table_name)` labels a table as `public`.
 
 Note that unlabeled tables can not be queried by `anonymized_trusted` and `anonymized_untrusted` users (unless the setting variable `pg_diffix.treat_unmarked_tables_as_public` is set to `true`).
 
@@ -71,18 +71,18 @@ Each protected entity must have at least one column that contains the identifier
 
 __NOTE:__ if AID columns are not correctly labeled, the extension may fail to anonymize appropriately.
 
-The procedure `diffix.mark_personal(namespace, table_name, aid_columns...)` is used to label a table as personal and to label its AID columns.
+The procedure `diffix.mark_personal(table_name, aid_columns...)` is used to label a table as personal and to label its AID columns.
 
 For example,
 
 ```SQL
-CALL diffix.mark_personal('public', 'employee_info', 'employee_id');
+CALL diffix.mark_personal('employee_info', 'employee_id');
 ```
 
 labels the table `employee_info` as personal, and labels the `employee_id` column as `employee_id` an AID column.
 
 ```SQL
-CALL diffix.mark_personal('public', 'transactions', 'sender_acct', 'receiver_acct');
+CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
 
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
