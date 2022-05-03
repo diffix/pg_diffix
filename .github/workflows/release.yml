@@ -1,0 +1,25 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    container: pgxn/pgxn-tools
+    steps:
+      - name: Install deps
+        run: |
+          sudo apt update
+          apt-get install -y jq
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Package release
+        run: make package
+      - name: Make release draft
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: CHANGELOG.md
+          draft: true
+          prerelease: true
