@@ -132,7 +132,7 @@ SELECT (SELECT city FROM test_validation);
 
 -- Settings and labels UDFs work
 SELECT * FROM diffix.show_settings() LIMIT 2;
-SELECT * FROM diffix.show_labels() LIMIT 2;
+SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
 
 ----------------------------------------------------------------
 -- Unsupported queries
