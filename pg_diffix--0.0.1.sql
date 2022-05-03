@@ -29,12 +29,11 @@ $$
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION show_labels()
-RETURNS table(object text, label text)
+RETURNS table(objtype text, objname text, label text)
 LANGUAGE SQL
 AS $$
-  SELECT
-    pg_describe_object(classoid, objoid, objsubid), label
-  FROM pg_seclabel
+  SELECT objtype, objname, label
+  FROM pg_seclabels
   WHERE provider = 'pg_diffix';
 $$
 SECURITY INVOKER SET search_path = '';

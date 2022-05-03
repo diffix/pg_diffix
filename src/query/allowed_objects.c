@@ -54,12 +54,12 @@ typedef struct AllowedCols
 static const char *const g_pg_catalog_allowed_rels[] = {
     "pg_aggregate", "pg_am", "pg_attrdef", "pg_attribute", "pg_auth_members", "pg_authid", "pg_available_extension_versions",
     "pg_available_extensions", "pg_cast", "pg_collation", "pg_constraint", "pg_database", "pg_db_role_setting", "pg_default_acl",
-    "pg_depend", "pg_depend", "pg_description", "pg_event_trigger", "pg_extension", "pg_foreign_data_wrapper",
-    "pg_foreign_server", "pg_foreign_table", "pg_index", "pg_inherits", "pg_language", "pg_largeobject_metadata", "pg_locks",
-    "pg_namespace", "pg_opclass", "pg_operator", "pg_opfamily", "pg_policy", "pg_prepared_statements", "pg_prepared_xacts",
-    "pg_publication", "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_sequence", "pg_settings", "pg_shadow", "pg_shdepend",
-    "pg_shdescription", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace", "pg_trigger",
-    "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user",
+    "pg_depend", "pg_depend", "pg_description", "pg_event_trigger", "pg_extension", "pg_foreign_data_wrapper", "pg_foreign_server",
+    "pg_foreign_table", "pg_index", "pg_inherits", "pg_language", "pg_largeobject_metadata", "pg_locks", "pg_namespace",
+    "pg_opclass", "pg_operator", "pg_opfamily", "pg_policy", "pg_prepared_statements", "pg_prepared_xacts", "pg_publication",
+    "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_seclabel", "pg_seclabels", "pg_sequence", "pg_settings", "pg_shadow",
+    "pg_shdepend", "pg_shdescription", "pg_shseclabel", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace",
+    "pg_trigger", "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user",
     /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
     "pg_proc",
     /**/
@@ -75,7 +75,6 @@ static AllowedCols g_pg_catalog_allowed_cols[] = {
      * dramatically, so opting to leave them out to err on the safe side.
      */
     {.rel_name = "pg_stat_database", .col_names = {"datname", "xact_commit", "xact_rollback"}},
-    {.rel_name = "pg_seclabel", .col_names = {"classoid", "objoid", "objsubid", "label", "provider"}},
     /**/
 };
 
@@ -184,14 +183,11 @@ bool is_implicit_range_builtin_untrusted(Oid funcoid)
 
 bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols)
 {
-  char *rel_name = get_rel_name(relation_oid);
-
   /* First handle `SELECT count(*) FROM pg_catalog.x`. */
   if (selected_cols == NULL)
-  {
-    pfree(rel_name);
     return true;
-  }
+
+  char *rel_name = get_rel_name(relation_oid);
 
   /* Then check if the entire relation is allowed. */
   for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
@@ -209,11 +205,14 @@ bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols)
   {
     if (strcmp(g_pg_catalog_allowed_cols[i].rel_name, rel_name) != 0)
       continue;
+
     if (g_pg_catalog_allowed_cols[i].cols == NULL)
       prepare_pg_catalog_allowed(relation_oid, &g_pg_catalog_allowed_cols[i]);
+
     allowed = bms_is_subset(selected_cols, g_pg_catalog_allowed_cols[i].cols);
     break;
   }
+
   pfree(rel_name);
   return allowed;
 }
