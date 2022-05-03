@@ -62,6 +62,15 @@ AS $$
   END;
 $$ LANGUAGE plpgsql;
 
+CREATE TYPE AccessLevel AS ENUM ('direct', 'anonymized_trusted', 'anonymized_untrusted');
+
+CREATE PROCEDURE mark_role(role_name text, access_level AccessLevel)
+AS $$
+  BEGIN
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON ROLE ' || quote_ident(role_name) || ' IS ''' || access_level || '''';
+  END;
+$$ LANGUAGE plpgsql;
+
 /* ----------------------------------------------------------------
  * Common aggregation interface
  * ----------------------------------------------------------------

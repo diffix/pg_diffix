@@ -24,13 +24,13 @@ sql -c "CREATE USER untrusted_user WITH PASSWORD '$banking_password';"
 sql <<-EOSQL
   GRANT CONNECT ON DATABASE banking TO direct_user;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO direct_user;
-  SECURITY LABEL FOR pg_diffix ON ROLE direct_user IS 'direct';
+  CALL diffix.mark_role('direct_user', 'direct');
 
   GRANT CONNECT ON DATABASE banking TO trusted_user;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO trusted_user;
-  SECURITY LABEL FOR pg_diffix ON ROLE trusted_user IS 'anonymized_trusted';
+  CALL diffix.mark_role('trusted_user', 'anonymized_trusted');
 
   GRANT CONNECT ON DATABASE banking TO untrusted_user;
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO untrusted_user;
-  SECURITY LABEL FOR pg_diffix ON ROLE untrusted_user IS 'anonymized_untrusted';
+  CALL diffix.mark_role('untrusted_user', 'anonymized_untrusted');
 EOSQL
