@@ -23,26 +23,32 @@ The compiled extension is installed with: `make install` (which requires superus
 The extension is also available on [PGXN](https://pgxn.org/dist/pg_diffix/), and can be installed using
 [PGXN Client](https://pgxn.github.io/pgxnclient/).
 
-When connected to the target database with `psql`, you have to set up the extension with `CREATE EXTENSION pg_diffix;`.
+## Activating the extension
 
-## Using the extension
+You can set up the extension for the current database by using the command `CREATE EXTENSION pg_diffix;`.
 
-Load the extension with `LOAD 'pg_diffix';`, unless you configured it to preload using [these instructions](#preloading-the-extension).
+To properly enforce the anonymization restrictions, the extension has to be automatically loaded on
+every session start for restricted users. This can be accomplished by configuring
+[library preloading](https://www.postgresql.org/docs/current/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+
+For example, to automatically load the `pg_diffix` extension for all users connecting to a database,
+you can execute the following command:
+
+`ALTER DATABASE db_name SET session_preload_libraries TO 'pg_diffix';`
 
 Once loaded, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
 Node dumps can be formatted to readable form by using `pg_node_formatter`.
 
-## Preloading the extension
+## Deactivating the extension
 
-To enable automatic activation on every session start, you need to configure
-[library preloading](https://www.postgresql.org/docs/13/runtime-config-client.html#RUNTIME-CONFIG-CLIENT-PRELOAD).
+You can drop the extension from the current database by using the command `DROP EXTENSION pg_diffix;`.
 
-In your `postgresql.conf` file, add `pg_diffix` to either of `session_preload_libraries` or `shared_preload_libraries`.
+You might also need to remove the extension from the list of preloaded libraries.
 
-`session_preload_libraries = 'pg_diffix'`
+For example, to reset the list of preloaded libraries for a database, you can execute the following command:
 
-If you have multiple libraries you want to preload, separate them with commas.
+`ALTER DATABASE db_name SET session_preload_libraries TO DEFAULT;`
 
 ## Testing the extension
 
@@ -60,6 +66,7 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 ### `PGXN Test Tools`
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
+
 `docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
 
 ## Docker images
