@@ -42,3 +42,61 @@ GRANT CONNECT ON DATABASE contrib_regression TO diffix_test;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO diffix_test;
 -- Allow SELECT on future test-specific tables.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO diffix_test;
+-- Mark, unmark objects, show their labels
+CALL diffix.mark_role('diffix_test', 'direct');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |  label   
+---------+--------------------------------+----------
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+ role    | diffix_test                    | direct
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_products           | public
+ table   | public.test_purchases          | personal
+(13 rows)
+
+CALL diffix.unmark_table('public.test_products');
+CALL diffix.unmark_role('diffix_test');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |  label   
+---------+--------------------------------+----------
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_purchases          | personal
+(11 rows)
+
+CALL diffix.mark_role('diffix_test', 'anonymized_trusted');
+CALL diffix.mark_public('public.test_products');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |       label        
+---------+--------------------------------+--------------------
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+ role    | diffix_test                    | anonymized_trusted
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_products           | public
+ table   | public.test_purchases          | personal
+(13 rows)
+
