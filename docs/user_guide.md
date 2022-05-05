@@ -47,10 +47,12 @@ Trusted users have fewer SQL restrictions than untrusted users, and therefore ha
 For example, the command to assign the access level `anonymized_untrusted` to the role `public_access` is:
 
 ```SQL
-SECURITY LABEL FOR pg_diffix ON ROLE public_access IS 'anonymized_untrusted';
+CALL diffix.mark_role('public_access', 'anonymized_untrusted');
 ```
 
 The value of the setting variable `pg_diffix.default_access_level` determines the default user class users. It is set to `direct` by default.
+
+The procedure `diffix.unmark_role(role_name)` clears the access level.
 
 ### Security labels for tables
 
@@ -86,6 +88,8 @@ CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
 
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
+
+The procedure `diffix.unmark_table(table_name)` clears the labels for the table and all its AID columns.
 
 ## Settings
 

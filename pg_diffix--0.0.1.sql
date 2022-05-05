@@ -34,7 +34,10 @@ LANGUAGE SQL
 AS $$
   SELECT objtype, objname, label
   FROM pg_seclabels
-  WHERE provider = 'pg_diffix';
+  WHERE provider = 'pg_diffix'
+  ORDER BY 
+    CASE WHEN objtype = 'table' THEN 1 WHEN objtype = 'column' THEN 2 WHEN objtype = 'role' THEN 3 END,
+    objname;
 $$
 SECURITY INVOKER SET search_path = '';
 
@@ -62,12 +65,26 @@ AS $$
   END;
 $$ LANGUAGE plpgsql;
 
+CREATE PROCEDURE unmark_table(table_name text)
+AS $$
+  BEGIN
+    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_name::regclass::oid;
+  END;
+$$ LANGUAGE plpgsql;
+
 CREATE TYPE AccessLevel AS ENUM ('direct', 'anonymized_trusted', 'anonymized_untrusted');
 
 CREATE PROCEDURE mark_role(role_name text, access_level AccessLevel)
 AS $$
   BEGIN
     EXECUTE 'SECURITY LABEL FOR pg_diffix ON ROLE ' || quote_ident(role_name) || ' IS ''' || access_level || '''';
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE unmark_role(role_name text)
+AS $$
+  BEGIN
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON ROLE ' || quote_ident(role_name) || ' IS NULL';
   END;
 $$ LANGUAGE plpgsql;
 
