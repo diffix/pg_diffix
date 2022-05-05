@@ -57,3 +57,14 @@ SELECT * FROM diffix.show_labels();
  role    | diffix_test                    | anonymized_trusted
 (13 rows)
 
+SET ROLE diffix_test;
+SET pg_diffix.session_access_level = 'anonymized_trusted';
+-- Non-superuser allowed settings
+SET pg_diffix.text_label_for_suppress_bin = '*';
+-- Non-superuser restricted settings
+SET pg_diffix.salt = '';
+ERROR:  permission denied to set parameter "pg_diffix.salt"
+CALL diffix.mark_public('public.test_customers');
+ERROR:  [PG_DIFFIX] Statement requires direct access level.
+SET pg_diffix.noise_layer_sd = 0.0;
+ERROR:  permission denied to set parameter "pg_diffix.noise_layer_sd"

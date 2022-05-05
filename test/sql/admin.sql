@@ -9,3 +9,14 @@ SELECT * FROM diffix.show_labels();
 CALL diffix.mark_role('diffix_test', 'anonymized_trusted');
 CALL diffix.mark_public('public.test_products');
 SELECT * FROM diffix.show_labels();
+
+SET ROLE diffix_test;
+SET pg_diffix.session_access_level = 'anonymized_trusted';
+
+-- Non-superuser allowed settings
+SET pg_diffix.text_label_for_suppress_bin = '*';
+
+-- Non-superuser restricted settings
+SET pg_diffix.salt = '';
+CALL diffix.mark_public('public.test_customers');
+SET pg_diffix.noise_layer_sd = 0.0;

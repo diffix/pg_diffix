@@ -295,7 +295,7 @@ and the mean of the low count filter threshold.", /* short_desc */
       NULL,                                                                       /* long_desc */
       &g_config.text_label_for_suppress_bin,                                      /* valueAddr */
       "*",                                                                        /* bootValue */
-      PGC_SUSET,                                                                  /* context */
+      PGC_USERSET,                                                                /* context */
       0,                                                                          /* flags */
       NULL,                                                                       /* check_hook */
       NULL,                                                                       /* assign_hook */
