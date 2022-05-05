@@ -1,0 +1,59 @@
+LOAD 'pg_diffix';
+-- Mark, unmark objects, show their labels
+CALL diffix.mark_role('diffix_test', 'direct');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |  label   
+---------+--------------------------------+----------
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_products           | public
+ table   | public.test_purchases          | personal
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+ role    | diffix_test                    | direct
+(13 rows)
+
+CALL diffix.unmark_table('public.test_products');
+CALL diffix.unmark_role('diffix_test');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |  label   
+---------+--------------------------------+----------
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_purchases          | personal
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+(11 rows)
+
+CALL diffix.mark_role('diffix_test', 'anonymized_trusted');
+CALL diffix.mark_public('public.test_products');
+SELECT * FROM diffix.show_labels();
+ objtype |            objname             |       label        
+---------+--------------------------------+--------------------
+ table   | public.empty_test_customers    | personal
+ table   | public.london_customers        | personal
+ table   | public.test_customers          | personal
+ table   | public.test_patients           | personal
+ table   | public.test_products           | public
+ table   | public.test_purchases          | personal
+ column  | public.empty_test_customers.id | aid
+ column  | public.london_customers.id     | aid
+ column  | public.test_customers.id       | aid
+ column  | public.test_patients.id        | aid
+ column  | public.test_patients.name      | aid
+ column  | public.test_purchases.cid      | aid
+ role    | diffix_test                    | anonymized_trusted
+(13 rows)
+

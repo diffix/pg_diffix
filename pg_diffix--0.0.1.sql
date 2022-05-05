@@ -35,7 +35,9 @@ AS $$
   SELECT objtype, objname, label
   FROM pg_seclabels
   WHERE provider = 'pg_diffix'
-  ORDER BY objtype, objname;
+  ORDER BY 
+    CASE WHEN objtype = 'table' THEN 1 WHEN objtype = 'column' THEN 2 WHEN objtype = 'role' THEN 3 END,
+    objname;
 $$
 SECURITY INVOKER SET search_path = '';
 
@@ -66,9 +68,7 @@ $$ LANGUAGE plpgsql;
 CREATE PROCEDURE unmark_table(table_name text)
 AS $$
   BEGIN
-    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_name::regclass::oid AND label = 'aid';
-
-    EXECUTE 'SECURITY LABEL FOR pg_diffix ON TABLE ' || table_name || ' IS NULL';
+    DELETE FROM pg_catalog.pg_seclabel WHERE provider = 'pg_diffix' AND objoid = table_name::regclass::oid;
   END;
 $$ LANGUAGE plpgsql;
 
