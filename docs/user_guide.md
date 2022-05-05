@@ -136,8 +136,6 @@ low count filter threshold. Default value is 2.0. Minimum allowed setting is 2.0
 
 `pg_diffix.top_count_max` - Default value is 4. Must not be smaller than `top_count_min`. Minimum allowed setting is 3.
 
-**NOTE** The outlier interval `(outlier_count_min, outlier_count_max)` must not be wider than the `(top_count_min, top_count_max)` interval.
-
 ### Anonymization reporting settings
 
 `pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result contains the suppress bin (if any). This
