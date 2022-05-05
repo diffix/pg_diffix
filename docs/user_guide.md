@@ -141,10 +141,10 @@ low count filter threshold. Default value is 2.0. Minimum allowed setting is 2.0
 `pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result contains the suppress bin (if any). This
 provides the combined anonymized count of all the bins that were suppressed. The suppress bin shows
 all column values as `NULL` (`*` for text-typed columns, customizable via `pg_diffix.text_label_for_suppress_bin`). Note
-that the suppress bin may itself be suppressed.
+that the suppress bin may itself be suppressed. Non-superusers can change this setting.
 
 `pg_diffix.text_label_for_suppress_bin` - The value to use for the text-typed grouping labels in the suppress bin row.
-Default value is `*`.
+Default value is `*`. Non-superusers can change this setting.
 
 ## Restricted features and extensions
 
