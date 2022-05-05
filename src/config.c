@@ -31,6 +31,7 @@ static char *config_to_string(DiffixConfig *config)
   appendStringInfo(&string, " :default_access_level %i", config->default_access_level);
   appendStringInfo(&string, " :session_access_level %i", config->session_access_level);
   appendStringInfo(&string, " :treat_unmarked_tables_as_public %s", (config->treat_unmarked_tables_as_public ? "true" : "false"));
+  appendStringInfo(&string, " :strict %s", (config->strict ? "true" : "false"));
   appendStringInfo(&string, " :salt \"%s\"", config->salt);
   appendStringInfo(&string, " :noise_layer_sd %f", config->noise_layer_sd);
   appendStringInfo(&string, " :low_count_min_threshold %i", config->low_count_min_threshold);
@@ -73,41 +74,122 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
   return true;
 }
 
-/* `check_hook`s for intervals only issue warnings, so they only make sense in interactive mode. */
-static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource source)
+static const double MIN_STRICT_NOISE_LAYER_SD = 1.0;
+static const int MIN_STRICT_LOW_COUNT_MIN_THRESHOLD = 2;
+static const double MIN_STRICT_LOW_COUNT_MEAN_GAP = 2.0;
+static const double MIN_STRICT_LOW_COUNT_LAYER_SD = 1.0;
+static const int MIN_STRICT_OUTLIER_COUNT_MIN = 1;
+static const int MIN_STRICT_OUTLIER_COUNT_MAX = 2;
+static const int MIN_STRICT_TOP_COUNT_MIN = 2;
+static const int MIN_STRICT_TOP_COUNT_MAX = 3;
+static const int MIN_STRICT_INTERVAL_SIZE = 1;
+
+static bool strict_check_hook(bool *newval, void **extra, GucSource source)
 {
-  if (source >= PGC_S_INTERACTIVE && *newval > g_config.outlier_count_max)
+  if (source > PGC_S_DYNAMIC_DEFAULT && *newval)
   {
-    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.outlier_count_max);
+    bool incorrect = g_config.noise_layer_sd < MIN_STRICT_NOISE_LAYER_SD ||
+                     g_config.low_count_min_threshold < MIN_STRICT_LOW_COUNT_MIN_THRESHOLD ||
+                     g_config.low_count_mean_gap < MIN_STRICT_LOW_COUNT_MEAN_GAP ||
+                     g_config.low_count_layer_sd < MIN_STRICT_LOW_COUNT_LAYER_SD ||
+                     g_config.outlier_count_min < MIN_STRICT_OUTLIER_COUNT_MIN ||
+                     g_config.outlier_count_max < MIN_STRICT_OUTLIER_COUNT_MAX ||
+                     g_config.top_count_min < MIN_STRICT_TOP_COUNT_MIN ||
+                     g_config.top_count_max < MIN_STRICT_TOP_COUNT_MAX ||
+                     g_config.outlier_count_max - g_config.outlier_count_min < MIN_STRICT_INTERVAL_SIZE ||
+                     g_config.top_count_max - g_config.top_count_min < MIN_STRICT_INTERVAL_SIZE;
+    if (incorrect)
+    {
+      NOTICE_LOG("Current values of anonymization parameters not conforming to pg_diffix.strict = true.");
+      return false;
+    }
   }
   return true;
+}
+
+static bool noise_layer_sd_check_hook(double *newval, void **extra, GucSource source)
+{
+  if (g_config.strict && *newval < MIN_STRICT_NOISE_LAYER_SD)
+  {
+    NOTICE_LOG("noise_layer_sd must be greater than or equal to %f.", MIN_STRICT_NOISE_LAYER_SD);
+    return false;
+  }
+  return true;
+}
+
+static bool low_count_min_threshold_check_hook(int *newval, void **extra, GucSource source)
+{
+  if (g_config.strict && *newval < MIN_STRICT_LOW_COUNT_MIN_THRESHOLD)
+  {
+    NOTICE_LOG("low_count_min_threshold must be greater than or equal to %d.", MIN_STRICT_LOW_COUNT_MIN_THRESHOLD);
+    return false;
+  }
+  return true;
+}
+
+static bool low_count_mean_gap_check_hook(double *newval, void **extra, GucSource source)
+{
+  if (g_config.strict && *newval < MIN_STRICT_LOW_COUNT_MEAN_GAP)
+  {
+    NOTICE_LOG("low_count_mean_gap must be greater than or equal to %f.", MIN_STRICT_LOW_COUNT_MEAN_GAP);
+    return false;
+  }
+  return true;
+}
+
+static bool low_count_layer_sd_check_hook(double *newval, void **extra, GucSource source)
+{
+  if (g_config.strict && *newval < MIN_STRICT_LOW_COUNT_LAYER_SD)
+  {
+    NOTICE_LOG("low_count_layer_sd must be greater than or equal to %f.", MIN_STRICT_LOW_COUNT_LAYER_SD);
+    return false;
+  }
+  return true;
+}
+
+/*
+ * `check_hook`s for intervals only issue warnings for issues with _combinations_ of parameter values.
+ * These only make sense in interactive mode.
+ */
+static bool interval_check_hook(int *new_bound, GucSource source, int other_bound, int min_strict_bound, bool for_min)
+{
+  int lower_bound = for_min ? *new_bound : other_bound;
+  int upper_bound = for_min ? other_bound : *new_bound;
+  if (source >= PGC_S_INTERACTIVE && lower_bound > upper_bound)
+  {
+    NOTICE_LOG("Interval invalid: (%d, %d). Set other bound to make it valid.", lower_bound, upper_bound);
+  }
+  if (g_config.strict && *new_bound < min_strict_bound)
+  {
+    NOTICE_LOG("Must be greater than or equal to %d.", min_strict_bound);
+    return false;
+  }
+  if (source >= PGC_S_INTERACTIVE && g_config.strict && upper_bound - lower_bound < MIN_STRICT_INTERVAL_SIZE)
+  {
+    NOTICE_LOG("Bounds must differ by at least %d. Set other bound to make it valid.",
+               MIN_STRICT_INTERVAL_SIZE);
+  }
+  return true;
+}
+
+static bool outlier_count_min_check_hook(int *newval, void **extra, GucSource source)
+{
+  return interval_check_hook(newval, source, g_config.outlier_count_max, MIN_STRICT_OUTLIER_COUNT_MIN, true);
 }
 
 static bool outlier_count_max_check_hook(int *newval, void **extra, GucSource source)
 {
-  if (source >= PGC_S_INTERACTIVE && *newval < g_config.outlier_count_min)
-  {
-    NOTICE_LOG("Outlier count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.outlier_count_min, *newval);
-  }
-  return true;
+  return interval_check_hook(newval, source, g_config.outlier_count_min, MIN_STRICT_OUTLIER_COUNT_MAX, false);
 }
 
 static bool top_count_min_check_hook(int *newval, void **extra, GucSource source)
 {
-  if (source >= PGC_S_INTERACTIVE && *newval > g_config.top_count_max)
-  {
-    NOTICE_LOG("Top count interval invalid: (%d, %d). Set upper bound to make it valid.", *newval, g_config.top_count_max);
-  }
-  return true;
+  return interval_check_hook(newval, source, g_config.top_count_max, MIN_STRICT_TOP_COUNT_MIN, true);
 }
 
 static bool top_count_max_check_hook(int *newval, void **extra, GucSource source)
 {
-  if (source >= PGC_S_INTERACTIVE && *newval < g_config.top_count_min)
-  {
-    NOTICE_LOG("Top count interval invalid: (%d, %d). Set lower bound to make it valid.", g_config.top_count_min, *newval);
-  }
-  return true;
+  return interval_check_hook(newval, source, g_config.top_count_min, MIN_STRICT_TOP_COUNT_MAX, false);
 }
 
 void config_init(void)
@@ -152,6 +234,19 @@ void config_init(void)
       NULL,                                                                        /* assign_hook */
       NULL);                                                                       /* show_hook */
 
+  DefineCustomBoolVariable(
+      "pg_diffix.strict", /* name */
+      "Controls whether the anonymization parameters must be checked strictly, i.e. to ensure "
+      "safe minimum level of anonymization.", /* short_desc */
+      NULL,                                   /* long_desc */
+      &g_config.strict,                       /* valueAddr */
+      true,                                   /* bootValue */
+      PGC_SUSET,                              /* context */
+      0,                                      /* flags */
+      &strict_check_hook,                     /* check_hook */
+      NULL,                                   /* assign_hook */
+      NULL);                                  /* show_hook */
+
   DefineCustomStringVariable(
       "pg_diffix.salt",                              /* name */
       "Secret value used for seeding noise layers.", /* short_desc */
@@ -174,7 +269,7 @@ void config_init(void)
       MAX_NUMERIC_CONFIG,                                             /* maxValue */
       PGC_SUSET,                                                      /* context */
       0,                                                              /* flags */
-      NULL,                                                           /* check_hook */
+      &noise_layer_sd_check_hook,                                     /* check_hook */
       NULL,                                                           /* assign_hook */
       NULL);                                                          /* show_hook */
 
@@ -188,7 +283,7 @@ void config_init(void)
       MAX_NUMERIC_CONFIG,                               /* maxValue */
       PGC_SUSET,                                        /* context */
       0,                                                /* flags */
-      NULL,                                             /* check_hook */
+      &low_count_min_threshold_check_hook,              /* check_hook */
       NULL,                                             /* assign_hook */
       NULL);                                            /* show_hook */
 
@@ -203,7 +298,7 @@ and the mean of the low count filter threshold.", /* short_desc */
       MAX_NUMERIC_CONFIG,                         /* maxValue */
       PGC_SUSET,                                  /* context */
       0,                                          /* flags */
-      NULL,                                       /* check_hook */
+      &low_count_mean_gap_check_hook,             /* check_hook */
       NULL,                                       /* assign_hook */
       NULL);                                      /* show_hook */
 
@@ -217,7 +312,7 @@ and the mean of the low count filter threshold.", /* short_desc */
       MAX_NUMERIC_CONFIG,                                                           /* maxValue */
       PGC_SUSET,                                                                    /* context */
       0,                                                                            /* flags */
-      NULL,                                                                         /* check_hook */
+      &low_count_layer_sd_check_hook,                                               /* check_hook */
       NULL,                                                                         /* assign_hook */
       NULL);                                                                        /* show_hook */
 
@@ -314,4 +409,8 @@ void config_validate(void)
     FAILWITH("pg_diffix is misconfigured: top_count_min > top_count_max.");
   if (g_config.outlier_count_min > g_config.outlier_count_max)
     FAILWITH("pg_diffix is misconfigured: outlier_count_min > outlier_count_max.");
+  if (g_config.strict && g_config.top_count_max - g_config.top_count_min < MIN_STRICT_INTERVAL_SIZE)
+    FAILWITH("pg_diffix is misconfigured: top_count_max - top_count_min < %d.", MIN_STRICT_INTERVAL_SIZE);
+  if (g_config.strict && g_config.outlier_count_max - g_config.outlier_count_min < MIN_STRICT_INTERVAL_SIZE)
+    FAILWITH("pg_diffix is misconfigured: outlier_count_max - outlier_count_min < %d.", MIN_STRICT_INTERVAL_SIZE);
 }

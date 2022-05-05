@@ -10,6 +10,7 @@ typedef struct DiffixConfig
   int session_access_level; /* Stores current `AccessLevel` value. */
 
   bool treat_unmarked_tables_as_public;
+  bool strict;
 
   char *salt;
 

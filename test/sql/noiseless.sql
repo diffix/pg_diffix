@@ -1,5 +1,6 @@
 LOAD 'pg_diffix';
 
+SET pg_diffix.strict = false;
 SET pg_diffix.noise_layer_sd = 0;
 SET pg_diffix.low_count_layer_sd = 0;
 SET pg_diffix.outlier_count_min = 1;
