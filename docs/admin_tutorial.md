@@ -52,8 +52,10 @@ containing a column named `id`, which uniquely identifies protected entities (th
 
 3. Give the analyst read-only access to the test database:
 
-`GRANT CONNECT ON DATABASE test_db TO analyst_role;`
-`GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst_role;`
+```
+GRANT CONNECT ON DATABASE test_db TO analyst_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst_role;
+```
 
 4. Label the analyst as restricted and trusted:
 
