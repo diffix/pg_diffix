@@ -1,3 +1,43 @@
+# Important notice
+
+This is a pre-release version of the extension and is not intended for general use yet.
+It may be unstable and documentation is limited.
+If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
+
+# Analyst guide
+
+This document describes features and restrictions of `pg_diffix` for users with anonymized access to a database.
+The [banking notebook](banking.ipynb) provides a walkthough with examples and explanations of various
+mechanisms that Diffix Elm uses to protect personal data.
+
+## Table of Contents
+
+- [Important notice](#important-notice)
+- [Analyst guide](#analyst-guide)
+  - [Table of Contents](#table-of-contents)
+- [Access levels](#access-levels)
+- [Anonymized queries](#anonymized-queries)
+  - [Queries with grouping](#queries-with-grouping)
+  - [Queries with implicit grouping](#queries-with-implicit-grouping)
+- [Unrestricted queries](#unrestricted-queries)
+- [Post processing](#post-processing)
+- [Utility statements](#utility-statements)
+  - [Other SQL statements](#other-sql-statements)
+  - [diffix.show_labels()](#diffixshow_labels)
+  - [diffix.access_level()](#diffixaccess_level)
+- [Suppress bin](#suppress-bin)
+- [Supported functions](#supported-functions)
+  - [Count](#count)
+  - [Numeric generalization functions](#numeric-generalization-functions)
+    - [diffix.floor_by(col, K)](#diffixfloor_bycol-k)
+    - [diffix.round_by(col, K)](#diffixround_bycol-k)
+    - [diffix.ceil_by(col, K)](#diffixceil_bycol-k)
+    - [width_bucket(operand, low, high, count)`](#width_bucketoperand-low-high-count)
+  - [String generalization functions](#string-generalization-functions)
+    - [substring(text_column, start, count)](#substringtext_column-start-count)
+  - [Utility functions](#utility-functions)
+    - [diffix.is_suppress_bin(*)](#diffixis_suppress_bin)
+
 # Access levels
 
 Users can have one of the following access levels to a database:
@@ -26,27 +66,18 @@ FROM personal_table
 GROUP BY col1, col2, ...
 ```
 
-Where `col1`, `col2`, ... `colX` are table columns.
-Numeric and string columns can optionally be generalized.
+Zero or more table columns `col1`, `col2`, ... may be specified.
+[Numeric](#numeric-generalization-functions) and [string](#string-generalization-functions) columns may optionally be generalized.
 
 `count()` is any of the supported [count aggregate](#count) variants.
+Any number of count aggregates may be specified (including none).
 
 **Example:**
 
 ```
-SELECT city, last_name, count(*)
+SELECT city, year_of_birth, count(*)
 FROM customers
-GROUP BY city, last_name
-```
-
-## Globally aggregating queries
-
-If no grouping columns are specified, the entire table is aggregated into a single bin.
-This bin is never suppressed, even if no rows exist in the table.
-
-```
-SELECT count(...), ...
-FROM personal_table
+GROUP BY city, year_of_birth
 ```
 
 **Example:**
@@ -83,17 +114,21 @@ FROM (
 **Example:**
 
 ```
-SELECT city, last_name
+SELECT city, year_of_birth
 FROM customers
 ```
 
 # Unrestricted queries
 
-Queries against personal tables are limited to the SQL subset
-described in the [anonymized queries](#anonymized-queries) section.
+Queries against personal tables are limited to the SQL subset described in the [anonymized queries](#anonymized-queries) section.
 However, queries that do not target personal tables are unrestricted, meaning any SQL can be executed.
-This includes queries that select from the output of anonymizing subqueries
-as their output is no longer considered personal.
+
+If `pg_diffix.treat_unmarked_tables_as_public` is set to `false`, then tables not marked as `personal` or `public` are not queryable in any way.
+Use [diffix.show_labels()](#diffixshow_labels) to see which tables are marked as `personal` or `public`.
+
+# Post processing
+
+Any SQL may be executed on the output of anonymizing subqueries as their output is no longer considered personal.
 
 **Example:** The following query selects the average number of individuals in each city.
 
@@ -117,9 +152,6 @@ FROM customers
 GROUP BY city
 HAVING count(*) > 10
 ```
-
-If `pg_diffix.treat_unmarked_tables_as_public` is set to `false`. then tables not marked as `personal` or `public` are not queryable in any way.
-Use [diffix.show_labels()](#diffixshowlabels) to see which tables are marked.
 
 # Utility statements
 
@@ -170,7 +202,6 @@ The following versions of the count aggregate are supported:
 - `count(*)` - count all rows.
 - `count(col)` - counts non-null occurrences of the given column.
 - `count(distinct col)` - counts distinct values of the given column.
-- `count(distinct aid)` - counts number of individuals in the bin.
 
 Results of these aggregates are anonymized by applying noise as described in the specification.
 
