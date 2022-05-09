@@ -100,7 +100,7 @@ static bool strict_check_hook(bool *newval, void **extra, GucSource source)
                      g_config.top_count_max - g_config.top_count_min < MIN_STRICT_INTERVAL_SIZE;
     if (incorrect)
     {
-      NOTICE_LOG("Current values of anonymization parameters not conforming to pg_diffix.strict = true.");
+      NOTICE_LOG("Current values of anonymization parameters do not conform to strict mode.");
       return false;
     }
   }

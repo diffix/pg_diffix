@@ -109,7 +109,7 @@ If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 `pg_diffix.treat_unmarked_tables_as_public` - If set to `true`, then tables are `public` by default. Otherwise tables are unlabeled by default. The default value is `false`.
 
-`pg_diffix.strict` - If set to `false`, it will be possible to set anonymization strength settings to values, which do not provide appropriate anonymization strength (e.g. `pg_diffix.noise_layer_sd` to `0.0`, effectively turning off noise added to anonymized query results). **Do not set to `false` unless you really know what you are doing**. The default value is `true`.
+`pg_diffix.strict` - If set to `false`, it will be possible to set anonymization strength settings to values that do not provide appropriate anonymization strength (e.g. `pg_diffix.noise_layer_sd` to `0.0`, effectively turning off noise added to anonymized query results). **Do not set to `false` unless you really know what you are doing**. The default value is `true`.
 
 ### Anonymization strength settings
 

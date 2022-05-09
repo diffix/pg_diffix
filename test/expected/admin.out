@@ -63,7 +63,7 @@ SET pg_diffix.top_count_max = 0;
 ERROR:  0 is outside the valid range for parameter "pg_diffix.top_count_max" (1 .. 1000)
 SET pg_diffix.top_count_max = 3;
 SET pg_diffix.strict = true;
-NOTICE:  [PG_DIFFIX] Current values of anonymization parameters not conforming to pg_diffix.strict = true.
+NOTICE:  [PG_DIFFIX] Current values of anonymization parameters do not conform to strict mode.
 ERROR:  invalid value for parameter "pg_diffix.strict": 1
 SET pg_diffix.top_count_max = 4;
 SET pg_diffix.strict = true;
