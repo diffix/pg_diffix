@@ -2,6 +2,7 @@ LOAD 'pg_diffix';
 ----------------------------------------------------------------
 -- Setup
 ----------------------------------------------------------------
+SET pg_diffix.strict = false;
 SET pg_diffix.noise_layer_sd = 0;
 SET pg_diffix.low_count_min_threshold = 3;
 SET pg_diffix.low_count_layer_sd = 0;

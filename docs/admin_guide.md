@@ -109,6 +109,8 @@ If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 `pg_diffix.treat_unmarked_tables_as_public` - If set to `true`, then tables are `public` by default. Otherwise tables are unlabeled by default. The default value is `false`.
 
+`pg_diffix.strict` - If set to `false`, it will be possible to set anonymization strength settings to values that do not provide appropriate anonymization strength (e.g. `pg_diffix.noise_layer_sd` to `0.0`, effectively turning off noise added to anonymized query results). **Do not set to `false` unless you really know what you are doing**. The default value is `true`.
+
 ### Anonymization strength settings
 
 Diffix Elm has a number of constants that determine the "strength" of anonymization. These impact the amount of noise, the number-of-persons threshold below which suppression takes place, and the behavior of flattening (see [this article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) for an overview of these concepts).
@@ -128,13 +130,13 @@ low count filter threshold. Default value is 2.0. Minimum allowed setting is 2.0
 
 `pg_diffix.low_count_layer_sd` - The standard deviation for each noise layer used when calculating the low count filter threshold. Default value is 1.0. Minimum allowed setting is 1.0.
 
-`pg_diffix.outlier_count_min` - Default value is 1. Must not be greater than `outlier_count_max`. Minimum allowed setting is 1.
+`pg_diffix.outlier_count_min` - Default value is 1. Minimum allowed setting is 1.
 
-`pg_diffix.outlier_count_max` - Default value is 2. Must not be smaller than `outlier_count_min`. Minimum allowed setting is 2.
+`pg_diffix.outlier_count_max` - Default value is 2. Must be greater than `outlier_count_min`. Minimum allowed setting is 2.
 
-`pg_diffix.top_count_min` - Default value is 3. Must not be greater than `top_count_max`. Minimum allowed setting is 2.
+`pg_diffix.top_count_min` - Default value is 3. Minimum allowed setting is 2.
 
-`pg_diffix.top_count_max` - Default value is 4. Must not be smaller than `top_count_min`. Minimum allowed setting is 3.
+`pg_diffix.top_count_max` - Default value is 4. Must be greater than `top_count_min`. Minimum allowed setting is 3.
 
 ### Anonymization reporting settings
 

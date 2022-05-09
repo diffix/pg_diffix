@@ -57,6 +57,20 @@ SELECT * FROM diffix.show_labels();
  role    | diffix_test                    | anonymized_trusted
 (13 rows)
 
+-- Strict checking of anonymization parameters
+SET pg_diffix.strict = false;
+SET pg_diffix.top_count_max = 0;
+ERROR:  0 is outside the valid range for parameter "pg_diffix.top_count_max" (1 .. 1000)
+SET pg_diffix.top_count_max = 3;
+SET pg_diffix.strict = true;
+NOTICE:  [PG_DIFFIX] Current values of anonymization parameters do not conform to strict mode.
+ERROR:  invalid value for parameter "pg_diffix.strict": 1
+SET pg_diffix.top_count_max = 4;
+SET pg_diffix.strict = true;
+SET pg_diffix.top_count_max = 3;
+NOTICE:  [PG_DIFFIX] Bounds must differ by at least 1. Set other bound to make it valid.
+SET pg_diffix.top_count_max = 4;
+-- Restriction on users with access level below `direct`
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 -- Non-superuser allowed settings

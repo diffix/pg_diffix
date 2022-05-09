@@ -10,6 +10,17 @@ CALL diffix.mark_role('diffix_test', 'anonymized_trusted');
 CALL diffix.mark_public('public.test_products');
 SELECT * FROM diffix.show_labels();
 
+-- Strict checking of anonymization parameters
+SET pg_diffix.strict = false;
+SET pg_diffix.top_count_max = 0;
+SET pg_diffix.top_count_max = 3;
+SET pg_diffix.strict = true;
+SET pg_diffix.top_count_max = 4;
+SET pg_diffix.strict = true;
+SET pg_diffix.top_count_max = 3;
+SET pg_diffix.top_count_max = 4;
+
+-- Restriction on users with access level below `direct`
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 
