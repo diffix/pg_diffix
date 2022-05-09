@@ -4,9 +4,9 @@ This is a pre-release version of the extension and is not intended for general u
 It may be unstable and documentation is limited.
 If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
 
-# Extension configuration
+# Configuration
 
-This document provides detailed information about the configuration, behavior and recommended usage of this extension.
+This document provides detailed information about the configuration, behavior and recommended usage of `pg_diffix`.
 
 ## Background reading
 
@@ -16,16 +16,16 @@ The [Open Diffix website](https://www.open-diffix.org) has general information a
 
 Extension behavior is controlled by __security labels__ and __settings__. Security labels specific to this extension are assigned to tables, columns, and roles (users). Settings are general parameters associated with system operation. Settings can be assigned in the configuration file and are instantiated per session.
 
-Only superusers can assign security labels and settings. To remove a security label from an object, set it to `NULL`.
+Only superusers can assign security labels. To remove a security label from an object, set it to `NULL`.
 
 The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
 
-The command `SELECT diffix.access_level();` displays the access level of the active session.
+The command `SELECT diffix.access_level();` displays the current access level of the active session.
 The access level depends on the current role's security label and the `session_access_level`/`default_access_level` settings.
 
 The command `SELECT * FROM diffix.show_settings();` displays the settings in use by the extension for the active session.
 
-NOTE: If no configuration is done, then by default no anonymization takes place. All users will have full access to table contents.
+NOTE: If no configuration is done, then by default no anonymization takes place. Users will have direct access to data.
 
 For more information about PostgreSQL security labels, see the official [documentation page](https://www.postgresql.org/docs/current/sql-security-label.html).
 
@@ -50,43 +50,43 @@ For example, the command to assign the access level `anonymized_untrusted` to th
 CALL diffix.mark_role('public_access', 'anonymized_untrusted');
 ```
 
-The value of the setting variable `pg_diffix.default_access_level` determines the default user class users. It is set to `direct` by default.
+The value of the configuration variable `pg_diffix.default_access_level` determines the access level for unlabeled users.
+It is set to `direct` by default.
 
-The procedure `diffix.unmark_role(role_name)` clears the access level.
+The procedure `diffix.unmark_role(role_name)` clears the access level label.
 
-### Security labels for tables
+### Security labels for data
 
-Tables may have one of two security labels, `public` or `personal`.
+Tables may have one of two security labels: `public` or `personal`.
 
-* Tables labeled as `personal` are anonymized by the extension (for `anonymized_trusted` and `anonymized_untrusted` users, not `direct` users).
-* Tables labeled as `public` are not anonymized: all users have full access to these tables.
+* Tables labeled as `personal` are anonymized by the extension for `anonymized_*` access levels.
+* Tables labeled as `public` are not anonymized: all users have direct access to these tables.
+* Unabeled tables are not accessible for `anonymized_*` access levels (unless the value of the configuration
+variable `pg_diffix.treat_unmarked_tables_as_public` is set to `true`, in which case they are considered `public`).
 
 The procedure `diffix.mark_public(table_name)` labels a table as `public`.
 
-Note that unlabeled tables can not be queried by `anonymized_trusted` and `anonymized_untrusted` users (unless the setting variable `pg_diffix.treat_unmarked_tables_as_public` is set to `true`).
+Each personal table has one or more _protected entities_ identifiers associated with it. A protected entity is normally a
+person or a something associated with a person (a device or an account), but it could also be other things such as a household,
+a store, or a company.
 
-### Security labels for columns
+Each protected entity must have at least one column that contains the identifier of the protected entity. We refer to these
+columns generally as AID (Anonymization ID) columns. See [How to select AID columns](#how-to-select-aid-columns) for more
+guidance.
 
-Each personal table has one or more _protected entities_ associated with it. A protected entity is normally a person or a something associated with a person (a device or an account), but it could also be other things such as a household, a store, or a company.
+__NOTE:__ if AID columns are not correctly labeled, the extension may fail to anonymize correctly.
 
-Each protected entity must have at least one column that contains the identifier of the protected entity. We refer to these columns generally as AID columns (Anonymization ID). See [How to select AID columns](#how-to-select-aid-columns) for more guidance.
-
-__NOTE:__ if AID columns are not correctly labeled, the extension may fail to anonymize appropriately.
-
-The procedure `diffix.mark_personal(table_name, aid_columns...)` is used to label a table as personal and to label its AID columns.
-
-For example,
+The procedure `diffix.mark_personal(table_name, aid_columns...)` is used to label a table as personal and
+to label its AID columns. For example:
 
 ```SQL
 CALL diffix.mark_personal('employee_info', 'employee_id');
 ```
-
-labels the table `employee_info` as personal, and labels the `employee_id` column as `employee_id` an AID column.
+labels the table `employee_info` as personal, and labels the `employee_id` column as an AID column.
 
 ```SQL
 CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
-
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
 
 The procedure `diffix.unmark_table(table_name)` clears the labels for the table and all its AID columns.
@@ -94,9 +94,9 @@ The procedure `diffix.unmark_table(table_name)` clears the labels for the table 
 ## Settings
 
 The extension exposes a number of custom variables under the `pg_diffix` prefix.
-Superusers can change these variables at runtime for their own session,
-while regular users only have read access to them (with few notable exceptions).
-To use different values for all future sessions, they have to be set in the configuration file.
+Superusers can change these variables at runtime for their own session, while regular users only have read access to them
+(with a few notable exceptions).
+To use different values for all future sessions, they have to be set in the server's configuration file.
 
 Execute `SELECT diffix.show_settings();` to display the current settings of the extension.
 If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
@@ -138,13 +138,13 @@ low count filter threshold. Default value is 2.0. Minimum allowed setting is 2.0
 
 ### Anonymization reporting settings
 
-`pg_diffix.compute_suppress_bin` - If `True`, the first row in the query result contains the suppress bin (if any). This
+`pg_diffix.compute_suppress_bin` - If `true`, the first row in the query result contains the suppress bin (if any). This
 provides the combined anonymized count of all the bins that were suppressed. The suppress bin shows
 all column values as `NULL` (`*` for text-typed columns, customizable via `pg_diffix.text_label_for_suppress_bin`). Note
-that the suppress bin may itself be suppressed. Non-superusers can change this setting.
+that the suppress bin may itself be suppressed. Any user can change this setting.
 
 `pg_diffix.text_label_for_suppress_bin` - The value to use for the text-typed grouping labels in the suppress bin row.
-Default value is `*`. Non-superusers can change this setting.
+Default value is `*`. Any user can change this setting.
 
 ## Restricted features and extensions
 
