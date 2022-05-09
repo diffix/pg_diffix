@@ -6,6 +6,11 @@ REVOKE ALL ON ALL TABLES IN SCHEMA @extschema@ FROM PUBLIC;
 
 GRANT USAGE ON SCHEMA @extschema@ TO PUBLIC;
 
+DO $$ BEGIN
+  -- Generate a random salt for the current database.
+  EXECUTE 'ALTER DATABASE ' || current_database() || ' SET pg_diffix.salt TO ''' || gen_random_uuid() || '''';
+END $$ LANGUAGE plpgsql;
+
 /* ----------------------------------------------------------------
  * Utilities
  * ----------------------------------------------------------------
@@ -35,7 +40,7 @@ AS $$
   SELECT objtype, objname, label
   FROM pg_seclabels
   WHERE provider = 'pg_diffix'
-  ORDER BY 
+  ORDER BY
     CASE WHEN objtype = 'table' THEN 1 WHEN objtype = 'column' THEN 2 WHEN objtype = 'role' THEN 3 END,
     objname;
 $$

@@ -1,6 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS pg_diffix;
 LOAD 'pg_diffix';
 
+DO $$ BEGIN
+  -- Fix salt to get consistent results.
+  EXECUTE 'ALTER DATABASE ' || current_database() || ' SET pg_diffix.salt TO ''diffix''';
+END $$ LANGUAGE plpgsql;
+
 -- Create test data.
 CREATE TABLE test_customers (id INTEGER PRIMARY KEY, city TEXT, discount REAL, planet TEXT);
 INSERT INTO test_customers VALUES
