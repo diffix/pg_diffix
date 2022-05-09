@@ -186,7 +186,11 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   MemoryContextReset(temp_context);
 
   /* Temp storage to stage buckets for merging. */
-  BucketRef *merge_targets = MemoryContextAlloc(led_context, num_labels * sizeof(BucketRef));
+  BucketRef *current_merge_targets = MemoryContextAlloc(led_context, num_labels * sizeof(BucketRef));
+
+  /* Tracks all target buckets. We recompute their low count state after the loop. */
+  List *all_merge_targets = NIL;
+
   int buckets_merged = 0;
   int total_merges = 0;
 
@@ -224,7 +228,7 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
                                      ? (siblings->values[1])
                                      : (siblings->values[0]);
         if (!other_bucket->low_count)
-          merge_targets[isolating_columns++] = other_bucket;
+          current_merge_targets[isolating_columns++] = other_bucket;
       }
       else
       {
@@ -237,7 +241,13 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
       continue;
 
     for (int i = 0; i < isolating_columns; i++)
-      merge_bucket(merge_targets[i], bucket, bucket_desc);
+    {
+      merge_bucket(current_merge_targets[i], bucket, bucket_desc);
+
+      MemoryContextSwitchTo(led_context);
+      all_merge_targets = list_append_unique(all_merge_targets, current_merge_targets[i]);
+      MemoryContextSwitchTo(temp_context);
+    }
 
     buckets_merged++;
     total_merges += isolating_columns;
@@ -245,6 +255,14 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
 
     /* Free any garbage from merging. */
     MemoryContextReset(temp_context);
+  }
+
+  /* Recompute low count for merge targets. */
+  ListCell *lc;
+  foreach (lc, all_merge_targets)
+  {
+    BucketRef bucket = (BucketRef)lfirst(lc);
+    bucket->low_count = eval_low_count(bucket, bucket_desc);
   }
 
   DEBUG_LOG("[LED] Buckets merged: %i; Total merges: %i", buckets_merged, total_merges);
