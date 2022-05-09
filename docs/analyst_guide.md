@@ -182,7 +182,8 @@ Possible values are `direct`, `anonymized_trusted`, and `anonymized_untrusted`.
 When performing grouping in queries that target personal tables, bins that pertain to too few individuals are suppressed.
 
 Diffix combines the counts of all suppressed rows to a special **suppress bin**.
-The suppress bin is the first row of the query result. The suppress bin may itself be suppressed.
+The suppress bin is the first row of the anonymized query result, unless sorted or [post processed](#post-processing) by other means.
+The suppress bin may itself be suppressed.
 All grouping columns of the suppress bin are set to `*` for text-typed columns and `NULL` for other types.
 
 The configuration parameter `pg_diffix.compute_suppress_bin` controls whether the suppress bin is computed and emitted.
