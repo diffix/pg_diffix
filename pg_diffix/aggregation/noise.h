@@ -17,6 +17,6 @@ extern double generate_layered_noise(const seed_t *seeds, int seeds_count,
 /*
  * Returns the noisy LCF threshold for the given noise layers.
  */
-extern int generate_lcf_threshold(const seed_t *seeds, int seeds_count);
+extern double generate_lcf_threshold(const seed_t *seeds, int seeds_count);
 
 #endif /* PG_DIFFIX_NOISE_H */

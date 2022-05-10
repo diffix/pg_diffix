@@ -88,7 +88,7 @@ static bool aid_set_is_high_count(seed_t bucket_seed, const List *aid_values_set
   seed_t aid_seed = hash_set_to_seed(aid_values_set);
 
   seed_t seeds[] = {bucket_seed, aid_seed};
-  int threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
+  double threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
 
   return list_length(aid_values_set) >= threshold;
 }
