@@ -10,7 +10,7 @@
 typedef struct AidResult
 {
   seed_t aid_seed;
-  int threshold;
+  double threshold;
   bool low_count;
 } AidResult;
 
