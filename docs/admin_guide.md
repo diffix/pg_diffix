@@ -29,10 +29,6 @@ NOTE: If no configuration is done, then by default no anonymization takes place.
 
 For more information about PostgreSQL security labels, see the official [documentation page](https://www.postgresql.org/docs/current/sql-security-label.html).
 
-## Secret Salt
-
-TODO
-
 ## Security labels
 
 ### Security labels for roles (users)
@@ -100,6 +96,20 @@ To use different values for all future sessions, they have to be set in the serv
 
 Execute `SELECT diffix.show_settings();` to display the current settings of the extension.
 If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
+
+### Anonymization salt
+
+During the anonymization process, random noise needs to be generated at various stages. The noise has to be unpredictable,
+but also consistent for the same dataset. Salting the noise generator is the mechanism that ensures this happens.
+
+The salt is a secret value that is consistent for a certain dataset. __Warning__: If the same dataset is exposed from multiple
+systems, the salt has to be synchronized between the different systems to prevent information leakage.
+
+The extension automatically generates a random, unique, per-database value for the salt during initial activation.
+
+The salt is stored in the configuration variable `pg_diffix.salt`. Only superusers can access this variable.
+
+To change the salt for a database, execute the command: `ALTER DATABASE db_name SET pg_diffix.salt TO 'new_secret_salt';`
 
 ### Default behavior settings
 
