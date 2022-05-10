@@ -138,13 +138,15 @@ CountResult aggregate_count_contributions(
   /* Compensate for the unaccounted for NULL-value AIDs. */
   double flattened_unaccounted_for = Max((double)unacounted_for - result.flattening, 0.0);
 
-  result.flattened_count = result.true_count - result.flattening + flattened_unaccounted_for;
+  result.flattened_count = result.true_count - result.flattening;
 
   double average = result.flattened_count / (double)distinct_contributors;
   double noise_scale = Max(average, 0.5 * top_average);
   result.noise_sd = g_config.noise_layer_sd * noise_scale;
   seed_t noise_layers[] = {bucket_seed, aid_seed};
   result.noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), "noise", result.noise_sd);
+
+  result.flattened_count += flattened_unaccounted_for;
 
   return result;
 }
