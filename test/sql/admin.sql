@@ -2,13 +2,13 @@ LOAD 'pg_diffix';
 
 -- Mark, unmark objects, show their labels
 CALL diffix.mark_role('diffix_test', 'direct');
-SELECT * FROM diffix.show_labels();
+SELECT * FROM diffix.show_labels() WHERE objname IN ('diffix_test', 'public.test_products');
 CALL diffix.unmark_table('public.test_products');
 CALL diffix.unmark_role('diffix_test');
-SELECT * FROM diffix.show_labels();
+SELECT * FROM diffix.show_labels() WHERE objname IN ('diffix_test', 'public.test_products');
 CALL diffix.mark_role('diffix_test', 'anonymized_trusted');
 CALL diffix.mark_public('public.test_products');
-SELECT * FROM diffix.show_labels();
+SELECT * FROM diffix.show_labels() WHERE objname IN ('diffix_test', 'public.test_products');
 
 -- Strict checking of anonymization parameters
 SET pg_diffix.strict = false;

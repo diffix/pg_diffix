@@ -252,7 +252,7 @@ void config_init(void)
       "Secret value used for seeding noise layers.", /* short_desc */
       NULL,                                          /* long_desc */
       &g_config.salt,                                /* valueAddr */
-      "diffix",                                      /* bootValue */
+      "",                                            /* bootValue */
       PGC_SUSET,                                     /* context */
       GUC_SUPERUSER_ONLY,                            /* flags */
       NULL,                                          /* check_hook */
