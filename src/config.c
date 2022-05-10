@@ -279,7 +279,7 @@ void config_init(void)
       NULL,                                             /* long_desc */
       &g_config.low_count_min_threshold,                /* valueAddr */
       3,                                                /* bootValue */
-      2,                                                /* minValue */
+      1,                                                /* minValue */
       MAX_NUMERIC_CONFIG,                               /* maxValue */
       PGC_SUSET,                                        /* context */
       0,                                                /* flags */
