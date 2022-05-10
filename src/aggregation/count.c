@@ -182,6 +182,12 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
     accumulator->max_noise_sd = result->noise_sd;
     accumulator->noise_with_max_sd = result->noise;
   }
+  else if (result->noise_sd == accumulator->max_noise_sd &&
+           fabs(result->noise) > fabs(accumulator->noise_with_max_sd))
+  {
+    /* For determinism, resolve draws using maximum absolute noise value. */
+    accumulator->noise_with_max_sd = result->noise;
+  }
 }
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
