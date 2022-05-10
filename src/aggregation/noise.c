@@ -114,8 +114,12 @@ double generate_layered_noise(const seed_t *seeds, int seeds_count,
 
 double generate_lcf_threshold(const seed_t *seeds, int seeds_count)
 {
+  /* 
+   * `low_count_mean_gap` is the number of (total!) standard deviations between
+   * `low_count_min_threshold` and desired mean.
+   */
   double threshold_mean = (double)g_config.low_count_min_threshold +
-                          g_config.low_count_mean_gap * g_config.low_count_layer_sd;
+                          g_config.low_count_mean_gap * g_config.low_count_layer_sd * sqrt(2.0);
   double noise = generate_layered_noise(seeds, seeds_count, "suppress", g_config.low_count_layer_sd);
   double noisy_threshold = threshold_mean + noise;
   return Max(noisy_threshold, g_config.low_count_min_threshold);
