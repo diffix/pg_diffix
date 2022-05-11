@@ -194,8 +194,7 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  int64 rounded_noisy_count = (int64)round(accumulator->count_for_flattening + accumulator->noise_with_max_sd);
-  return Max(rounded_noisy_count, 0);
+  return (int64)round(accumulator->count_for_flattening + accumulator->noise_with_max_sd);
 }
 
 /*-------------------------------------------------------------------------
