@@ -317,9 +317,9 @@ static void process_lc_values_contributions(List *per_aid_values,
   foreach (cell, per_aid_values)
   {
     PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(cell);
-    *aid_seed ^= entry->aid;
     if (entry->contributions > 0)
     {
+      *aid_seed ^= entry->aid;
       Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
       add_top_contributor(&count_descriptor, top_contributors, contributor);
       (*contributors_count)++;
