@@ -20,22 +20,31 @@ static inline uint32 find_aid_index(const Contributors *top_contributors, aid_t 
   return top_contributors->length;
 }
 
+static inline bool contributor_greater(const ContributionDescriptor *descriptor, Contributor x, Contributor y)
+{
+  ContributionGreaterFunc greater = descriptor->contribution_greater;
+  if (greater(x.contribution, y.contribution))
+    return true;
+  else if (greater(y.contribution, x.contribution))
+    return false;
+  else
+    return x.aid > y.aid;
+}
+
 static inline uint32 find_insertion_index(
     const ContributionDescriptor *descriptor,
     const Contributors *top_contributors,
-    contribution_t contribution)
+    Contributor contributor)
 {
-  ContributionGreaterFunc greater = descriptor->contribution_greater;
-
   /*
    * Do a single comparison in the middle to halve lookup steps.
    * No. elements won't be large enough to bother with a full binary search.
    */
-  contribution_t middle_contribution = top_contributors->members[top_contributors->length / 2].contribution;
-  uint32 start_index = greater(contribution, middle_contribution) ? 0 : (top_contributors->length / 2 + 1);
+  Contributor middle_contributor = top_contributors->members[top_contributors->length / 2];
+  uint32 start_index = contributor_greater(descriptor, contributor, middle_contributor) ? 0 : (top_contributors->length / 2 + 1);
   for (uint32 i = start_index; i < top_contributors->length; i++)
   {
-    if (greater(contribution, top_contributors->members[i].contribution))
+    if (contributor_greater(descriptor, contributor, top_contributors->members[i]))
       return i;
   }
 
@@ -57,11 +66,11 @@ void add_top_contributor(
   if (length == capacity)
   {
     Contributor lowest_contributor = top_contributors->members[length - 1];
-    if (!descriptor->contribution_greater(contributor.contribution, lowest_contributor.contribution))
+    if (!contributor_greater(descriptor, contributor, lowest_contributor))
       return;
   }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor);
   Assert(insertion_index < top_contributors->capacity); /* sanity check */
 
   /* Slide items to the right before inserting new item. */
@@ -89,7 +98,7 @@ void update_or_add_top_contributor(
     return;
   }
 
-  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor.contribution);
+  uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor);
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
