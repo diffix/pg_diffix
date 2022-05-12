@@ -138,13 +138,15 @@ CountResult aggregate_count_contributions(
   /* Compensate for the unaccounted for NULL-value AIDs. */
   double flattened_unaccounted_for = Max((double)unacounted_for - result.flattening, 0.0);
 
-  result.flattened_count = result.true_count - result.flattening + flattened_unaccounted_for;
+  result.flattened_count = result.true_count - result.flattening;
 
   double average = result.flattened_count / (double)distinct_contributors;
   double noise_scale = Max(average, 0.5 * top_average);
   result.noise_sd = g_config.noise_layer_sd * noise_scale;
   seed_t noise_layers[] = {bucket_seed, aid_seed};
   result.noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), "noise", result.noise_sd);
+
+  result.flattened_count += flattened_unaccounted_for;
 
   return result;
 }
@@ -182,12 +184,17 @@ void accumulate_count_result(CountResultAccumulator *accumulator, const CountRes
     accumulator->max_noise_sd = result->noise_sd;
     accumulator->noise_with_max_sd = result->noise;
   }
+  else if (result->noise_sd == accumulator->max_noise_sd &&
+           fabs(result->noise) > fabs(accumulator->noise_with_max_sd))
+  {
+    /* For determinism, resolve draws using maximum absolute noise value. */
+    accumulator->noise_with_max_sd = result->noise;
+  }
 }
 
 int64 finalize_count_result(const CountResultAccumulator *accumulator)
 {
-  int64 rounded_noisy_count = (int64)round(accumulator->count_for_flattening + accumulator->noise_with_max_sd);
-  return Max(rounded_noisy_count, 0);
+  return (int64)round(accumulator->count_for_flattening + accumulator->noise_with_max_sd);
 }
 
 /*-------------------------------------------------------------------------
