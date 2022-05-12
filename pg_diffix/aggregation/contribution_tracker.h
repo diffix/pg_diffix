@@ -74,12 +74,16 @@ typedef struct ContributionTrackerState
 } ContributionTrackerState;
 
 /*
- * Updates state with an AID without contribution.
+ * Updates state with an AID without contribution. Requires the caller to provide the appropriate `zero_contribution`
+ * for initialization.
  */
-extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid);
+extern void contribution_tracker_update_aid(
+    ContributionTrackerState *state,
+    aid_t aid,
+    contribution_t zero_contribution);
 
 /*
- * Updates state with a contribution from an AID.
+ * Updates state with a contribution from an AID. `contribution` must be greater than zero.
  */
 extern void contribution_tracker_update_contribution(
     ContributionTrackerState *state,

@@ -6,8 +6,6 @@
 
 extern const ContributionDescriptor count_descriptor;
 
-static const contribution_t one_contribution = {.integer = 1};
-
 /* Describes the anonymized count aggregation for one AID instance. */
 typedef struct CountResult
 {

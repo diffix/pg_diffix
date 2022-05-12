@@ -83,6 +83,10 @@ void add_top_contributor(
   top_contributors->length = Min(length + 1, capacity);
 }
 
+/* 
+ * This assumes that if `contributor.aid` already exists in `top_contributors`, `contributor.contribution` is
+ * _greater_ than the existing one, note the `Assert(insertion_index <= aid_index)` line.
+ */
 void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
@@ -102,6 +106,7 @@ void update_or_add_top_contributor(
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
+  /* When we move `elements` entries now, we'll overwrite the existing entry having `contributor.aid`. */
   memmove(&top_contributors->members[insertion_index + 1],
           &top_contributors->members[insertion_index],
           elements * sizeof(Contributor));
@@ -147,7 +152,7 @@ ContributionTrackerState *contribution_tracker_new(
   return state;
 }
 
-void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
+void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid, contribution_t zero_contribution)
 {
   bool found;
   ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
@@ -155,6 +160,7 @@ void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
   {
     state->aid_seed ^= aid;
     entry->has_contribution = false;
+    entry->contributor.contribution = zero_contribution;
     state->distinct_contributors++;
 
     add_top_contributor(&state->contribution_descriptor,
@@ -163,6 +169,7 @@ void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid)
   }
 }
 
+/* `contribution` must be greater than zero, because of the assumptions of `update_or_add_top_contributor`. */
 void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
     aid_t aid,
@@ -177,10 +184,10 @@ void contribution_tracker_update_contribution(
   if (!found)
   {
     /* AID does not exist in table. */
+    state->aid_seed ^= aid;
     entry->has_contribution = true;
     entry->contributor.contribution = contribution;
     state->distinct_contributors++;
-    state->aid_seed ^= aid;
 
     add_top_contributor(&state->contribution_descriptor,
                         &state->top_contributors,
