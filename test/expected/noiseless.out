@@ -204,11 +204,18 @@ SELECT city FROM test_customers;
  Berlin
 (18 rows)
 
-SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
+SELECT city
+FROM (
+  SELECT city
+  FROM test_customers
+  GROUP BY 1
+) x
+WHERE length(x.city) <> 4;
   city  
 --------
+ *
  Berlin
-(1 row)
+(2 rows)
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
  count | count | count 

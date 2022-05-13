@@ -31,6 +31,24 @@ ON patients.city = customers.city;
  *      |             2 |             
 (3 rows)
 
+-- Prevent post-processing filters from being pushed down
+EXPLAIN SELECT *
+FROM (
+  SELECT age, count(*)
+  FROM test_patients
+  GROUP BY age
+) x
+WHERE x.age > 10 AND x.AGE < 60;
+                 QUERY PLAN                  
+---------------------------------------------
+ Subquery Scan on x
+   Filter: ((x.age > 10) AND (x.age < 60))
+   ->  Custom Scan (BucketScan)
+         ->  HashAggregate
+               Group Key: test_patients.age
+               ->  Seq Scan on test_patients
+(6 rows)
+
 ----------------------------------------------------------------
 -- Miscellaneous queries
 ----------------------------------------------------------------

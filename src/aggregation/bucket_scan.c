@@ -475,7 +475,7 @@ static Node *create_bucket_scan_state(CustomScan *custom_scan)
   return (Node *)bucket_state;
 }
 
-static const CustomScanMethods BucketScanScanMethods = {
+static const CustomScanMethods BucketScanMethods = {
     .CustomName = "BucketScan",
     .CreateCustomScanState = create_bucket_scan_state,
 };
@@ -726,7 +726,7 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   /* Make plan node. */
   BucketScan *bucket_scan = (BucketScan *)newNode(sizeof(BucketScan), T_CustomScan);
   Plan *plan = &bucket_scan->scan.plan;
-  bucket_scan->methods = &BucketScanScanMethods;
+  bucket_scan->methods = &BucketScanMethods;
   bucket_scan->flags = 0; /* No support for BACKWARD or MARK/RESTORE. */
 
   /* Attach data to plan. */
@@ -781,6 +781,14 @@ Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
   plan->plan_width = left_tree->plan_width;
 
   return (Plan *)bucket_scan;
+}
+
+bool is_bucket_scan(Plan *plan)
+{
+  if (IsA(plan, CustomScan))
+    return ((CustomScan *)plan)->methods == &BucketScanMethods;
+  else
+    return false;
 }
 
 /*-------------------------------------------------------------------------

@@ -200,7 +200,13 @@ SELECT city FROM test_customers;
  Rome
 (24 rows)
 
-SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
+SELECT city
+FROM (
+  SELECT city
+  FROM test_customers
+  GROUP BY 1
+) x
+WHERE length(x.city) <> 4;
  city 
 ------
  *

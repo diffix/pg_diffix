@@ -16,4 +16,9 @@ extern void register_bucket_scan_nodes(void);
  */
 extern Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context);
 
+/*
+ * Returns true if plan node is a bucket scan.
+ */
+extern bool is_bucket_scan(Plan *plan);
+
 #endif /* PG_DIFFIX_BUCKET_SCAN_H */

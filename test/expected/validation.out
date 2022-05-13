@@ -277,6 +277,9 @@ ERROR:  [PG_DIFFIX] Feature 'SubLinks' is not currently supported.
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM test_validation;
 ERROR:  [PG_DIFFIX] Feature 'DISTINCT' is not currently supported.
+-- Get rejected because HAVING is unsupported.
+SELECT city FROM test_validation GROUP BY city HAVING length(city) <> 4;
+ERROR:  [PG_DIFFIX] Feature 'HAVING' is not currently supported.
 -- Get rejected because window functions are unsupported.
 SELECT avg(discount) OVER (PARTITION BY city) FROM test_validation;
 ERROR:  [PG_DIFFIX] Feature 'window functions' is not currently supported.
