@@ -213,8 +213,9 @@ FROM (
 WHERE length(x.city) <> 4;
   city  
 --------
+ *
  Berlin
-(1 row)
+(2 rows)
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
  count | count | count 

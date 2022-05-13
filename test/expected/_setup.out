@@ -20,11 +20,11 @@ INSERT INTO test_purchases VALUES (0, 0), (0, 1), (0, 3), (1, 1), (2, 1), (3, 1)
   (7, 1), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2), (6, 2),
   (7, 1), (8, 1), (9, 2), (1, 2), (1, 2), (2, 1), (3, 0), (NULL, NULL), (4, 3), (5, 3), (6, 4), (7, -1),
   (7, 4), (8, -2), (9, -3), (10, -4);
-CREATE TABLE test_patients (id INTEGER PRIMARY KEY, name TEXT, city TEXT);
+CREATE TABLE test_patients (id INTEGER PRIMARY KEY, name TEXT, city TEXT, age INTEGER);
 INSERT INTO test_patients VALUES
-  (0, NULL, 'Berlin'), (1, 'John', 'Berlin'), (2, 'Alice', 'Berlin'), (3, 'Bob', 'Berlin'), (4, 'Emma', 'Berlin'),
-  (5, 'John', 'Berlin'), (6, 'Bob', 'Berlin'), (7, 'Alice', 'Rome'), (8, 'Dan', 'Rome'), (9, 'Anna', 'Rome'),
-  (10, 'Mike', 'London'), (11, 'Mike', 'London'), (12, 'Mike', 'London'), (13, 'Mike', 'London');
+  (0, NULL, 'Berlin', 37), (1, 'John', 'Berlin', 37), (2, 'Alice', 'Berlin', 37), (3, 'Bob', 'Berlin', 37), (4, 'Emma', 'Berlin', 64),
+  (5, 'John', 'Berlin', 57), (6, 'Bob', 'Berlin', 19), (7, 'Alice', 'Rome', 37), (8, 'Dan', 'Rome', 37), (9, 'Anna', 'Rome', 64),
+  (10, 'Mike', 'London', 64), (11, 'Mike', 'London', 57), (12, 'Mike', 'London', 16), (13, 'Mike', 'London', 17);
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT, discount REAL);
 -- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
 CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');

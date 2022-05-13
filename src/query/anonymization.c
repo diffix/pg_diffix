@@ -600,13 +600,40 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   if (node == NULL)
     return false;
 
+  if (IsA(node, RangeTblEntry))
+  {
+    /*
+     * Because we specify QTW_EXAMINE_RTES_AFTER, at this point the tree has
+     * already been walked and anonymizing queries have been compiled.
+     *
+     * If this RTE is an anonymizing subquery, we put a security barrier to prevent the
+     * planner from pulling the subquery up. We also put a dummy LIMIT clause to prevent
+     * "non-leaky" quals from being pushed down and affect cross-bucket computation.
+     */
+    RangeTblEntry *rte = (RangeTblEntry *)node;
+
+    if (rte->rtekind == RTE_SUBQUERY && is_anonymizing_query(rte->subquery, context->personal_relations))
+    {
+      rte->security_barrier = true;
+
+      if (rte->subquery->limitCount == NULL)
+        rte->subquery->limitCount = (Node *)makeConst(INT8OID, -1, InvalidOid,
+                                                      sizeof(int64),
+                                                      Int64GetDatum(INT64_MAX), false,
+                                                      FLOAT8PASSBYVAL);
+    }
+
+    /* Prevent double walk. */
+    return false;
+  }
+
   if (IsA(node, Query))
   {
     Query *query = (Query *)node;
     if (is_anonymizing_query(query, context->personal_relations))
       compile_anonymizing_query(query, context->personal_relations, context->anon_links);
     else
-      query_tree_walker(query, compile_query_walker, context, 0);
+      query_tree_walker(query, compile_query_walker, context, QTW_EXAMINE_RTES_AFTER);
   }
 
   return expression_tree_walker(node, compile_query_walker, context);
@@ -709,6 +736,16 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
     AnonymizationContext *anon_context = extract_anon_context(plan, links);
     if (anon_context != NULL)
       return make_bucket_scan(plan, anon_context);
+  }
+
+  if (IsA(plan, Limit) && is_bucket_scan(plan->lefttree))
+  {
+    Limit *limit = (Limit *)plan;
+    if (IsA(limit->limitCount, Const) && DatumGetInt64(((Const *)limit->limitCount)->constvalue) == INT64_MAX)
+    {
+      /* Skip dummy limit parent of bucket scan. */
+      return plan->lefttree;
+    }
   }
 
   return plan;
