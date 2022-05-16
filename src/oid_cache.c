@@ -38,8 +38,6 @@ void oid_cache_init(void)
   g_oid_cache.floor_by_nn = lookup_function("diffix", "floor_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
   g_oid_cache.floor_by_dd = lookup_function("diffix", "floor_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
 
-  g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
-
   DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
 
   g_loaded = true;
