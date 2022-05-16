@@ -285,11 +285,7 @@ static void count_merge(AnonAggState *dst_base_state, const AnonAggState *src_ba
     ContributionTrackerHashEntry *entry = NULL;
     while ((entry = ContributionTracker_iterate(src_tracker->contribution_table, &iterator)) != NULL)
     {
-      if (entry->has_contribution)
-        contribution_tracker_update_contribution(
-            dst_tracker, entry->contributor.aid, entry->contributor.contribution);
-      else
-        contribution_tracker_update_aid(dst_tracker, entry->contributor.aid, zero_contribution);
+      contribution_tracker_update_contribution(dst_tracker, entry->contributor.aid, entry->contributor.contribution);
     }
 
     dst_tracker->unaccounted_for += src_tracker->unaccounted_for;
@@ -319,7 +315,7 @@ static void count_value_transition(AnonAggState *base_state, int num_args, Nulla
       aid_t aid = state->trackers[i]->aid_mapper(args[aid_index].value);
       if (args[COUNT_VALUE_INDEX].isnull)
         /* No contribution since argument is NULL, only keep track of the AID value. */
-        contribution_tracker_update_aid(state->trackers[i], aid, zero_contribution);
+        contribution_tracker_update_contribution(state->trackers[i], aid, zero_contribution);
       else
         contribution_tracker_update_contribution(state->trackers[i], aid, one_contribution);
     }

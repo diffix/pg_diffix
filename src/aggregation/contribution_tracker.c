@@ -152,23 +152,6 @@ ContributionTrackerState *contribution_tracker_new(
   return state;
 }
 
-void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid, contribution_t zero_contribution)
-{
-  bool found;
-  ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
-  if (!found)
-  {
-    state->aid_seed ^= aid;
-    entry->has_contribution = false;
-    entry->contributor.contribution = zero_contribution;
-    state->distinct_contributors++;
-
-    add_top_contributor(&state->contribution_descriptor,
-                        &state->top_contributors,
-                        entry->contributor);
-  }
-}
-
 /* `contribution` must be greater than zero, because of the assumptions of `update_or_add_top_contributor`. */
 void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
@@ -185,34 +168,31 @@ void contribution_tracker_update_contribution(
   {
     /* AID does not exist in table. */
     state->aid_seed ^= aid;
-    entry->has_contribution = true;
     entry->contributor.contribution = contribution;
     state->distinct_contributors++;
 
     add_top_contributor(&state->contribution_descriptor,
                         &state->top_contributors,
                         entry->contributor);
-    return;
   }
-  else if (!entry->has_contribution)
-  {
-    /* AID exists but hasn't contributed yet. */
-    entry->has_contribution = true;
-    entry->contributor.contribution = contribution;
-
-    add_top_contributor(
-        &state->contribution_descriptor,
-        &state->top_contributors,
-        entry->contributor);
-    return;
+  else
+  { /* Aggregate new contribution. */
+    contribution_t combined = descriptor->contribution_combine(entry->contributor.contribution, contribution);
+    if (memcmp(&combined, &entry->contributor.contribution, sizeof(contribution_t)) != 0)
+    {
+      entry->contributor.contribution = combined;
+      /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
+      update_or_add_top_contributor(
+          &state->contribution_descriptor,
+          &state->top_contributors,
+          entry->contributor);
+    }
+    else
+    {
+      /* New contribution was zero, so we can't use update top contributors. */
+      add_top_contributor(&state->contribution_descriptor,
+                          &state->top_contributors,
+                          entry->contributor);
+    }
   }
-
-  /* Aggregate new contribution. */
-  entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
-
-  /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
-  update_or_add_top_contributor(
-      &state->contribution_descriptor,
-      &state->top_contributors,
-      entry->contributor);
 }
