@@ -152,7 +152,6 @@ ContributionTrackerState *contribution_tracker_new(
   return state;
 }
 
-/* `contribution` must be greater than zero, because of the assumptions of `update_or_add_top_contributor`. */
 void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
     aid_t aid,
