@@ -157,9 +157,6 @@ SELECT city, (SELECT 1 FROM test_validation) FROM test_validation GROUP BY 1;
 -- Get rejected because DISTINCT is unsupported.
 SELECT DISTINCT city FROM test_validation;
 
--- Get rejected because HAVING is unsupported.
-SELECT city FROM test_validation GROUP BY city HAVING length(city) <> 4;
-
 -- Get rejected because window functions are unsupported.
 SELECT avg(discount) OVER (PARTITION BY city) FROM test_validation;
 

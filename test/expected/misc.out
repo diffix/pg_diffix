@@ -31,23 +31,75 @@ ON patients.city = customers.city;
  *      |             2 |             
 (3 rows)
 
+SELECT city, count(*)
+FROM test_customers
+GROUP BY city
+HAVING city LIKE 'B%';
+  city  | count 
+--------+-------
+ Berlin |     9
+(1 row)
+
+SELECT age, count(*)
+FROM test_patients
+GROUP BY age
+HAVING age IS NULL OR age > 40;
+ age | count 
+-----+-------
+     |     2
+  57 |     2
+  64 |     2
+(3 rows)
+
 -- Prevent post-processing filters from being pushed down
+EXPLAIN SELECT age, count(*)
+FROM test_patients
+GROUP BY age
+HAVING (age IS NULL OR age > 65) AND count(*) > 5;
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Custom Scan (BucketScan)
+   Filter: (((age IS NULL) OR (age > 65)) AND ((diffix.anon_count_star(id, name)) > 5))
+   ->  HashAggregate
+         Group Key: age
+         ->  Seq Scan on test_patients
+(5 rows)
+
 EXPLAIN SELECT *
 FROM (
   SELECT age, count(*)
   FROM test_patients
   GROUP BY age
 ) x
-WHERE x.age > 10 AND x.AGE < 60;
-                 QUERY PLAN                  
----------------------------------------------
+WHERE (x.age IS NULL OR x.age > 65) AND x.count > 5;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Subquery Scan on x
-   Filter: ((x.age > 10) AND (x.age < 60))
+   Filter: (((x.age IS NULL) OR (x.age > 65)) AND (x.count > 5))
    ->  Custom Scan (BucketScan)
          ->  HashAggregate
                Group Key: test_patients.age
                ->  Seq Scan on test_patients
 (6 rows)
+
+EXPLAIN SELECT *
+FROM (
+  SELECT age, count(*)
+  FROM test_patients
+  GROUP BY age
+  HAVING age < 65
+) x
+WHERE x.age > 15;
+                 QUERY PLAN                  
+---------------------------------------------
+ Subquery Scan on x
+   Filter: (x.age > 15)
+   ->  Custom Scan (BucketScan)
+         Filter: (age < 65)
+         ->  HashAggregate
+               Group Key: test_patients.age
+               ->  Seq Scan on test_patients
+(7 rows)
 
 ----------------------------------------------------------------
 -- Miscellaneous queries

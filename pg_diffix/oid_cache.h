@@ -27,6 +27,9 @@ typedef struct Oids
   Oid ceil_by_dd;  /* diffix.ceil_by(value double precision, amount double precision) */
   Oid floor_by_nn; /* diffix.floor_by(value numeric, amount numeric) */
   Oid floor_by_dd; /* diffix.floor_by(value double precision, amount double precision) */
+
+  /* Internal functions */
+  Oid internal_qual_wrapper; /* diffix.internal_qual_wrapper(boolean) */
 } Oids;
 
 /*

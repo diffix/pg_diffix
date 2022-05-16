@@ -560,6 +560,24 @@ static void link_anon_context(Query *query, AnonQueryLinks *anon_links, Anonymiz
   expression_tree_walker((Node *)query->targetList, link_anon_context_walker, &data);
 }
 
+/*
+ * Wraps the query's HAVING with a volatile identity function.
+ * This prevents the planner from pushing the qual down to WHERE clause.
+ */
+static void wrap_having_qual(Query *query)
+{
+  if (query->havingQual == NULL)
+    return;
+
+  query->havingQual = (Node *)makeFuncExpr(
+      g_oid_cache.internal_qual_wrapper,
+      BOOLOID,
+      list_make1(query->havingQual),
+      0 /* funccollid */,
+      0 /* inputcollid */,
+      COERCE_EXPLICIT_CALL);
+}
+
 static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links)
 {
   verify_anonymization_requirements(query);
@@ -571,6 +589,8 @@ static void compile_anonymizing_query(Query *query, List *personal_relations, An
   anon_context->sql_seed = prepare_bucket_seeds(query);
 
   link_anon_context(query, anon_links, anon_context);
+
+  wrap_having_qual(query);
 }
 
 static bool is_anonymizing_query(Query *query, List *personal_relations)
@@ -694,6 +714,26 @@ static AnonymizationContext *extract_anon_context(Plan *plan, AnonQueryLinks *li
   return data.anon_context;
 }
 
+/*
+ * Reverses the transformation done in `wrap_having_qual`. Pulls the expression
+ * from the function's argument and converts it to implicit AND form.
+ */
+static void unwrap_having_qual(Plan *plan)
+{
+  if (plan->qual == NIL)
+    return;
+
+  Expr *func_expr = linitial(plan->qual);
+  if (list_length(plan->qual) != 1 || !IsA(func_expr, FuncExpr) || ((FuncExpr *)func_expr)->funcid != g_oid_cache.internal_qual_wrapper)
+    FAILWITH("Unsupported HAVING clause in anonymizing query.");
+
+  Expr *having_qual = linitial(((FuncExpr *)func_expr)->args);
+
+  /* Do what the planner does with top-level quals. */
+  having_qual = canonicalize_qual(having_qual, false);
+  plan->qual = make_ands_implicit(having_qual);
+}
+
 static void rewrite_plan_list(List *plans, AnonQueryLinks *links)
 {
   ListCell *cell;
@@ -735,7 +775,10 @@ Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links)
   {
     AnonymizationContext *anon_context = extract_anon_context(plan, links);
     if (anon_context != NULL)
+    {
+      unwrap_having_qual(plan);
       return make_bucket_scan(plan, anon_context);
+    }
   }
 
   if (IsA(plan, Limit) && is_bucket_scan(plan->lefttree))

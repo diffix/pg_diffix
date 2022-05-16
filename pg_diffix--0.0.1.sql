@@ -219,6 +219,12 @@ CREATE AGGREGATE is_suppress_bin(*) (
   initcond = false
 );
 
+CREATE FUNCTION internal_qual_wrapper(boolean)
+RETURNS boolean
+AS 'MODULE_PATHNAME'
+LANGUAGE C VOLATILE
+SECURITY INVOKER SET search_path = '';
+
 /* ----------------------------------------------------------------
  * Scalar functions
  * ----------------------------------------------------------------

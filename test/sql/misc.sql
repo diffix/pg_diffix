@@ -25,14 +25,38 @@ FULL OUTER JOIN
   (SELECT city, count(*) FROM test_customers GROUP BY 1) customers
 ON patients.city = customers.city;
 
+SELECT city, count(*)
+FROM test_customers
+GROUP BY city
+HAVING city LIKE 'B%';
+
+SELECT age, count(*)
+FROM test_patients
+GROUP BY age
+HAVING age IS NULL OR age > 40;
+
 -- Prevent post-processing filters from being pushed down
+EXPLAIN SELECT age, count(*)
+FROM test_patients
+GROUP BY age
+HAVING (age IS NULL OR age > 65) AND count(*) > 5;
+
 EXPLAIN SELECT *
 FROM (
   SELECT age, count(*)
   FROM test_patients
   GROUP BY age
 ) x
-WHERE x.age > 10 AND x.AGE < 60;
+WHERE (x.age IS NULL OR x.age > 65) AND x.count > 5;
+
+EXPLAIN SELECT *
+FROM (
+  SELECT age, count(*)
+  FROM test_patients
+  GROUP BY age
+  HAVING age < 65
+) x
+WHERE x.age > 15;
 
 ----------------------------------------------------------------
 -- Miscellaneous queries
