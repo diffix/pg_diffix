@@ -175,7 +175,8 @@ void contribution_tracker_update_contribution(
                         entry->contributor);
   }
   else
-  { /* Aggregate new contribution. */
+  {
+    /* Aggregate new contribution. */
     entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
     /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
     update_or_add_top_contributor(
