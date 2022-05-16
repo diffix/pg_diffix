@@ -46,7 +46,6 @@ typedef struct Contributors
 typedef struct ContributionTrackerHashEntry
 {
   Contributor contributor; /* Contributor info */
-  bool has_contribution;   /* Whether the AID has contributed yet */
   char status;             /* Required for hash table */
 } ContributionTrackerHashEntry;
 
@@ -74,12 +73,7 @@ typedef struct ContributionTrackerState
 } ContributionTrackerState;
 
 /*
- * Updates state with an AID without contribution.
- */
-extern void contribution_tracker_update_aid(ContributionTrackerState *state, aid_t aid);
-
-/*
- * Updates state with a contribution from an AID.
+ * Updates state with a contribution from an AID. `contribution` must be greater than zero.
  */
 extern void contribution_tracker_update_contribution(
     ContributionTrackerState *state,
