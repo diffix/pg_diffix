@@ -83,10 +83,6 @@ void add_top_contributor(
   top_contributors->length = Min(length + 1, capacity);
 }
 
-/* 
- * This assumes that if `contributor.aid` already exists in `top_contributors`, `contributor.contribution` is
- * _greater_ than the existing one, note the `Assert(insertion_index <= aid_index)` line.
- */
 void update_or_add_top_contributor(
     const ContributionDescriptor *descriptor,
     Contributors *top_contributors,
@@ -103,6 +99,10 @@ void update_or_add_top_contributor(
   }
 
   uint32 insertion_index = find_insertion_index(descriptor, top_contributors, contributor);
+  if (insertion_index == aid_index + 1)
+    /* Looks like `contributor` hasn't changed, so it is already at the correct spot, we're done. */
+    return;
+
   Assert(insertion_index <= aid_index); /* sanity check */
 
   size_t elements = aid_index - insertion_index;
@@ -176,22 +176,11 @@ void contribution_tracker_update_contribution(
   }
   else
   { /* Aggregate new contribution. */
-    contribution_t combined = descriptor->contribution_combine(entry->contributor.contribution, contribution);
-    if (memcmp(&combined, &entry->contributor.contribution, sizeof(contribution_t)) != 0)
-    {
-      entry->contributor.contribution = combined;
-      /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
-      update_or_add_top_contributor(
-          &state->contribution_descriptor,
-          &state->top_contributors,
-          entry->contributor);
-    }
-    else
-    {
-      /* New contribution was zero, so we can't use update top contributors. */
-      add_top_contributor(&state->contribution_descriptor,
-                          &state->top_contributors,
-                          entry->contributor);
-    }
+    entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
+    /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
+    update_or_add_top_contributor(
+        &state->contribution_descriptor,
+        &state->top_contributors,
+        entry->contributor);
   }
 }
