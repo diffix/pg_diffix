@@ -258,10 +258,10 @@ void led_hook(List *buckets, BucketDescriptor *bucket_desc)
   }
 
   /* Recompute low count for merge targets. */
-  ListCell *lc;
-  foreach (lc, all_merge_targets)
+  ListCell *cell;
+  foreach (cell, all_merge_targets)
   {
-    BucketRef bucket = (BucketRef)lfirst(lc);
+    BucketRef bucket = (BucketRef)lfirst(cell);
     bucket->low_count = eval_low_count(bucket, bucket_desc);
   }
 

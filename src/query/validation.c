@@ -94,7 +94,6 @@ void verify_anonymization_requirements(Query *query)
   NOT_SUPPORTED(query->hasSubLinks, "SubLinks");
   NOT_SUPPORTED(query->hasTargetSRFs, "SRF functions");
   NOT_SUPPORTED(query->groupingSets, "GROUPING SETS");
-  NOT_SUPPORTED(query->havingQual, "HAVING");
   NOT_SUPPORTED(query->windowClause, "window functions");
   NOT_SUPPORTED(query->distinctClause, "DISTINCT");
   NOT_SUPPORTED(query->setOperations, "UNION/INTERSECT/EXCEPT");

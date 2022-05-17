@@ -45,3 +45,10 @@ Datum placeholder_func(PG_FUNCTION_ARGS)
 {
   return PG_GETARG_DATUM(0);
 }
+
+PG_FUNCTION_INFO_V1(internal_qual_wrapper);
+
+Datum internal_qual_wrapper(PG_FUNCTION_ARGS)
+{
+  return PG_GETARG_DATUM(0);
+}

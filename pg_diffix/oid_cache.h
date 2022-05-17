@@ -28,8 +28,8 @@ typedef struct Oids
   Oid floor_by_nn; /* diffix.floor_by(value numeric, amount numeric) */
   Oid floor_by_dd; /* diffix.floor_by(value double precision, amount double precision) */
 
-  /* Set generators */
-  Oid generate_series; /* generate_series(start bigint, stop bigint) */
+  /* Internal functions */
+  Oid internal_qual_wrapper; /* diffix.internal_qual_wrapper(boolean) */
 } Oids;
 
 /*

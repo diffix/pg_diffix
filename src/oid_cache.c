@@ -38,7 +38,7 @@ void oid_cache_init(void)
   g_oid_cache.floor_by_nn = lookup_function("diffix", "floor_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
   g_oid_cache.floor_by_dd = lookup_function("diffix", "floor_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
 
-  g_oid_cache.generate_series = lookup_function(NULL, "generate_series", 2, (Oid[]){INT8OID, INT8OID});
+  g_oid_cache.internal_qual_wrapper = lookup_function("diffix", "internal_qual_wrapper", 1, (Oid[]){BOOLOID});
 
   DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
 
@@ -88,6 +88,8 @@ char *oids_to_string(Oids *oids)
   appendStringInfo(&string, " :round_by (nn %u) (dd %u)", oids->round_by_nn, oids->round_by_dd);
   appendStringInfo(&string, " :ceil_by (nn %u) (dd %u)", oids->ceil_by_nn, oids->ceil_by_dd);
   appendStringInfo(&string, " :floor_by (nn %u) (dd %u)", oids->floor_by_nn, oids->floor_by_dd);
+
+  appendStringInfo(&string, " :internal_qual_wrapper (nn %u) (dd %u)", oids->floor_by_nn, oids->floor_by_dd);
 
   appendStringInfo(&string, "}");
 

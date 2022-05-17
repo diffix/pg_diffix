@@ -52,13 +52,7 @@ SELECT id FROM test_customers;
 
 SELECT city FROM test_customers;
 
-SELECT city
-FROM (
-  SELECT city
-  FROM test_customers
-  GROUP BY 1
-) x
-WHERE length(x.city) <> 4;
+SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
 
