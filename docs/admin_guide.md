@@ -99,15 +99,13 @@ If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 ### Anonymization salt
 
-During the anonymization process, random noise needs to be generated at various stages. The noise has to be unpredictable,
-but also consistent for the same dataset. Salting the noise generator is the mechanism that ensures this happens.
+The operation of Diffix Elm requires a per-database secret salt value. The salt can only be viewed or set by superusers, and __must be kept secret__.
 
-The salt is a secret value that is consistent for a certain dataset. __Warning__: If the same dataset is exposed from multiple
-systems, the salt has to be synchronized between the different systems to prevent information leakage.
+`pg_diffix` automatically generates a salt value when a database is added.
 
-The extension automatically generates a random, unique, per-database value for the salt during initial activation.
+__Warning:__ If a given database is replicated on multiple instances of `pg_diffix`, then the same salt must be used for all instances. 
 
-The salt is stored in the configuration variable `pg_diffix.salt`. Only superusers can access this variable.
+The per-database salt is stored in the configuration variable `pg_diffix.salt`. Only superusers can access or modify this variable.
 
 To change the salt for a database, execute the command: `ALTER DATABASE db_name SET pg_diffix.salt TO 'new_secret_salt';`
 
