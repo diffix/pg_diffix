@@ -101,7 +101,7 @@ If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
 
 The operation of Diffix Elm requires a per-database secret salt value. The salt can only be viewed or set by superusers, and __must be kept secret__.
 
-`pg_diffix` automatically generates a salt value when a database is added.
+`pg_diffix` automatically generates a salt value when the extension is created for a given database.
 
 __Warning:__ If a given database is replicated on multiple instances of `pg_diffix`, then the same salt must be used for all instances. 
 
