@@ -1,5 +1,6 @@
 #include "postgres.h"
 
+#include "commands/extension.h"
 #include "fmgr.h"
 #include "lib/stringinfo.h"
 #include "miscadmin.h"
@@ -62,6 +63,13 @@ static bool session_access_level_check(int *newval, void **extra, GucSource sour
   /* We can't get user access level during initialization when preloading library. */
   if (g_initializing)
     return true;
+
+  if (!is_pg_diffix_active())
+  {
+    GUC_check_errmsg_string = "Invalid operation requested for the current session.";
+    GUC_check_errdetail_string = "pg_diffix wasn't activated for the current database.";
+    return false;
+  }
 
   AccessLevel user_level = get_user_access_level();
   if (is_higher_access_level(*newval, user_level))
@@ -413,4 +421,9 @@ void config_validate(void)
     FAILWITH("pg_diffix is misconfigured: top_count_max - top_count_min < %d.", MIN_STRICT_INTERVAL_SIZE);
   if (g_config.strict && g_config.outlier_count_max - g_config.outlier_count_min < MIN_STRICT_INTERVAL_SIZE)
     FAILWITH("pg_diffix is misconfigured: outlier_count_max - outlier_count_min < %d.", MIN_STRICT_INTERVAL_SIZE);
+}
+
+bool is_pg_diffix_active(void)
+{
+  return OidIsValid(get_extension_oid("pg_diffix", true));
 }

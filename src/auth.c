@@ -79,6 +79,10 @@ AccessLevel get_user_access_level(void)
 
 AccessLevel get_session_access_level(void)
 {
+  /* If the extension wasn't activated, force the current session into direct access mode. */
+  if (!is_pg_diffix_active())
+    return ACCESS_DIRECT;
+
   AccessLevel user_level = get_user_access_level();
   if (is_higher_access_level(g_config.session_access_level, user_level))
   {

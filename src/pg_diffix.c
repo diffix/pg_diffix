@@ -22,7 +22,7 @@ void _PG_fini(void);
 
 void _PG_init(void)
 {
-  DEBUG_LOG("Activating Diffix extension...");
+  DEBUG_LOG("Initializing Diffix extension...");
 
   auth_init();
   config_init();
