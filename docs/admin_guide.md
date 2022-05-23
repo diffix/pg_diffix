@@ -1,9 +1,3 @@
-# Important notice
-
-This is a pre-release version of the extension and is not intended for general use yet.
-It may be unstable and documentation is limited.
-If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
-
 # Configuration
 
 This document provides detailed information about the configuration, behavior and recommended usage of `pg_diffix`.
@@ -42,7 +36,7 @@ Trusted users have fewer SQL restrictions than untrusted users, and therefore ha
 
 For example, the command to assign the access level `anonymized_untrusted` to the role `public_access` is:
 
-```SQL
+```
 CALL diffix.mark_role('public_access', 'anonymized_untrusted');
 ```
 
@@ -75,12 +69,12 @@ __NOTE:__ if AID columns are not correctly labeled, the extension may fail to an
 The procedure `diffix.mark_personal(table_name, aid_columns...)` is used to label a table as personal and
 to label its AID columns. For example:
 
-```SQL
+```
 CALL diffix.mark_personal('employee_info', 'employee_id');
 ```
 labels the table `employee_info` as personal, and labels the `employee_id` column as an AID column.
 
-```SQL
+```
 CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
@@ -158,17 +152,7 @@ Default value is `*`. Any user can change this setting.
 
 ## Restricted features and extensions
 
-**TODO:** I think this kind of information is better put in the notebook tutorial? Or if you want it here it seems incomplete or something. Needs work...
-
-For users other than `direct`, various data and features built into PostgreSQL are restricted. Among others:
-
-1. Issue utility statements like `COPY` and `ALTER TABLE`, beside a few allowlisted ones, are not allowed.
-2. Some of the data in `pg_catalog` tables like `pg_user_functions` is not accessible.
-3. Selected subset of less frequently used PostgreSQL query features like `EXISTS` or `NULLIF` are disabled.
-4. Inheritance involving a personal table is not allowed.
-5. Some of the output of `EXPLAIN` for queries involving a personal table is censored.
-
-**NOTE** If any of the currently blocked features is necessary for your use case, open an issue and let us know.
+For a detailed description of supported SQL features and restrictions, see the [analyst guide](analyst_guide.md).
 
 Row level security (RLS) can be enabled and used on personal tables.
 It is advised that the active policies are vetted from the point of view of anonymity.
@@ -192,7 +176,7 @@ Given that AIDs may not be perfect, some care must be taken in the selection of 
 
 For example, imagine the following query in a table where `account_number` is the AID column:
 
-```sql
+```
 SELECT last_name, religion, count(*)
 FROM table
 GROUP BY last_name, religion

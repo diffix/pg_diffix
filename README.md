@@ -1,15 +1,13 @@
-# Important notice
-
-This is a pre-release version of the extension and is not intended for general use yet.
-It may be unstable and documentation is limited.
-If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
-
 # PG Diffix
 
 `pg_diffix` is a PostgreSQL extension for strong dynamic anonymization. It ensures that answers to simple SQL queries are anonymous. For more information, visit the [Open Diffix](https://www.open-diffix.org/) website.
 
-Check out the [Admin Tutorial](docs/admin_tutorial.md) for an example on how to set up `pg_diffix`.
-See the [Admin Guide](docs/admin_guide.md) for details on configuring and using the extension.
+**For administrators:** Check out the [admin tutorial](docs/admin_tutorial.md) for an example on how to set up `pg_diffix`.
+See the [admin guide](docs/admin_guide.md) for details on configuring and using the extension.
+To install from source, see the [installation](#installation) section.
+
+**For analysts:** The [banking notebook](docs/banking.ipynb) provides example queries against a real dataset.
+The [analyst guide](docs/analyst_guide.md) describes the SQL features and limitations imposed by `pg_diffix`.
 
 ## Installation
 
@@ -34,7 +32,9 @@ every session start for restricted users. This can be accomplished by configurin
 For example, to automatically load the `pg_diffix` extension for all users connecting to a database,
 you can execute the following command:
 
-`ALTER DATABASE db_name SET session_preload_libraries TO 'pg_diffix';`
+```
+ALTER DATABASE db_name SET session_preload_libraries TO 'pg_diffix';
+```
 
 Once loaded, the extension logs information to `/var/log/postgresql/postgresql-13-main.log` or equivalent.
 
@@ -48,7 +48,9 @@ You might also need to remove the extension from the list of preloaded libraries
 
 For example, to reset the list of preloaded libraries for a database, you can execute the following command:
 
-`ALTER DATABASE db_name SET session_preload_libraries TO DEFAULT;`
+```
+ALTER DATABASE db_name SET session_preload_libraries TO DEFAULT;
+```
 
 ## Testing the extension
 
@@ -67,7 +69,10 @@ or if available, just make your usual PostgreSQL user a `SUPERUSER`.
 
 Or you can use the [PGXN Extension Build and Test Tools](https://github.com/pgxn/docker-pgxn-tools) Docker image:
 
-`docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools sh -c 'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'`.
+```
+docker run -it --rm --mount "type=bind,src=$(pwd),dst=/repo" pgxn/pgxn-tools sh -c \
+  'cd /repo && apt update && apt install -y jq && pg-start 13 && pg-build-test'
+```
 
 ## Docker images
 
@@ -82,15 +87,21 @@ The example below shows how to build the image and run a minimally configured co
 
 Build the image:
 
-`make image`
+```
+make image
+```
 
 Run the container in foreground and expose in port 10432:
 
-`docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix`
+```
+docker run --rm --name pg_diffix -e POSTGRES_PASSWORD=postgres -p 10432:5432 pg_diffix
+```
 
 From another shell you can connect to the container via `psql`:
 
-`psql -h localhost -p 10432 -d postgres -U postgres`
+```
+psql -h localhost -p 10432 -d postgres -U postgres
+```
 
 For more advanced usage see the [official image reference](https://hub.docker.com/_/postgres).
 
@@ -108,16 +119,25 @@ Three users are created, all of them with password `demo`:
 
 Build the image:
 
-`make demo-image`
+```
+make demo-image
+```
 
 Run the container in foreground and expose in port 10432:
 
-`docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
+```
+docker run --rm --name pg_diffix_demo -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
+```
 
 Connect to the banking database (from another shell) for anonymized access:
 
-`psql -h localhost -p 10432 -d banking -U trusted_user`
+```
+psql -h localhost -p 10432 -d banking -U trusted_user
+```
 
 To keep the container running you can start it in detached mode and with a restart policy:
 
-`docker run -d --name pg_diffix_demo --restart unless-stopped -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo`
+```
+docker run -d --name pg_diffix_demo --restart unless-stopped \
+  -e POSTGRES_PASSWORD=postgres -e BANKING_PASSWORD=demo -p 10432:5432 pg_diffix_demo
+```
