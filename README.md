@@ -2,8 +2,12 @@
 
 `pg_diffix` is a PostgreSQL extension for strong dynamic anonymization. It ensures that answers to simple SQL queries are anonymous. For more information, visit the [Open Diffix](https://www.open-diffix.org/) website.
 
-Check out the [Admin Tutorial](docs/admin_tutorial.md) for an example on how to set up `pg_diffix`.
-See the [Admin Guide](docs/admin_guide.md) for details on configuring and using the extension.
+**For administrators:** Check out the [admin tutorial](docs/admin_tutorial.md) for an example on how to set up `pg_diffix`.
+See the [admin guide](docs/admin_guide.md) for details on configuring and using the extension.
+To install from source, see the [installation](#installation) section.
+
+**For analysts:** The [banking notebook](docs/banking.ipynb) provides example queries against a real dataset.
+The [analyst guide](docs/analyst_guide.md) describes the SQL features and limitations imposed by `pg_diffix`.
 
 ## Installation
 
