@@ -17,9 +17,7 @@ typedef struct AidResult
 static AidResult calculate_aid_result(const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
-
-  seed_t seeds[] = {tracker->aid_seed};
-  result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
+  result.threshold = generate_lcf_threshold(tracker->aid_seed);
   result.low_count = tracker->aid_set->members < result.threshold;
 
   return result;

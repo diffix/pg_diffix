@@ -80,33 +80,31 @@ static void set_value_sorting_globals(Oid element_type)
   g_compare_values_func = &g_compare_values_typentry->cmp_proc_finfo;
 }
 
-static bool aid_set_is_high_count(seed_t bucket_seed, const List *aid_values_set)
+static bool aid_set_is_high_count(const List *aid_values_set)
 {
   if (list_length(aid_values_set) < g_config.low_count_min_threshold)
     return false; /* Fewer AID values than minimum threshold, value is low-count. */
 
   seed_t aid_seed = hash_set_to_seed(aid_values_set);
-
-  seed_t seeds[] = {bucket_seed, aid_seed};
-  double threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
+  double threshold = generate_lcf_threshold(aid_seed);
 
   return list_length(aid_values_set) >= threshold;
 }
 
-static bool aid_sets_are_high_count(seed_t bucket_seed, const List *aid_values_sets)
+static bool aid_sets_are_high_count(const List *aid_values_sets)
 {
   ListCell *cell;
   foreach (cell, aid_values_sets)
   {
     const List *aid_values_set = (const List *)lfirst(cell);
-    if (!aid_set_is_high_count(bucket_seed, aid_values_set))
+    if (!aid_set_is_high_count(aid_values_set))
       return false;
   }
   return true;
 }
 
 /* Returns a list with the tracker entries that are low count. */
-static List *filter_lc_entries(seed_t bucket_seed, DistinctTracker_hash *tracker)
+static List *filter_lc_entries(DistinctTracker_hash *tracker)
 {
   List *lc_entries = NIL;
 
@@ -115,7 +113,7 @@ static List *filter_lc_entries(seed_t bucket_seed, DistinctTracker_hash *tracker
   DistinctTrackerHashEntry *entry = NULL;
   while ((entry = DistinctTracker_iterate(tracker, &it)) != NULL)
   {
-    if (!aid_sets_are_high_count(bucket_seed, entry->aid_values_sets))
+    if (!aid_sets_are_high_count(entry->aid_values_sets))
       lc_entries = lappend(lc_entries, entry);
   }
 
@@ -352,7 +350,7 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
 
   DistinctTracker_hash *tracker = state->tracker;
 
-  List *lc_entries = filter_lc_entries(bucket_seed, tracker);
+  List *lc_entries = filter_lc_entries(tracker);
   list_sort(lc_entries, &compare_tracker_entries_by_value); /* Needed to ensure determinism. */
 
   CountDistinctResult result = {0};
