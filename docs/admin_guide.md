@@ -1,9 +1,3 @@
-# Important notice
-
-This is a pre-release version of the extension and is not intended for general use yet.
-It may be unstable and documentation is limited.
-If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
-
 # Configuration
 
 This document provides detailed information about the configuration, behavior and recommended usage of `pg_diffix`.

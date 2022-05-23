@@ -1,9 +1,3 @@
-# Important notice
-
-This is a pre-release version of the extension and is not intended for general use yet.
-It may be unstable and documentation is limited.
-If you have any questions, please contact us at [hello@open-diffix.org](mailto:hello@open-diffix.org).
-
 # Analyst guide
 
 This document describes features and restrictions of `pg_diffix` for users with anonymized access to a database.
@@ -12,7 +6,6 @@ mechanisms that Diffix Elm uses to protect personal data.
 
 ## Table of Contents
 
-- [Important notice](#important-notice)
 - [Analyst guide](#analyst-guide)
   - [Table of Contents](#table-of-contents)
 - [Access levels](#access-levels)
