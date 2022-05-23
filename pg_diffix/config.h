@@ -42,4 +42,9 @@ extern void config_init(void);
  */
 extern void config_validate(void);
 
+/*
+ * Returns true if the extension was activated for the current database.
+ */
+extern bool is_pg_diffix_active(void);
+
 #endif /* PG_DIFFIX_CONFIG_H */
