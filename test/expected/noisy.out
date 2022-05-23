@@ -212,6 +212,19 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
      0 |     0 |     0
 (1 row)
 
+-- LCF doesn't depend on the bucket seed, both queries should have same noisy threshold.
+SELECT diffix.floor_by(age, 30), COUNT(*) FROM test_patients GROUP BY 1;
+ floor_by | count 
+----------+-------
+          |    23
+(1 row)
+
+SELECT diffix.floor_by(age, 30), diffix.floor_by(age, 106), COUNT(*) FROM test_patients GROUP BY 1, 2;
+ floor_by | floor_by | count 
+----------+----------+-------
+          |          |     9
+(1 row)
+
 ----------------------------------------------------------------
 -- Empty tables
 ----------------------------------------------------------------

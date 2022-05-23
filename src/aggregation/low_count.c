@@ -14,11 +14,11 @@ typedef struct AidResult
   bool low_count;
 } AidResult;
 
-static AidResult calculate_aid_result(seed_t bucket_seed, const AidTrackerState *tracker)
+static AidResult calculate_aid_result(const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
 
-  seed_t seeds[] = {bucket_seed, tracker->aid_seed};
+  seed_t seeds[] = {tracker->aid_seed};
   result.threshold = generate_lcf_threshold(seeds, ARRAY_LENGTH(seeds));
   result.low_count = tracker->aid_set->members < result.threshold;
 
@@ -83,11 +83,10 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   LowCountState *state = (LowCountState *)base_state;
 
   bool low_count = false;
-  seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
   for (int i = 0; i < state->trackers_count; i++)
   {
-    AidResult result = calculate_aid_result(bucket_seed, state->trackers[i]);
+    AidResult result = calculate_aid_result(state->trackers[i]);
     low_count = low_count || result.low_count;
   }
 

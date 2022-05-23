@@ -56,6 +56,10 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
 
+-- LCF doesn't depend on the bucket seed, both queries should have same noisy threshold.
+SELECT diffix.floor_by(age, 30), COUNT(*) FROM test_patients GROUP BY 1;
+SELECT diffix.floor_by(age, 30), diffix.floor_by(age, 106), COUNT(*) FROM test_patients GROUP BY 1, 2;
+
 ----------------------------------------------------------------
 -- Empty tables
 ----------------------------------------------------------------
