@@ -8,52 +8,70 @@ containing a column named `id`, which uniquely identifies protected entities (th
 
 ## Installation
 
-1. Install the packages required for building the extension:
+1\. Install the packages required for building the extension:
 
-`sudo apt-get install make jq gcc postgresql-server-dev-14`
+```
+sudo apt-get install make jq gcc postgresql-server-dev-14
+```
 
-2. Install PGXN Client tools:
+2\. Install PGXN Client tools:
 
-`sudo apt-get install pgxnclient`
+```
+sudo apt-get install pgxnclient
+```
 
-3. Install the extension:
+3\. Install the extension:
 
-`sudo pgxn install pg_diffix`
+```
+sudo pgxn install pg_diffix
+```
 
 ## Activation
 
-1. Connect to the database as a superuser:
+1\. Connect to the database as a superuser:
 
-`sudo -u postgres psql test_db`
+```
+sudo -u postgres psql test_db
+```
 
-2. Activate the extension for the current database:
+2\. Activate the extension for the current database:
 
-`CREATE EXTENSION pg_diffix;`
+```
+CREATE EXTENSION pg_diffix;
+```
 
-3. Automatically load the extension for all users connecting to the database:
+3\. Automatically load the extension for all users connecting to the database:
 
-`ALTER DATABASE test_db SET session_preload_libraries TO 'pg_diffix';`
+```
+ALTER DATABASE test_db SET session_preload_libraries TO 'pg_diffix';
+```
 
 ## Configuration
 
-1. Label the test data as personal (requiring anonymization):
+1\. Label the test data as personal (requiring anonymization):
 
-`CALL diffix.mark_personal('test_table', 'id');`
+```
+CALL diffix.mark_personal('test_table', 'id');
+```
 
-2. Create an account for the analyst:
+2\. Create an account for the analyst:
 
-`CREATE USER analyst_role WITH PASSWORD 'some_password';`
+```
+CREATE USER analyst_role WITH PASSWORD 'some_password';
+```
 
-3. Give the analyst read-only access to the test database:
+3\. Give the analyst read-only access to the test database:
 
 ```
 GRANT CONNECT ON DATABASE test_db TO analyst_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst_role;
 ```
 
-4. Label the analyst as restricted and trusted:
+4\. Label the analyst as restricted and trusted:
 
-`CALL diffix.mark_role('analyst_role', 'anonymized_trusted');`
+```
+CALL diffix.mark_role('analyst_role', 'anonymized_trusted');
+```
 
 
 __That's it!__ The analyst can now connect to the database and issue (only) anonymizing queries against the test dataset.

@@ -36,7 +36,7 @@ Trusted users have fewer SQL restrictions than untrusted users, and therefore ha
 
 For example, the command to assign the access level `anonymized_untrusted` to the role `public_access` is:
 
-```SQL
+```
 CALL diffix.mark_role('public_access', 'anonymized_untrusted');
 ```
 
@@ -69,12 +69,12 @@ __NOTE:__ if AID columns are not correctly labeled, the extension may fail to an
 The procedure `diffix.mark_personal(table_name, aid_columns...)` is used to label a table as personal and
 to label its AID columns. For example:
 
-```SQL
+```
 CALL diffix.mark_personal('employee_info', 'employee_id');
 ```
 labels the table `employee_info` as personal, and labels the `employee_id` column as an AID column.
 
-```SQL
+```
 CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
@@ -186,7 +186,7 @@ Given that AIDs may not be perfect, some care must be taken in the selection of 
 
 For example, imagine the following query in a table where `account_number` is the AID column:
 
-```sql
+```
 SELECT last_name, religion, count(*)
 FROM table
 GROUP BY last_name, religion
