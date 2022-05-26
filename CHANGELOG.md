@@ -1,11 +1,14 @@
 # Changelog
 
-## Next version
+## Version 1.0.0
 
 - Vastly expanded docs.
 - Fixed a noise generation bug.
 - Salt is randomly generated per-database during extension setup.
 - Simplified and improved utility methods.
+- The low count filter is not seeded with bucket data anymore.
+- Extension now skips non-associated databases when loaded globally.
+- Fixed handling of post-anonymization conditions.
 
 ## Version 0.0.4
 
