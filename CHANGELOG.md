@@ -1,5 +1,9 @@
 # Changelog
 
+## Next version
+  - Fixed some docs links.
+  - Fixed setup script version.
+
 ## Version 1.0.0
 
 - Vastly expanded docs.
