@@ -159,6 +159,57 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
+
+/* ----------------------------------------------------------------
+ * Non-anonymizing aggregators
+ * ----------------------------------------------------------------
+ */
+
+/*
+ * Present here only to provide the proper signatures for the aggregators available
+ * to the non-direct access users.
+ */
+
+CREATE FUNCTION dummy_transfn(AnonAggState)
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION dummy_transfn(AnonAggState, value "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION dummy_finalfn(AnonAggState)
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION dummy_finalfn(AnonAggState, value "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE AGGREGATE count_noise(*) (
+  sfunc = dummy_transfn,
+  stype = AnonAggState,
+  finalfunc = dummy_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE count_noise(value "any") (
+  sfunc = dummy_transfn,
+  stype = AnonAggState,
+  finalfunc = dummy_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
 /* ----------------------------------------------------------------
  * Anonymizing aggregators
  * ----------------------------------------------------------------
@@ -195,6 +246,30 @@ CREATE AGGREGATE anon_count_star(variadic aids "any") (
 );
 
 CREATE AGGREGATE anon_count_value(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_distinct_noise(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_star_noise(variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_value_noise(value "any", variadic aids "any") (
   sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
   finalfunc = anon_agg_state_finalfn,

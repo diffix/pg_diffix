@@ -170,6 +170,12 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_distinct);
     else if (aggfnoid == g_oid_cache.count_value)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value);
+    else if (aggfnoid == g_oid_cache.count_star_noise)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_star_noise);
+    else if (aggfnoid == g_oid_cache.count_value_noise && aggref->aggdistinct)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_distinct_noise);
+    else if (aggfnoid == g_oid_cache.count_value_noise)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value_noise);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");
