@@ -9,17 +9,31 @@ typedef struct Oids
   /* Aggregators */
   Oid count_star;  /* count(*) */
   Oid count_value; /* count(any) */
+  Oid sum_int2;    /* sum(smallint) */
+  Oid sum_int4;    /* sum(integer) */
+  Oid sum_int8;    /* sum(bigint) */
+  Oid sum_numeric; /* sum(numeric) */
+  Oid sum_float4;  /* sum(real) */
+  Oid sum_float8;  /* sum(double precision) */
 
   Oid count_star_noise;  /* diffix.count_noise(*) */
   Oid count_value_noise; /* diffix.count_noise(any) */
+  Oid sum_noise_int2;    /* diffix.sum_noise(smallint) */
+  Oid sum_noise_int4;    /* diffix.sum_noise(integer) */
+  Oid sum_noise_int8;    /* diffix.sum_noise(bigint) */
+  Oid sum_noise_numeric; /* diffix.sum_noise(numeric) */
+  Oid sum_noise_float4;  /* diffix.sum_noise(real) */
+  Oid sum_noise_float8;  /* diffix.sum_noise(double precision) */
 
   Oid low_count;                 /* diffix.low_count(aids...) */
   Oid anon_count_distinct;       /* diffix.anon_count_distinct(any, aids...) */
   Oid anon_count_star;           /* diffix.anon_count_star(aids...) */
   Oid anon_count_value;          /* diffix.anon_count_value(any, aids...) */
+  Oid anon_sum;                  /* diffix.anon_sum(any, aids...) */
   Oid anon_count_distinct_noise; /* diffix.anon_count_distinct_noise(any, aids...) */
   Oid anon_count_star_noise;     /* diffix.anon_count_star_noise(aids...) */
   Oid anon_count_value_noise;    /* diffix.anon_count_value_noise(any, aids...) */
+  Oid anon_sum_noise;            /* diffix.anon_sum_noise(any, aids...) */
 
   Oid anon_agg_state; /* diffix.AnonAggState */
 
@@ -55,9 +69,7 @@ extern void oid_cache_init(void);
  */
 extern void oid_cache_cleanup(void);
 
-/*
- * Formats OIDs to a palloc'd string.
- */
-extern char *oids_to_string(Oids *oids);
+extern bool is_sum_oid(Oid aggoid);
+extern bool is_sum_noise_oid(Oid aggoid);
 
 #endif /* PG_DIFFIX_OID_CACHE_H */

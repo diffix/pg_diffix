@@ -32,12 +32,16 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
     return &g_count_value_funcs;
   else if (oid == g_oid_cache.anon_count_distinct)
     return &g_count_distinct_funcs;
+  else if (oid == g_oid_cache.anon_sum)
+    return &g_sum_funcs;
   else if (oid == g_oid_cache.anon_count_star_noise)
     return &g_count_star_noise_funcs;
   else if (oid == g_oid_cache.anon_count_value_noise)
     return &g_count_value_noise_funcs;
   else if (oid == g_oid_cache.anon_count_distinct_noise)
     return &g_count_distinct_noise_funcs;
+  else if (oid == g_oid_cache.anon_sum_noise)
+    return &g_sum_noise_funcs;
   else if (oid == g_oid_cache.low_count)
     return &g_low_count_funcs;
 
@@ -152,4 +156,14 @@ Datum dummy_finalfn(PG_FUNCTION_ARGS)
 {
   Assert(false);
   PG_RETURN_AGG_STATE(0);
+}
+
+bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
+{
+  for (int aid_index = aids_offset; aid_index < aids_offset + aids_count; aid_index++)
+  {
+    if (!args[aid_index].isnull)
+      return false;
+  }
+  return true;
 }

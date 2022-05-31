@@ -176,12 +176,15 @@ static bool verify_aggregator(Node *node, void *context)
 
     if (aggoid != g_oid_cache.count_star &&
         aggoid != g_oid_cache.count_value &&
+        !is_sum_oid(aggoid) &&
         aggoid != g_oid_cache.count_star_noise &&
         aggoid != g_oid_cache.count_value_noise &&
+        !is_sum_noise_oid(aggoid) &&
         aggoid != g_oid_cache.is_suppress_bin)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
-    if (aggoid == g_oid_cache.count_value)
+    if (aggoid == g_oid_cache.count_value || aggoid == g_oid_cache.count_value_noise ||
+        is_sum_oid(aggoid) || is_sum_noise_oid(aggoid))
     {
       TargetEntry *tle = (TargetEntry *)unwrap_cast(linitial(aggref->args));
       Node *tle_arg = unwrap_cast((Node *)tle->expr);
@@ -189,6 +192,11 @@ static bool verify_aggregator(Node *node, void *context)
         verify_non_system_column((Var *)tle_arg);
       else
         FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
+    }
+    if (is_sum_oid(aggoid) || is_sum_noise_oid(aggoid))
+    {
+      if (aggref->aggdistinct)
+        FAILWITH_LOCATION(aggref->location, "Unsupported distinct qualifier at aggregate argument.");
     }
 
     NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");

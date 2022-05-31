@@ -5,6 +5,7 @@
 #include "utils/typcache.h"
 
 #include "pg_diffix/aggregation/count.h"
+#include "pg_diffix/aggregation/summable.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/query/anonymization.h"
 
@@ -319,7 +320,7 @@ static void process_lc_values_contributions(List *per_aid_values,
     {
       *aid_seed ^= entry->aid;
       Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
-      add_top_contributor(&count_descriptor, top_contributors, contributor);
+      add_top_contributor(&integer_descriptor, top_contributors, contributor);
       (*contributors_count)++;
     }
   }
@@ -367,7 +368,7 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
 
-  CountResultAccumulator result_accumulator = {0};
+  SummableResultAccumulator result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
@@ -386,15 +387,16 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
         &aid_seed, &contributors_count,
         top_contributors);
 
-    uint64 unaccounted_for = 0;
-    CountResult inner_count_result = aggregate_count_contributions(
-        bucket_seed, aid_seed, lc_values_true_count,
-        contributors_count, unaccounted_for, top_contributors);
+    contribution_t unaccounted_for = {.integer = 0};
+    contribution_t true_count = {.integer = (int64)lc_values_true_count};
+    SummableResult inner_count_result = aggregate_contributions(
+        bucket_seed, aid_seed, true_count,
+        contributors_count, unaccounted_for, integer_descriptor.contribution_to_double, top_contributors);
 
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    accumulate_count_result(&result_accumulator, &inner_count_result);
+    accumulate_result(&result_accumulator, &inner_count_result);
     if (result_accumulator.not_enough_aid_values)
       break;
   }
@@ -402,7 +404,7 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
   if (!result_accumulator.not_enough_aid_values)
   {
     result.noisy_count += finalize_count_result(&result_accumulator);
-    result.noise_sd = finalize_count_noise_result(&result_accumulator);
+    result.noise_sd = finalize_noise_result(&result_accumulator);
   }
 
   result.noisy_count = Max(result.noisy_count, min_count);
@@ -423,7 +425,7 @@ static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
  *-------------------------------------------------------------------------
  */
 
-static void count_distinct_final_type(Oid *type, int32 *typmod, Oid *collid)
+static void count_distinct_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = INT8OID;
   *typmod = -1;
@@ -539,7 +541,7 @@ const AnonAggFuncs g_count_distinct_funcs = {
     .explain = count_distinct_explain,
 };
 
-static void count_distinct_noise_final_type(Oid *type, int32 *typmod, Oid *collid)
+static void count_distinct_noise_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = FLOAT8OID;
   *typmod = -1;
