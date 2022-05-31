@@ -19,6 +19,8 @@ PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);
 PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
 PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
+PG_FUNCTION_INFO_V1(dummy_transfn);
+PG_FUNCTION_INFO_V1(dummy_finalfn);
 
 const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
@@ -30,6 +32,12 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
     return &g_count_value_funcs;
   else if (oid == g_oid_cache.anon_count_distinct)
     return &g_count_distinct_funcs;
+  else if (oid == g_oid_cache.anon_count_star_noise)
+    return &g_count_star_noise_funcs;
+  else if (oid == g_oid_cache.anon_count_value_noise)
+    return &g_count_value_noise_funcs;
+  else if (oid == g_oid_cache.anon_count_distinct_noise)
+    return &g_count_distinct_noise_funcs;
   else if (oid == g_oid_cache.low_count)
     return &g_low_count_funcs;
 
@@ -128,4 +136,20 @@ Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
   PG_RETURN_AGG_STATE(state);
+}
+
+/* 
+ * These functions should never be called, non-anonymized `_noise` aggregators are to
+ * be always rewritten to their anonymized versions.
+ */
+Datum dummy_transfn(PG_FUNCTION_ARGS)
+{
+  Assert(false);
+  PG_RETURN_AGG_STATE(0);
+}
+
+Datum dummy_finalfn(PG_FUNCTION_ARGS)
+{
+  Assert(false);
+  PG_RETURN_AGG_STATE(0);
 }

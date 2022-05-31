@@ -27,6 +27,12 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
+-- Reporting noise
+----------------------------------------------------------------
+
+SELECT diffix.count_noise(*), diffix.count_noise(city), diffix.count_noise(DISTINCT city) FROM test_customers;
+
+----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
 
