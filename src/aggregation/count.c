@@ -167,7 +167,12 @@ static CountResult count_calculate_result(seed_t bucket_seed, const Contribution
 
 void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result)
 {
-  Assert(result->not_enough_aid_values == false);
+  if (result->not_enough_aid_values)
+  {
+    accumulator->not_enough_aid_values = true;
+    return;
+  }
+
   Assert(result->flattening >= 0);
 
   if (result->flattening > accumulator->max_flattening)
@@ -246,26 +251,32 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
   return &state->base;
 }
 
-static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static CountResultAccumulator count_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
   CountState *state = (CountState *)base_state;
   CountResultAccumulator result_accumulator = {0};
-  bool is_global = bucket_desc->num_labels == 0;
-  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
   for (int i = 0; i < state->trackers_count; i++)
   {
     CountResult result = count_calculate_result(bucket_seed, state->trackers[i]);
 
-    if (result.not_enough_aid_values)
-      return Int64GetDatum(min_count);
-
     accumulate_count_result(&result_accumulator, &result);
+    if (result_accumulator.not_enough_aid_values)
+      break;
   }
+  return result_accumulator;
+}
 
-  int64 finalized_count_result = finalize_count_result(&result_accumulator);
-  return Int64GetDatum(Max(finalized_count_result, min_count));
+static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+{
+  CountResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc, is_null);
+  bool is_global = bucket_desc->num_labels == 0;
+  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
+  if (result_accumulator.not_enough_aid_values)
+    return Int64GetDatum(min_count);
+  else
+    return Int64GetDatum(Max(finalize_count_result(&result_accumulator), min_count));
 }
 
 static void count_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
@@ -381,4 +392,53 @@ const AnonAggFuncs g_count_star_funcs = {
     .finalize = count_finalize,
     .merge = count_merge,
     .explain = count_star_explain,
+};
+
+double finalize_count_noise_result(const CountResultAccumulator *accumulator)
+{
+  return accumulator->max_noise_sd;
+}
+
+static void count_noise_final_type(Oid *type, int32 *typmod, Oid *collid)
+{
+  *type = FLOAT8OID;
+  *typmod = -1;
+  *collid = 0;
+}
+
+static Datum count_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+{
+  CountResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc, is_null);
+  if (result_accumulator.not_enough_aid_values)
+    return Float8GetDatum(0.0);
+  else
+    return Float8GetDatum(finalize_count_noise_result(&result_accumulator));
+}
+
+static const char *count_value_noise_explain(const AnonAggState *base_state)
+{
+  return "diffix.anon_count_value_noise";
+}
+
+static const char *count_noise_explain(const AnonAggState *base_state)
+{
+  return "diffix.anon_count_star_noise";
+}
+
+const AnonAggFuncs g_count_value_noise_funcs = {
+    .final_type = count_noise_final_type,
+    .create_state = count_value_create_state,
+    .transition = count_value_transition,
+    .finalize = count_noise_finalize,
+    .merge = count_merge,
+    .explain = count_value_noise_explain,
+};
+
+const AnonAggFuncs g_count_star_noise_funcs = {
+    .final_type = count_noise_final_type,
+    .create_state = count_star_create_state,
+    .transition = count_star_transition,
+    .finalize = count_noise_finalize,
+    .merge = count_merge,
+    .explain = count_noise_explain,
 };

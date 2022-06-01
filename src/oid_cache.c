@@ -22,10 +22,16 @@ void oid_cache_init(void)
   g_oid_cache.count_star = lookup_function(NULL, "count", 0, (Oid[]){});
   g_oid_cache.count_value = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
 
+  g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, (Oid[]){});
+  g_oid_cache.count_value_noise = lookup_function("diffix", "count_noise", 1, (Oid[]){ANYOID});
+
   g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
   g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
   g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
+  g_oid_cache.anon_count_distinct_noise = lookup_function("diffix", "anon_count_distinct_noise", -1, (Oid[]){});
+  g_oid_cache.anon_count_star_noise = lookup_function("diffix", "anon_count_star_noise", -1, (Oid[]){});
+  g_oid_cache.anon_count_value_noise = lookup_function("diffix", "anon_count_value_noise", -1, (Oid[]){});
 
   g_oid_cache.anon_agg_state = get_func_rettype(g_oid_cache.anon_count_star);
 
@@ -76,10 +82,16 @@ char *oids_to_string(Oids *oids)
   appendStringInfo(&string, " :count_star %u", oids->count_star);
   appendStringInfo(&string, " :count_value %u", oids->count_value);
 
+  appendStringInfo(&string, " :count_star_noise %u", oids->count_star_noise);
+  appendStringInfo(&string, " :count_value_noise %u", oids->count_value_noise);
+
   appendStringInfo(&string, " :low_count %u", oids->low_count);
   appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
   appendStringInfo(&string, " :anon_count_star %u", oids->anon_count_star);
   appendStringInfo(&string, " :anon_count_value %u", oids->anon_count_value);
+  appendStringInfo(&string, " :anon_count_distinct_noise %u", oids->anon_count_distinct_noise);
+  appendStringInfo(&string, " :anon_count_star_noise %u", oids->anon_count_star_noise);
+  appendStringInfo(&string, " :anon_count_value_noise %u", oids->anon_count_value_noise);
 
   appendStringInfo(&string, " :anon_agg_state %u", oids->anon_agg_state);
 

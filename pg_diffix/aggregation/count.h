@@ -35,9 +35,11 @@ typedef struct CountResultAccumulator
   double count_for_flattening;
   double max_noise_sd;
   double noise_with_max_sd;
+  bool not_enough_aid_values;
 } CountResultAccumulator;
 
 extern void accumulate_count_result(CountResultAccumulator *accumulator, const CountResult *result);
 extern int64 finalize_count_result(const CountResultAccumulator *accumulator);
+extern double finalize_count_noise_result(const CountResultAccumulator *accumulator);
 
 #endif /* PG_DIFFIX_COUNT_COMMON_H */
