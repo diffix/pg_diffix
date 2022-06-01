@@ -97,7 +97,7 @@ The operation of Diffix Elm requires a per-database secret salt value. The salt 
 
 `pg_diffix` automatically generates a salt value when the extension is created for a given database.
 
-__Warning:__ If a given database is replicated on multiple instances of `pg_diffix`, then the same salt must be used for all instances. 
+__Warning:__ If a given database is replicated on multiple instances of `pg_diffix`, then the same salt must be used for all instances.
 
 The per-database salt is stored in the configuration variable `pg_diffix.salt`. Only superusers can access or modify this variable.
 
@@ -224,5 +224,5 @@ When selecting a suppression threshold (`pg_diffix.low_count_min_threshold`), th
 
 1. What is the largest threshold that satisfies analytic goals? There is no reason to have a smaller threshold than that which satisfies analytic goals.
 2. What is the largest group of individuals that need to be protected? In other words, what is the largest group whereby the release of information about the group can be interpreted as equivalent to the release of information about an individual in the group?
-3. Are there imperfections in the AID that need to be covered by a larger suppression threshold (see [previous section](how-to-select-aid-columns)).
+3. Are there imperfections in the AID that need to be covered by a larger suppression threshold (see [previous section](#how-to-select-aid-columns)).
 4. What is the public perception of how large an aggregate should be? Public opinion is an important consideration. If for instance the public would be nervous about aggregates of five individuals, even though strictly speaking individual privacy is protected, then setting the threshold to a larger value may make sense.

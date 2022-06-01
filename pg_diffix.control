@@ -1,4 +1,4 @@
 comment = 'Open Diffix PostgreSQL extension'
-default_version = '0.0.1'
+default_version = '1.0.0'
 module_pathname = '$libdir/pg_diffix'
 schema = diffix

@@ -24,9 +24,9 @@ PG_FUNCTION_INFO_V1(dummy_finalfn);
 
 const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
-  Assert(OidIsValid(oid));
-
-  if (oid == g_oid_cache.anon_count_star)
+  if (!OidIsValid(oid))
+    return NULL;
+  else if (oid == g_oid_cache.anon_count_star)
     return &g_count_star_funcs;
   else if (oid == g_oid_cache.anon_count_value)
     return &g_count_value_funcs;
