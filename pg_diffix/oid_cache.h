@@ -18,12 +18,7 @@ typedef struct Oids
 
   Oid count_star_noise;  /* diffix.count_noise(*) */
   Oid count_value_noise; /* diffix.count_noise(any) */
-  Oid sum_noise_int2;    /* diffix.sum_noise(smallint) */
-  Oid sum_noise_int4;    /* diffix.sum_noise(integer) */
-  Oid sum_noise_int8;    /* diffix.sum_noise(bigint) */
-  Oid sum_noise_numeric; /* diffix.sum_noise(numeric) */
-  Oid sum_noise_float4;  /* diffix.sum_noise(real) */
-  Oid sum_noise_float8;  /* diffix.sum_noise(double precision) */
+  Oid sum_noise;         /* diffix.sum_noise(any) */
 
   Oid low_count;                 /* diffix.low_count(aids...) */
   Oid anon_count_distinct;       /* diffix.anon_count_distinct(any, aids...) */
@@ -70,6 +65,5 @@ extern void oid_cache_init(void);
 extern void oid_cache_cleanup(void);
 
 extern bool is_sum_oid(Oid aggoid);
-extern bool is_sum_noise_oid(Oid aggoid);
 
 #endif /* PG_DIFFIX_OID_CACHE_H */

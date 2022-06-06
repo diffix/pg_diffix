@@ -210,47 +210,7 @@ CREATE AGGREGATE count_noise(value "any") (
   finalfunc_modify = read_write
 );
 
-CREATE AGGREGATE sum_noise(value "int2") (
-  sfunc = dummy_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
-);
-
-CREATE AGGREGATE sum_noise(value "int4") (
-  sfunc = dummy_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
-);
-
-CREATE AGGREGATE sum_noise(value "int8") (
-  sfunc = dummy_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
-);
-
-CREATE AGGREGATE sum_noise(value "numeric") (
-  sfunc = dummy_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
-);
-
-CREATE AGGREGATE sum_noise(value "float4") (
-  sfunc = dummy_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
-);
-
-CREATE AGGREGATE sum_noise(value "float8") (
+CREATE AGGREGATE sum_noise(value "any") (
   sfunc = dummy_transfn,
   stype = AnonAggState,
   finalfunc = dummy_finalfn,

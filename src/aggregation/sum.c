@@ -70,7 +70,6 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   ContributionDescriptor typed_sum_descriptor = {0};
   switch (state->summand_type)
   {
-
   case INT2OID:
   case INT4OID:
   case INT8OID:
@@ -87,6 +86,7 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
     Assert(false);
     typed_sum_descriptor = real_descriptor;
   }
+
   for (int i = 0; i < trackers_count; i++)
   {
     Oid aid_type = args_desc->args[i + SUM_AIDS_OFFSET].type_oid;

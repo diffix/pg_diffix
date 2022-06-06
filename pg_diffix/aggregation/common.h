@@ -238,7 +238,7 @@ extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
 extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
 
 /*
- * Returns true if all AID instances are NULL, given that they appear in a sequence with `args`.
+ * Returns true if all AID instances in the given range are NULL.
  */
 extern bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count);
 
