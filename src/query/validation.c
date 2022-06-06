@@ -194,11 +194,8 @@ static bool verify_aggregator(Node *node, void *context)
         FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
     }
 
-    if (is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise)
-    {
-      if (aggref->aggdistinct)
-        FAILWITH_LOCATION(aggref->location, "Unsupported distinct qualifier at aggregate argument.");
-    }
+    if ((is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise) && aggref->aggdistinct)
+      FAILWITH_LOCATION(aggref->location, "Unsupported distinct qualifier at aggregate argument.");
 
     NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
     NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
