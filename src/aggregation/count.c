@@ -30,7 +30,7 @@ typedef struct CountState
   ContributionTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
 } CountState;
 
-static void count_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void count_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = INT8OID;
   *typmod = -1;
@@ -182,7 +182,7 @@ const AnonAggFuncs g_count_star_funcs = {
     .explain = count_star_explain,
 };
 
-static void count_noise_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void count_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = FLOAT8OID;
   *typmod = -1;

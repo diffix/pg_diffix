@@ -425,7 +425,7 @@ static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
  *-------------------------------------------------------------------------
  */
 
-static void count_distinct_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void count_distinct_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = INT8OID;
   *typmod = -1;
@@ -541,7 +541,7 @@ const AnonAggFuncs g_count_distinct_funcs = {
     .explain = count_distinct_explain,
 };
 
-static void count_distinct_noise_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void count_distinct_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = FLOAT8OID;
   *typmod = -1;

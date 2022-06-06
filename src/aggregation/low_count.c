@@ -30,7 +30,7 @@ static AidResult calculate_aid_result(const AidTrackerState *tracker)
 
 static const int AIDS_OFFSET = 1;
 
-static void agg_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void agg_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = BOOLOID;
   *typmod = -1;

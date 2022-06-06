@@ -166,7 +166,7 @@ typedef struct Bucket
 struct AnonAggFuncs
 {
   /* Get type information of final value. */
-  void (*final_type)(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid);
+  void (*final_type)(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid);
 
   /*
    * Create an empty state in the given memory context. The implementation is

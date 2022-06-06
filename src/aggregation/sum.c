@@ -27,8 +27,9 @@ typedef struct SumState
   ContributionTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
 } SumState;
 
-static void sum_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void sum_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
+  Oid primary_arg_type = args_desc->args[1].type_oid;
   switch (primary_arg_type)
   {
   case INT2OID:
@@ -236,7 +237,7 @@ const AnonAggFuncs g_sum_funcs = {
     .explain = sum_explain,
 };
 
-static void sum_noise_final_type(Oid primary_arg_type, Oid *type, int32 *typmod, Oid *collid)
+static void sum_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = FLOAT8OID;
   *typmod = -1;
