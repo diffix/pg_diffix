@@ -98,7 +98,7 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   return &state->base;
 }
 
-static SummableResultAccumulator sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static SummableResultAccumulator sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   SumState *state = (SumState *)base_state;
   SummableResultAccumulator result_accumulator = {0};
@@ -118,7 +118,7 @@ static SummableResultAccumulator sum_calculate_final(AnonAggState *base_state, B
 static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
   SumState *state = (SumState *)base_state;
-  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc, is_null);
+  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc);
 
   if (result_accumulator.not_enough_aid_values)
   {
@@ -246,11 +246,16 @@ static void sum_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int
 
 static Datum sum_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc, is_null);
+  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc);
   if (result_accumulator.not_enough_aid_values)
+  {
+    *is_null = true;
     return Float8GetDatum(0.0);
+  }
   else
+  {
     return Float8GetDatum(finalize_noise_result(&result_accumulator));
+  }
 }
 
 static const char *sum_noise_explain(const AnonAggState *base_state)
