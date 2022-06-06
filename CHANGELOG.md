@@ -1,6 +1,6 @@
 # Changelog
 
-## Next version
+## Version 1.0.1
   - Fixed some docs links.
   - Fixed setup script version.
 
