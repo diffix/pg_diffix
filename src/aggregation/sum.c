@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "catalog/pg_type.h"
+#include "utils/fmgrprotos.h"
 
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/summable.h"
@@ -37,11 +38,8 @@ static void sum_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *ty
     *type = INT8OID;
     break;
   case INT8OID:
-    // FIXME should  be numeric
-    *type = INT8OID;
-    break;
   case NUMERICOID:
-    FAILWITH("sum(numeric) not supported");
+    *type = NUMERICOID;
     break;
   case FLOAT4OID:
     *type = FLOAT4OID;
@@ -77,8 +75,6 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
     typed_sum_descriptor = integer_descriptor;
     break;
   case NUMERICOID:
-    FAILWITH("sum(numeric) not supported");
-    break;
   case FLOAT4OID:
   case FLOAT8OID:
     typed_sum_descriptor = real_descriptor;
@@ -129,8 +125,9 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
     case INT4OID:
       return Int64GetDatum(0);
     case INT8OID:
-      // FIXME should  be numeric
-      return Int64GetDatum(0);
+    case NUMERICOID:
+      /* Numeric */
+      return DirectFunctionCall1(float8_numeric, 0);
     case FLOAT4OID:
       return Float4GetDatum(0);
     case FLOAT8OID:
@@ -148,8 +145,9 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
     case INT4OID:
       return Int64GetDatum((int64)round(finalize_sum_result(&result_accumulator)));
     case INT8OID:
-      // FIXME should  be numeric
-      return Int64GetDatum((int64)round(finalize_sum_result(&result_accumulator)));
+    case NUMERICOID:
+      /* Numeric */
+      return DirectFunctionCall1(float8_numeric, Float8GetDatum(finalize_sum_result(&result_accumulator)));
     case FLOAT4OID:
       return Float4GetDatum((float4)finalize_sum_result(&result_accumulator));
     case FLOAT8OID:
@@ -181,9 +179,7 @@ static contribution_t summand_to_contribution(Datum arg, Oid summand_type)
   case INT8OID:
     return (contribution_t){.integer = DatumGetInt64(arg)};
   case NUMERICOID:
-    // FIXME support it
-    FAILWITH("sum(numeric) not supported yet");
-    return (contribution_t){.real = 0.0};
+    return (contribution_t){.real = DatumGetFloat8(DirectFunctionCall1(numeric_float8, arg))};
   case FLOAT4OID:
     return (contribution_t){.real = DatumGetFloat4(arg)};
   case FLOAT8OID:

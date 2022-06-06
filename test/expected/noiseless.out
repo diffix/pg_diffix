@@ -83,6 +83,17 @@ SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP
  Berlin |         9 |         0
 (3 rows)
 
+-- sum supports numeric type
+SELECT city, SUM(discount::numeric), pg_typeof(SUM(discount::numeric)), diffix.sum_noise(discount::numeric)
+FROM test_customers
+GROUP BY 1;
+  city  |       sum        | pg_typeof | sum_noise 
+--------+------------------+-----------+-----------
+ *      |                  | numeric   |          
+ Rome   | 4.83333333333333 | numeric   |         0
+ Berlin |                9 | numeric   |         0
+(3 rows)
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------

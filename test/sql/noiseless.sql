@@ -39,6 +39,11 @@ SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
 SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
 SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
 
+-- sum supports numeric type
+SELECT city, SUM(discount::numeric), pg_typeof(SUM(discount::numeric)), diffix.sum_noise(discount::numeric)
+FROM test_customers
+GROUP BY 1;
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
