@@ -164,7 +164,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
     if (agg_funcs != NULL)
     {
       /* For anonymizing aggregators we describe finalized type. */
-      agg_funcs->final_type(&att->final_type, &att->final_typmod, &att->final_collid);
+      agg_funcs->final_type(att->agg.args_desc, &att->final_type, &att->final_typmod, &att->final_collid);
     }
     else
     {
@@ -609,7 +609,11 @@ static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *co
     Oid final_type;
     int32 final_typmod;
     Oid final_collid;
-    agg_funcs->final_type(&final_type, &final_typmod, &final_collid);
+
+    ArgsDescriptor *args_desc = build_args_desc(aggref);
+    agg_funcs->final_type(args_desc, &final_type, &final_typmod, &final_collid);
+    pfree(args_desc);
+
     return (Node *)makeVar(INDEX_VAR, agg_tle->resno, final_type, final_typmod, final_collid, 0);
   }
 
@@ -702,7 +706,10 @@ static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
       if (agg_funcs != NULL)
       {
         /* In index slot's entry we store final type. */
-        agg_funcs->final_type(&var->vartype, &var->vartypmod, &var->varcollid);
+        ArgsDescriptor *args_desc = build_args_desc(aggref);
+        agg_funcs->final_type(args_desc, &var->vartype, &var->vartypmod, &var->varcollid);
+        pfree(args_desc);
+
         /* In Agg's entry we hold the intermediate AnonAggState. */
         aggref->aggtype = g_oid_cache.anon_agg_state;
         aggref->aggcollid = 0;

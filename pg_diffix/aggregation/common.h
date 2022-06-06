@@ -96,9 +96,11 @@ typedef struct AnonAggState AnonAggState;
 /* Known anonymizing aggregators. */
 extern const AnonAggFuncs g_count_star_funcs;
 extern const AnonAggFuncs g_count_value_funcs;
+extern const AnonAggFuncs g_sum_funcs;
 extern const AnonAggFuncs g_count_distinct_noise_funcs;
 extern const AnonAggFuncs g_count_star_noise_funcs;
 extern const AnonAggFuncs g_count_value_noise_funcs;
+extern const AnonAggFuncs g_sum_noise_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_low_count_funcs;
 
@@ -164,7 +166,7 @@ typedef struct Bucket
 struct AnonAggFuncs
 {
   /* Get type information of final value. */
-  void (*final_type)(Oid *type, int32 *typmod, Oid *collid);
+  void (*final_type)(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid);
 
   /*
    * Create an empty state in the given memory context. The implementation is
@@ -234,5 +236,10 @@ extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
  * Merges all anonymizing aggregator states from source bucket to destination bucket.
  */
 extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
+
+/*
+ * Returns true if all AID instances in the given range are NULL.
+ */
+extern bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count);
 
 #endif /* PG_DIFFIX_COMMON_H */

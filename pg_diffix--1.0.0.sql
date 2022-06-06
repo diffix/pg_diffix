@@ -183,13 +183,13 @@ LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION dummy_finalfn(AnonAggState)
-RETURNS AnonAggState
+RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION dummy_finalfn(AnonAggState, value "any")
-RETURNS AnonAggState
+RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
@@ -203,6 +203,14 @@ CREATE AGGREGATE count_noise(*) (
 );
 
 CREATE AGGREGATE count_noise(value "any") (
+  sfunc = dummy_transfn,
+  stype = AnonAggState,
+  finalfunc = dummy_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE sum_noise(value "any") (
   sfunc = dummy_transfn,
   stype = AnonAggState,
   finalfunc = dummy_finalfn,
@@ -253,6 +261,14 @@ CREATE AGGREGATE anon_count_value(value "any", variadic aids "any") (
   finalfunc_modify = read_write
 );
 
+CREATE AGGREGATE anon_sum(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
 CREATE AGGREGATE anon_count_distinct_noise(value "any", variadic aids "any") (
   sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
@@ -270,6 +286,14 @@ CREATE AGGREGATE anon_count_star_noise(variadic aids "any") (
 );
 
 CREATE AGGREGATE anon_count_value_noise(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_sum_noise(value "any", variadic aids "any") (
   sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
   finalfunc = anon_agg_state_finalfn,

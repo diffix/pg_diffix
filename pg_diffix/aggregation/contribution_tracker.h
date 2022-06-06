@@ -22,11 +22,15 @@ typedef bool (*ContributionEqualFunc)(contribution_t x, contribution_t y);
 /* Combines x and y and to a single contribution. */
 typedef contribution_t (*ContributionCombineFunc)(contribution_t x, contribution_t y);
 
+/* Casts x to double. */
+typedef double (*ContributionToDoubleFunc)(contribution_t x);
+
 typedef struct ContributionDescriptor
 {
   ContributionGreaterFunc contribution_greater;
   ContributionEqualFunc contribution_equal;
   ContributionCombineFunc contribution_combine;
+  ContributionToDoubleFunc contribution_to_double;
   contribution_t contribution_initial; /* Initial or "zero" value for a contribution */
 } ContributionDescriptor;
 
@@ -67,7 +71,7 @@ typedef struct ContributionTrackerState
   seed_t aid_seed;                                /* Current AID seed */
   uint64 distinct_contributors;                   /* Count of distinct non-NULL contributors */
   contribution_t overall_contribution;            /* Combined contribution from all contributors */
-  uint64 unaccounted_for;                         /* Count of NULL contributions unaccounted for */
+  contribution_t unaccounted_for;                 /* Count of NULL contributions unaccounted for */
   /* Variable size field, has to be last in the list. */
   Contributors top_contributors; /* AIDs with largest contributions */
 } ContributionTrackerState;

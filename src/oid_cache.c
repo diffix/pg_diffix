@@ -21,17 +21,26 @@ void oid_cache_init(void)
 
   g_oid_cache.count_star = lookup_function(NULL, "count", 0, (Oid[]){});
   g_oid_cache.count_value = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
+  g_oid_cache.sum_int2 = lookup_function(NULL, "sum", 1, (Oid[]){INT2OID});
+  g_oid_cache.sum_int4 = lookup_function(NULL, "sum", 1, (Oid[]){INT4OID});
+  g_oid_cache.sum_int8 = lookup_function(NULL, "sum", 1, (Oid[]){INT8OID});
+  g_oid_cache.sum_numeric = lookup_function(NULL, "sum", 1, (Oid[]){NUMERICOID});
+  g_oid_cache.sum_float4 = lookup_function(NULL, "sum", 1, (Oid[]){FLOAT4OID});
+  g_oid_cache.sum_float8 = lookup_function(NULL, "sum", 1, (Oid[]){FLOAT8OID});
 
   g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, (Oid[]){});
   g_oid_cache.count_value_noise = lookup_function("diffix", "count_noise", 1, (Oid[]){ANYOID});
+  g_oid_cache.sum_noise = lookup_function("diffix", "sum_noise", 1, (Oid[]){ANYOID});
 
   g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
   g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
   g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
+  g_oid_cache.anon_sum = lookup_function("diffix", "anon_sum", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct_noise = lookup_function("diffix", "anon_count_distinct_noise", -1, (Oid[]){});
   g_oid_cache.anon_count_star_noise = lookup_function("diffix", "anon_count_star_noise", -1, (Oid[]){});
   g_oid_cache.anon_count_value_noise = lookup_function("diffix", "anon_count_value_noise", -1, (Oid[]){});
+  g_oid_cache.anon_sum_noise = lookup_function("diffix", "anon_sum_noise", -1, (Oid[]){});
 
   g_oid_cache.anon_agg_state = get_func_rettype(g_oid_cache.anon_count_star);
 
@@ -46,9 +55,13 @@ void oid_cache_init(void)
 
   g_oid_cache.internal_qual_wrapper = lookup_function("diffix", "internal_qual_wrapper", 1, (Oid[]){BOOLOID});
 
-  DEBUG_LOG("OidCache %s", oids_to_string(&g_oid_cache));
-
   g_loaded = true;
+}
+
+bool is_sum_oid(Oid aggoid)
+{
+  return aggoid == g_oid_cache.sum_int2 || aggoid == g_oid_cache.sum_int4 || aggoid == g_oid_cache.sum_int8 ||
+         aggoid == g_oid_cache.sum_numeric || aggoid == g_oid_cache.sum_float4 || aggoid == g_oid_cache.sum_float8;
 }
 
 static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_types)
@@ -69,41 +82,4 @@ void oid_cache_cleanup()
 {
   g_loaded = false;
   /* If we'd have any dynamic allocation here would be the place to free it. */
-}
-
-char *oids_to_string(Oids *oids)
-{
-  StringInfoData string;
-
-  initStringInfo(&string);
-
-  appendStringInfo(&string, "{OID_CACHE");
-
-  appendStringInfo(&string, " :count_star %u", oids->count_star);
-  appendStringInfo(&string, " :count_value %u", oids->count_value);
-
-  appendStringInfo(&string, " :count_star_noise %u", oids->count_star_noise);
-  appendStringInfo(&string, " :count_value_noise %u", oids->count_value_noise);
-
-  appendStringInfo(&string, " :low_count %u", oids->low_count);
-  appendStringInfo(&string, " :anon_count_distinct %u", oids->anon_count_distinct);
-  appendStringInfo(&string, " :anon_count_star %u", oids->anon_count_star);
-  appendStringInfo(&string, " :anon_count_value %u", oids->anon_count_value);
-  appendStringInfo(&string, " :anon_count_distinct_noise %u", oids->anon_count_distinct_noise);
-  appendStringInfo(&string, " :anon_count_star_noise %u", oids->anon_count_star_noise);
-  appendStringInfo(&string, " :anon_count_value_noise %u", oids->anon_count_value_noise);
-
-  appendStringInfo(&string, " :anon_agg_state %u", oids->anon_agg_state);
-
-  appendStringInfo(&string, " :is_suppress_bin %u", oids->is_suppress_bin);
-
-  appendStringInfo(&string, " :round_by (nn %u) (dd %u)", oids->round_by_nn, oids->round_by_dd);
-  appendStringInfo(&string, " :ceil_by (nn %u) (dd %u)", oids->ceil_by_nn, oids->ceil_by_dd);
-  appendStringInfo(&string, " :floor_by (nn %u) (dd %u)", oids->floor_by_nn, oids->floor_by_dd);
-
-  appendStringInfo(&string, " :internal_qual_wrapper (nn %u) (dd %u)", oids->floor_by_nn, oids->floor_by_dd);
-
-  appendStringInfo(&string, "}");
-
-  return string.data;
 }

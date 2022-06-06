@@ -161,7 +161,8 @@ SELECT DISTINCT city FROM test_validation;
 SELECT avg(discount) OVER (PARTITION BY city) FROM test_validation;
 
 -- Get rejected because aggregators are unsupported.
-SELECT SUM(id) FROM test_validation;
+SELECT SUM(distinct id) FROM test_validation;
+SELECT SUM(id + 5) FROM test_validation;
 SELECT MIN(id) + MAX(id) FROM test_validation;
 SELECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH(city));
 SELECT count(city ORDER BY city) FROM test_validation;

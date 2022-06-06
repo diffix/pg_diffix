@@ -53,6 +53,37 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 (3 rows)
 
 ----------------------------------------------------------------
+-- Basic queries - sum
+----------------------------------------------------------------
+SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
+ sum | sum_noise 
+-----+-----------
+ 151 |         0
+(1 row)
+
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
+ sum | sum_noise 
+-----+-----------
+  19 |         0
+(1 row)
+
+SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
+  city  | sum | sum_noise 
+--------+-----+-----------
+ *      |     |         0
+ Rome   |  59 |         0
+ Berlin |  68 |         0
+(3 rows)
+
+SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+  city  |    sum    | sum_noise 
+--------+-----------+-----------
+ *      |           |         0
+ Rome   | 4.8333335 |         0
+ Berlin |         9 |         0
+(3 rows)
+
+----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
 SELECT 1 FROM test_patients;
