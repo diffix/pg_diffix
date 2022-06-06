@@ -183,13 +183,13 @@ LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION dummy_finalfn(AnonAggState)
-RETURNS AnonAggState
+RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION dummy_finalfn(AnonAggState, value "any")
-RETURNS AnonAggState
+RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
