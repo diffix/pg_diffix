@@ -103,11 +103,6 @@ void verify_anonymization_requirements(Query *query)
   verify_rtable(query);
 }
 
-static void verify_where(Query *query)
-{
-  NOT_SUPPORTED(query->jointree->quals, "WHERE clauses in anonymizing queries");
-}
-
 static void verify_rtable(Query *query)
 {
   NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
@@ -132,7 +127,7 @@ static bool is_datetime_to_string_cast(CoerceViaIO *expr)
   return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
 }
 
-static Node *unwrap_cast(Node *node)
+Node *unwrap_cast(Node *node)
 {
   if (IsA(node, FuncExpr))
   {
@@ -255,7 +250,7 @@ static void verify_bucket_expression(Node *node)
   }
   else
   {
-    FAILWITH("Unsupported or unrecognized query node type");
+    FAILWITH("Unsupported bucket expression.");
   }
 }
 
@@ -266,7 +261,7 @@ static void verify_substring(FuncExpr *func_expr)
   Const *second_arg = (Const *)node;
 
   if (DatumGetUInt32(second_arg->constvalue) != 1)
-    FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(second_arg->location, "Used bucket expression is not allowed in untrusted access level.");
 }
 
 /* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
@@ -290,13 +285,13 @@ static void verify_bin_size(Node *range_expr)
   Const *range_const = (Const *)range_node;
 
   if (!is_supported_numeric_type(range_const->consttype))
-    FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization.");
+    FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in bucket expression.");
 
   if (!is_money_style(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
-    FAILWITH_LOCATION(range_const->location, "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(range_const->location, "Used bucket expression is not allowed in untrusted access level.");
 }
 
-static void verify_generalization(Node *node)
+static void verify_untrusted_bucket_expression(Node *node)
 {
   if (IsA(node, FuncExpr))
   {
@@ -309,7 +304,7 @@ static void verify_generalization(Node *node)
     else if (is_implicit_range_builtin_untrusted(func_expr->funcid))
       ;
     else
-      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
+      FAILWITH_LOCATION(func_expr->location, "Used bucket expression is not allowed in untrusted access level.");
   }
 }
 
@@ -330,7 +325,7 @@ void verify_bucket_expressions(Query *query)
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
     if (access_level == ACCESS_ANONYMIZED_UNTRUSTED)
-      verify_generalization(expr);
+      verify_untrusted_bucket_expression(expr);
   }
 }
 
@@ -364,4 +359,63 @@ double numeric_value_to_double(Oid type, Datum value)
 static bool option_matches(DefElem *option, char *name, bool value)
 {
   return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
+}
+
+static bool is_equality_op(Oid opno)
+{
+  char *opname = get_opname(opno);
+  if (opname == NULL)
+    return false;
+  bool result = strcmp(opname, "=") == 0;
+  pfree(opname);
+  return result;
+}
+
+void collect_equalities_from_filters(Node *node, List **subjects, List **targets)
+{
+  if (node == NULL)
+    return;
+
+  if (is_andclause(node))
+  {
+    ListCell *cell = NULL;
+    foreach (cell, ((BoolExpr *)node)->args)
+      collect_equalities_from_filters(lfirst(cell), subjects, targets);
+    return;
+  }
+
+  if (is_opclause(node))
+  {
+    OpExpr *op_expr = (OpExpr *)node;
+    if (is_equality_op(op_expr->opno))
+    {
+      Assert(list_length(op_expr->args) == 2);
+      *subjects = lappend(*subjects, linitial(op_expr->args));
+      *targets = lappend(*targets, lsecond(op_expr->args));
+      return;
+    }
+  }
+
+  FAILWITH("Only equalities between bucket expressions and constants are allowed as pre-anonymization filters.");
+}
+
+static void verify_where(Query *query)
+{
+  if (get_session_access_level() == ACCESS_ANONYMIZED_UNTRUSTED)
+    NOT_SUPPORTED(query->jointree->quals, "pre-anonymization filters in untrusted mode");
+
+  List *subjects = NIL, *targets = NIL;
+  collect_equalities_from_filters(query->jointree->quals, &subjects, &targets);
+
+  ListCell *subject_cell = NULL, *target_cell = NULL;
+  forboth(subject_cell, subjects, target_cell, targets)
+  {
+    verify_bucket_expression(lfirst(subject_cell));
+
+    if (!IsA(unwrap_cast(lfirst(target_cell)), Const))
+      FAILWITH("Bucket expressions can only be matched against constants in pre-anonymization filters.");
+  }
+
+  list_free(subjects);
+  list_free(targets);
 }

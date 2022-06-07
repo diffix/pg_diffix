@@ -10,7 +10,7 @@
 #include "pg_diffix/utils.h"
 
 static const char *const g_allowed_casts[] = {
-    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
+    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof", "int48", "int84",
     "ftod", "dtof",
     "int4_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",

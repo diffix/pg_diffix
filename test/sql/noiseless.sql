@@ -30,6 +30,8 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -58,7 +60,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
 
 ----------------------------------------------------------------
 -- Empty tables

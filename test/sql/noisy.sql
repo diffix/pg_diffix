@@ -26,6 +26,8 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -54,7 +56,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
 
 -- LCF doesn't depend on the bucket seed, both queries should have same noisy threshold.
 SELECT diffix.floor_by(age, 30), COUNT(*) FROM test_patients GROUP BY 1;
@@ -65,3 +67,21 @@ SELECT diffix.floor_by(age, 30), diffix.floor_by(age, 106), COUNT(*) FROM test_p
 ----------------------------------------------------------------
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
+
+----------------------------------------------------------------
+-- WHERE clauses
+----------------------------------------------------------------
+
+-- Filtering and grouping produce identical results
+(SELECT count(*) FROM test_customers GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin');
+
+(SELECT count(*) FROM test_customers GROUP BY city, diffix.round_by(discount, 2)
+  HAVING city = 'Berlin' AND diffix.round_by(discount, 2) = 0)
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+
+(SELECT count(*) FROM test_customers WHERE diffix.round_by(discount, 2) = 0 GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
