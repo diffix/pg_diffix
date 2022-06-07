@@ -367,7 +367,7 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
 
-  SummableResultAccumulator result_accumulator = {0};
+  SummableResultAccumulator lc_result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
@@ -395,20 +395,18 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    accumulate_result(&result_accumulator, &inner_count_result);
-    if (result_accumulator.not_enough_aid_values)
-    {
-      result.not_enough_aid_values = true;
+    accumulate_result(&lc_result_accumulator, &inner_count_result);
+    if (lc_result_accumulator.not_enough_aid_values)
       break;
-    }
   }
 
-  if (!result.not_enough_aid_values)
+  if (!lc_result_accumulator.not_enough_aid_values)
   {
-    result.noisy_count += finalize_count_result(&result_accumulator);
-    result.noise_sd = finalize_noise_result(&result_accumulator);
+    result.noisy_count += finalize_count_result(&lc_result_accumulator);
+    result.noise_sd = finalize_noise_result(&lc_result_accumulator);
   }
 
+  result.not_enough_aid_values = lc_result_accumulator.not_enough_aid_values && result.hc_values_count == 0;
   return result;
 }
 
@@ -553,7 +551,7 @@ static void count_distinct_noise_final_type(const ArgsDescriptor *args_desc, Oid
 static Datum count_distinct_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
   CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc);
-  if (result.not_enough_aid_values && result.noisy_count == 0)
+  if (result.not_enough_aid_values)
   {
     *is_null = true;
     return Float8GetDatum(0.0);
