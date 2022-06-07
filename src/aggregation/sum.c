@@ -126,7 +126,6 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
       return Int64GetDatum(0);
     case INT8OID:
     case NUMERICOID:
-      /* Numeric */
       return DirectFunctionCall1(float8_numeric, 0);
     case FLOAT4OID:
       return Float4GetDatum(0);
@@ -146,7 +145,6 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
       return Int64GetDatum((int64)round(finalize_sum_result(&result_accumulator)));
     case INT8OID:
     case NUMERICOID:
-      /* Numeric */
       return DirectFunctionCall1(float8_numeric, Float8GetDatum(finalize_sum_result(&result_accumulator)));
     case FLOAT4OID:
       return Float4GetDatum((float4)finalize_sum_result(&result_accumulator));
