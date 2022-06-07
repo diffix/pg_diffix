@@ -191,3 +191,11 @@ EXPLAIN SELECT city FROM test_customers ORDER BY 1;
                ->  Seq Scan on test_customers
 (6 rows)
 
+-- Tolerate `diffix.agg_noise` in direct access level
+SET pg_diffix.session_access_level = 'direct';
+SELECT diffix.sum_noise(discount), diffix.count_noise(*) FROM test_customers;
+ sum_noise | count_noise 
+-----------+-------------
+         0 |           0
+(1 row)
+

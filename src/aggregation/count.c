@@ -54,7 +54,7 @@ static AnonAggState *count_create_state(MemoryContext memory_context, ArgsDescri
   return &state->base;
 }
 
-static SummableResultAccumulator count_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static SummableResultAccumulator count_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   CountState *state = (CountState *)base_state;
   SummableResultAccumulator result_accumulator = {0};
@@ -73,7 +73,7 @@ static SummableResultAccumulator count_calculate_final(AnonAggState *base_state,
 
 static Datum count_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  SummableResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc, is_null);
+  SummableResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc);
   bool is_global = bucket_desc->num_labels == 0;
   int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
   if (result_accumulator.not_enough_aid_values)
@@ -191,11 +191,16 @@ static void count_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, i
 
 static Datum count_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  SummableResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc, is_null);
+  SummableResultAccumulator result_accumulator = count_calculate_final(base_state, bucket, bucket_desc);
   if (result_accumulator.not_enough_aid_values)
+  {
+    *is_null = true;
     return Float8GetDatum(0.0);
+  }
   else
+  {
     return Float8GetDatum(finalize_noise_result(&result_accumulator));
+  }
 }
 
 static const char *count_value_noise_explain(const AnonAggState *base_state)

@@ -170,50 +170,50 @@ SECURITY INVOKER SET search_path = '';
  * to the non-direct access users.
  */
 
-CREATE FUNCTION dummy_transfn(AnonAggState)
+CREATE FUNCTION dummy_agg_noise_transfn(AnonAggState)
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION dummy_transfn(AnonAggState, value "any")
+CREATE FUNCTION dummy_agg_noise_transfn(AnonAggState, value "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION dummy_finalfn(AnonAggState)
+CREATE FUNCTION dummy_agg_noise_finalfn(AnonAggState)
 RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-CREATE FUNCTION dummy_finalfn(AnonAggState, value "any")
+CREATE FUNCTION dummy_agg_noise_finalfn(AnonAggState, value "any")
 RETURNS float8
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE AGGREGATE count_noise(*) (
-  sfunc = dummy_transfn,
+  sfunc = dummy_agg_noise_transfn,
   stype = AnonAggState,
-  finalfunc = dummy_finalfn,
+  finalfunc = dummy_agg_noise_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
 
 CREATE AGGREGATE count_noise(value "any") (
-  sfunc = dummy_transfn,
+  sfunc = dummy_agg_noise_transfn,
   stype = AnonAggState,
-  finalfunc = dummy_finalfn,
+  finalfunc = dummy_agg_noise_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );
 
 CREATE AGGREGATE sum_noise(value "any") (
-  sfunc = dummy_transfn,
+  sfunc = dummy_agg_noise_transfn,
   stype = AnonAggState,
-  finalfunc = dummy_finalfn,
+  finalfunc = dummy_agg_noise_finalfn,
   finalfunc_extra = true,
   finalfunc_modify = read_write
 );

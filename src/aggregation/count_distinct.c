@@ -339,19 +339,18 @@ typedef struct CountDistinctResult
   int64 lc_values_count;
   int64 noisy_count;
   double noise_sd;
+  bool not_enough_aid_values;
 } CountDistinctResult;
 
 /*
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   CountDistinctState *state = (CountDistinctState *)base_state;
 
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
-  bool is_global = bucket_desc->num_labels == 0;
-  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
 
   int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
@@ -368,7 +367,7 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
 
-  SummableResultAccumulator result_accumulator = {0};
+  SummableResultAccumulator lc_result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
@@ -396,19 +395,18 @@ static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_sta
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    accumulate_result(&result_accumulator, &inner_count_result);
-    if (result_accumulator.not_enough_aid_values)
+    accumulate_result(&lc_result_accumulator, &inner_count_result);
+    if (lc_result_accumulator.not_enough_aid_values)
       break;
   }
 
-  if (!result_accumulator.not_enough_aid_values)
+  if (!lc_result_accumulator.not_enough_aid_values)
   {
-    result.noisy_count += finalize_count_result(&result_accumulator);
-    result.noise_sd = finalize_noise_result(&result_accumulator);
+    result.noisy_count += finalize_count_result(&lc_result_accumulator);
+    result.noise_sd = finalize_noise_result(&lc_result_accumulator);
   }
 
-  result.noisy_count = Max(result.noisy_count, min_count);
-
+  result.not_enough_aid_values = lc_result_accumulator.not_enough_aid_values && result.hc_values_count == 0;
   return result;
 }
 
@@ -451,8 +449,10 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
 
 static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc, is_null);
-  return Int64GetDatum(result.noisy_count);
+  bool is_global = bucket_desc->num_labels == 0;
+  int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
+  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc);
+  return Int64GetDatum(Max(result.noisy_count, min_count));
 }
 
 static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
@@ -550,8 +550,16 @@ static void count_distinct_noise_final_type(const ArgsDescriptor *args_desc, Oid
 
 static Datum count_distinct_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc, is_null);
-  return Float8GetDatum(result.noise_sd);
+  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc);
+  if (result.not_enough_aid_values)
+  {
+    *is_null = true;
+    return Float8GetDatum(0.0);
+  }
+  else
+  {
+    return Float8GetDatum(result.noise_sd);
+  }
 }
 
 static const char *count_distinct_noise_explain(const AnonAggState *base_state)
