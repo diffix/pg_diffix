@@ -427,7 +427,7 @@ static void prepare_bucket_seeds(Query *query, AnonymizationContext *anon_contex
   List *filtering_exprs = NIL, *filtering_consts = NIL;
   collect_equalities_from_filters(query->jointree->quals, &filtering_exprs, &filtering_consts);
 
-  List *seed_material_hash_set = NULL;
+  List *seed_material_hash_set = NIL;
   collect_seed_material_hashes(query, grouping_exprs, &seed_material_hash_set);
   collect_seed_material_hashes(query, filtering_exprs, &seed_material_hash_set);
   anon_context->sql_seed = hash_set_to_seed(seed_material_hash_set);
