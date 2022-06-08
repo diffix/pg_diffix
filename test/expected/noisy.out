@@ -47,6 +47,12 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Rome |     8
 (2 rows)
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+ count 
+-------
+    17
+(1 row)
+
 ----------------------------------------------------------------
 -- Basic queries - sum
 ----------------------------------------------------------------
@@ -244,7 +250,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  *
 (1 row)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
@@ -270,5 +276,34 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
+(1 row)
+
+----------------------------------------------------------------
+-- WHERE clauses
+----------------------------------------------------------------
+-- Filtering and grouping produce identical results
+(SELECT count(*) FROM test_customers GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin');
+ count 
+-------
+    17
+(1 row)
+
+(SELECT count(*) FROM test_customers GROUP BY city, diffix.round_by(discount, 2)
+  HAVING city = 'Berlin' AND diffix.round_by(discount, 2) = 0)
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+ count 
+-------
+     7
+(1 row)
+
+(SELECT count(*) FROM test_customers WHERE diffix.round_by(discount, 2) = 0 GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+ count 
+-------
+     7
 (1 row)
 
