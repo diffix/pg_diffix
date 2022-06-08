@@ -51,29 +51,29 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 -- Basic queries - sum
 ----------------------------------------------------------------
 SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
- sum |     sum_noise      
------+--------------------
-  34 | 57.166666666666664
+ sum | sum_noise 
+-----+-----------
+  34 |        58
 (1 row)
 
 SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
-    sum    |     sum_noise      
------------+--------------------
- 7.8854094 | 7.8235294117647065
+    sum    | sum_noise 
+-----------+-----------
+ 7.8854094 |         8
 (1 row)
 
 SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
- city | sum |     sum_noise     
-------+-----+-------------------
- *    | 122 |              52.5
- Rome |  64 | 58.66666666666667
+ city | sum | sum_noise 
+------+-----+-----------
+ *    | 122 |        54
+ Rome |  64 |        60
 (2 rows)
 
 SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
- city |    sum    |     sum_noise     
-------+-----------+-------------------
- *    | 12.012415 | 9.450000000000001
- Rome |  4.601863 |              4.25
+ city |    sum    | sum_noise 
+------+-----------+-----------
+ *    | 12.012415 |       9.5
+ Rome |  4.601863 |       4.4
 (2 rows)
 
 ----------------------------------------------------------------
@@ -82,7 +82,7 @@ SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP
 SELECT diffix.count_noise(*), diffix.count_noise(city), diffix.count_noise(DISTINCT city) FROM test_customers;
  count_noise |    count_noise    | count_noise 
 -------------+-------------------+-------------
-           7 | 6.611111111111111 |           0
+           7 | 6.800000000000001 |           0
 (1 row)
 
 ----------------------------------------------------------------
