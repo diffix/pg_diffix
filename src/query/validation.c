@@ -9,7 +9,6 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "parser/parse_coerce.h"
-#include "regex/regex.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
@@ -277,19 +276,6 @@ static void verify_substring(FuncExpr *func_expr)
     FAILWITH_LOCATION(second_arg->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
-/* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
-static bool is_money_style(double number)
-{
-  char number_as_string[30];
-  sprintf(number_as_string, "%.15e", number);
-  text *money_pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
-  bool matches_money_pattern = RE_compile_and_execute(money_pattern,
-                                                      number_as_string, strlen(number_as_string),
-                                                      REG_EXTENDED | REG_NOSUB, C_COLLATION_OID, 0, NULL);
-  pfree(money_pattern);
-  return matches_money_pattern;
-}
-
 /* Expects the expression being the second argument to `round_by` et al. */
 static void verify_bin_size(Node *range_expr)
 {
@@ -300,7 +286,7 @@ static void verify_bin_size(Node *range_expr)
   if (!is_supported_numeric_type(range_const->consttype))
     FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization.");
 
-  if (!is_money_style(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
+  if (!is_money_rounded(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
     FAILWITH_LOCATION(range_const->location, "Generalization used in the query is not allowed in untrusted access level.");
 }
 
