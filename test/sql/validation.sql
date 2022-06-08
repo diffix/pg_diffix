@@ -88,6 +88,10 @@ SELECT 2 * length(city) FROM test_validation GROUP BY city;
 -- Allow diffix.is_suppress_bin in non-direct access level.
 SELECT city, count(*), diffix.is_suppress_bin(*) from test_validation GROUP BY 1;
 
+-- Allow simple equality filters in WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city = 'London';
+SELECT COUNT(*) FROM test_validation WHERE substring(city, 1, 1) = 'L' AND discount = 10.0 AND discount = 20.0;
+
 -- Set operations between anonymizing queries.
 SELECT city FROM test_validation EXCEPT SELECT city FROM test_validation;
 SELECT city FROM test_validation UNION SELECT city FROM test_validation;
@@ -202,8 +206,9 @@ SELECT city, COUNT(price) FROM test_products, test_validation GROUP BY 1;
 
 SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY 1;
 
--- Get rejected because of WHERE
-SELECT COUNT(*) FROM test_validation WHERE city = 'London';
+-- Get rejected because of invalid WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
+SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
 
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
@@ -270,3 +275,6 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 SELECT ceil(discount) from test_validation;
 SELECT diffix.ceil_by(discount, 2) from test_validation;
+
+-- Get rejected because of unsupported features
+SELECT count(*) FROM test_validation WHERE discount = 3;

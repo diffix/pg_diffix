@@ -33,15 +33,11 @@ INSERT INTO test_patients VALUES
 
 CREATE TABLE empty_test_customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT, discount REAL);
 
--- Pre-filtered table to maintain LCF tests which relied on WHERE clause.
-CREATE TABLE london_customers AS (SELECT * FROM test_customers WHERE city = 'London');
-
 -- Config tables (and also check handling of namespaces).
 CALL diffix.mark_personal('public.test_customers', 'id');
 CALL diffix.mark_personal('public.test_purchases', 'cid');
 CALL diffix.mark_personal('public.test_patients', 'id', 'name');
 CALL diffix.mark_personal('public.empty_test_customers', 'id');
-CALL diffix.mark_personal('public.london_customers', 'id');
 CALL diffix.mark_public('public.test_products');
 
 -- There is no CREATE USER IF NOT EXISTS, we need to wrap and silence the output

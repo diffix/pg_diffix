@@ -52,6 +52,12 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     8
 (3 rows)
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+ count 
+-------
+    17
+(1 row)
+
 ----------------------------------------------------------------
 -- Basic queries - sum
 ----------------------------------------------------------------
@@ -253,7 +259,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  Berlin
 (2 rows)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
