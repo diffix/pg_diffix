@@ -246,6 +246,6 @@ extern bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count);
 /*
  * Rounds the noise std. dev. to obtain a reported noise value.
  */
-extern double money_round_noise(double noise_sd);
+extern double round_reported_noise_sd(double noise_sd);
 
 #endif /* PG_DIFFIX_COMMON_H */

@@ -168,7 +168,7 @@ bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
   return true;
 }
 
-double money_round_noise(double noise_sd)
+double round_reported_noise_sd(double noise_sd)
 {
   if (noise_sd == 0.0)
   {

@@ -263,5 +263,5 @@ void merge_trackers(
 
 double finalize_noise_result(const SummableResultAccumulator *accumulator)
 {
-  return money_round_noise(accumulator->max_noise_sd);
+  return round_reported_noise_sd(accumulator->max_noise_sd);
 }
