@@ -1,5 +1,7 @@
 #include "postgres.h"
 
+#include <math.h>
+
 #include "fmgr.h"
 #include "nodes/primnodes.h"
 #include "utils/lsyscache.h"
@@ -164,4 +166,17 @@ bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
       return false;
   }
   return true;
+}
+
+double round_reported_noise_sd(double noise_sd)
+{
+  if (noise_sd == 0.0)
+  {
+    return 0.0;
+  }
+  else
+  {
+    const double rounding_resolution = money_round(0.05 * noise_sd);
+    return rounding_resolution * ceil(noise_sd / rounding_resolution);
+  }
 }
