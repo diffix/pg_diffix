@@ -2,6 +2,7 @@
 
 ## Next version
   - Allow casts between `int4` and `int8`.
+  - Allow more metadata discovery queries.
 
 ## Version 1.0.1
   - Fixed some docs links.

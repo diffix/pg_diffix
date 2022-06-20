@@ -136,6 +136,10 @@ SELECT (SELECT city FROM test_validation);
 \dt+ empty_test_customers
 \d+ empty_test_customers
 
+-- Allow discovery statements
+SELECT EXISTS (SELECT FROM PG_Catalog.pg_tables WHERE schemaname='public' AND tablename='test_customers');
+SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public' AND table_name='test_customers');
+
 -- Settings and labels UDFs work
 SELECT * FROM diffix.show_settings() LIMIT 2;
 SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
