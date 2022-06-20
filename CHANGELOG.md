@@ -1,5 +1,8 @@
 # Changelog
 
+## Next version
+  - Allow casts between `int4` and `int8`.
+
 ## Version 1.0.1
   - Fixed some docs links.
   - Fixed setup script version.

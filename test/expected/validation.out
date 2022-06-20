@@ -69,6 +69,18 @@ SELECT COUNT(*) FROM test_validation
 -------
 (0 rows)
 
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::integer), ceil(id::integer), ceiling(id::integer), floor(id::integer);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::bigint), ceil(id::bigint), ceiling(id::bigint), floor(id::bigint);
+ count 
+-------
+(0 rows)
+
 SELECT
   diffix.round_by(id::numeric, 5),
   diffix.round_by(id::double precision, 5),
