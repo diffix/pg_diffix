@@ -223,32 +223,32 @@ static FuncExpr *make_int8_numeric(List *args, Oid location)
   return cast;
 }
 
-static OpExpr *make_div_operator_common(List *args, Oid location)
+static FuncExpr *make_div_operator_common(List *args, Oid location)
 {
-  OpExpr *division = makeNode(OpExpr);
-  division->opretset = false;
-  division->opcollid = 0;
+  FuncExpr *division = makeNode(FuncExpr);
+  division->funcretset = false;
+  division->funcvariadic = false;
+  division->funcformat = COERCE_EXPLICIT_CALL;
+  division->args = args;
+  division->funccollid = 0;
   division->inputcollid = 0;
   division->location = location;
-  division->args = args;
   return division;
 }
 
-static OpExpr *make_float8div(List *args, Oid location)
+static FuncExpr *make_float8div(List *args, Oid location)
 {
-  OpExpr *division = make_div_operator_common(args, location);
-  division->opno = 593;
-  division->opfuncid = F_FLOAT8DIV;
-  division->opresulttype = FLOAT8OID;
+  FuncExpr *division = make_div_operator_common(args, location);
+  division->funcid = F_FLOAT8DIV;
+  division->funcresulttype = FLOAT8OID;
   return division;
 }
 
-static OpExpr *make_numeric_div(List *args, Oid location)
+static FuncExpr *make_numeric_div(List *args, Oid location)
 {
-  OpExpr *division = make_div_operator_common(args, location);
-  division->opno = 1761;
-  division->opfuncid = F_NUMERIC_DIV;
-  division->opresulttype = NUMERICOID;
+  FuncExpr *division = make_div_operator_common(args, location);
+  division->funcid = F_NUMERIC_DIV;
+  division->funcresulttype = NUMERICOID;
   return division;
 }
 
@@ -269,7 +269,7 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
 
   FuncExpr *cast_sum;
   FuncExpr *cast_count;
-  OpExpr *division;
+  FuncExpr *division;
 
   /*
    * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,
@@ -324,7 +324,7 @@ static Node *rewrite_to_avg_noise_aggregator(Aggref *aggref, List *aid_refs)
   append_aid_args(count_aggref, aid_refs);
 
   FuncExpr *cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
-  OpExpr *division = make_float8div(list_make2(aggref, cast_count), aggref->location);
+  FuncExpr *division = make_float8div(list_make2(aggref, cast_count), aggref->location);
 
   return (Node *)division;
 }
