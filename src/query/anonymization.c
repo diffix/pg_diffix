@@ -154,24 +154,11 @@ static void rewrite_to_anon_aggregator(Aggref *aggref, List *aid_refs, Oid fnoid
 /* Intended for the denominator in the `avg(col)` rewritten to `sum(col) / count(col)`. */
 static Aggref *make_anon_count_value_aggref(const Aggref *source_aggref)
 {
-  Aggref *count_aggref = makeNode(Aggref);
+  Aggref *count_aggref = copyObjectImpl(source_aggref);
   count_aggref->aggfnoid = g_oid_cache.anon_count_value;
   count_aggref->aggtype = INT8OID;
-  count_aggref->aggcollid = source_aggref->aggcollid;
-  count_aggref->inputcollid = source_aggref->inputcollid;
-  count_aggref->aggtranstype = InvalidOid; /* Will be set by planner. */
-  count_aggref->aggargtypes = list_copy(source_aggref->aggargtypes);
-  count_aggref->aggdirectargs = list_copy(source_aggref->aggdirectargs);
-  count_aggref->args = list_copy(source_aggref->args);
-  count_aggref->aggorder = list_copy(source_aggref->aggorder);
-  count_aggref->aggdistinct = source_aggref->aggdistinct;
-  count_aggref->aggfilter = source_aggref->aggfilter;
   count_aggref->aggstar = false;
-  count_aggref->aggvariadic = source_aggref->aggvariadic;
-  count_aggref->aggkind = source_aggref->aggkind;
-  count_aggref->agglevelsup = source_aggref->agglevelsup;
-  count_aggref->aggsplit = source_aggref->aggsplit;
-  count_aggref->location = source_aggref->location;
+  count_aggref->aggdistinct = false;
   return count_aggref;
 }
 
@@ -182,8 +169,8 @@ static FuncExpr *make_cast_common(List *args, Oid location)
   cast->funcvariadic = false;
   cast->funcformat = COERCE_EXPLICIT_CAST;
   cast->args = args;
-  cast->funccollid = 0;  /* funccollid */
-  cast->inputcollid = 0; /* inputcollid */
+  cast->funccollid = 0;
+  cast->inputcollid = 0;
   cast->location = location;
   return cast;
 }
@@ -240,8 +227,8 @@ static OpExpr *make_div_operator_common(List *args, Oid location)
 {
   OpExpr *division = makeNode(OpExpr);
   division->opretset = false;
-  division->opcollid = 0; /* funccollid */
-  division->inputcollid = 0 /* inputcollid */,
+  division->opcollid = 0;
+  division->inputcollid = 0;
   division->location = location;
   division->args = args;
   return division;
@@ -314,7 +301,7 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
     division = make_float8div(list_make2(aggref, cast_count), aggref->location);
     break;
   default:
-    FAILWITH_LOCATION(aggref->location, "Unexpected avg aggregator type");
+    FAILWITH_LOCATION(aggref->location, "Unexpected avg(col) aggregator argument type.");
   }
 
   return (Node *)division;
