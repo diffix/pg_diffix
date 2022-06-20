@@ -302,12 +302,28 @@ SELECT SUM(id + 5) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
 LINE 1: SELECT SUM(id + 5) FROM test_validation;
                ^
+SELECT AVG(distinct id) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported distinct qualifier at aggregate argument.
+LINE 1: SELECT AVG(distinct id) FROM test_validation;
+               ^
+SELECT AVG(id + 5) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT AVG(id + 5) FROM test_validation;
+               ^
+SELECT diffix.avg_noise(distinct id) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported distinct qualifier at aggregate argument.
+LINE 1: SELECT diffix.avg_noise(distinct id) FROM test_validation;
+               ^
+SELECT diffix.avg_noise(id + 5) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT diffix.avg_noise(id + 5) FROM test_validation;
+               ^
 SELECT MIN(id) + MAX(id) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
 LINE 1: SELECT MIN(id) + MAX(id) FROM test_validation;
                ^
 SELECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH(city));
-ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
 LINE 1: ...ECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH...
                                                              ^
 SELECT count(city ORDER BY city) FROM test_validation;

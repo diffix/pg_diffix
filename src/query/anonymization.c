@@ -9,6 +9,7 @@
 #include "optimizer/tlist.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
+#include "utils/fmgroids.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
 
@@ -150,6 +151,197 @@ static void rewrite_to_anon_aggregator(Aggref *aggref, List *aid_refs, Oid fnoid
   append_aid_args(aggref, aid_refs);
 }
 
+/* Intended for the denominator in the `avg(col)` rewritten to `sum(col) / count(col)`. */
+static Aggref *make_anon_count_value_aggref(const Aggref *source_aggref)
+{
+  Aggref *count_aggref = makeNode(Aggref);
+  count_aggref->aggfnoid = g_oid_cache.anon_count_value;
+  count_aggref->aggtype = INT8OID;
+  count_aggref->aggcollid = source_aggref->aggcollid;
+  count_aggref->inputcollid = source_aggref->inputcollid;
+  count_aggref->aggtranstype = InvalidOid; /* Will be set by planner. */
+  count_aggref->aggargtypes = list_copy(source_aggref->aggargtypes);
+  count_aggref->aggdirectargs = list_copy(source_aggref->aggdirectargs);
+  count_aggref->args = list_copy(source_aggref->args);
+  count_aggref->aggorder = list_copy(source_aggref->aggorder);
+  count_aggref->aggdistinct = source_aggref->aggdistinct;
+  count_aggref->aggfilter = source_aggref->aggfilter;
+  count_aggref->aggstar = false;
+  count_aggref->aggvariadic = source_aggref->aggvariadic;
+  count_aggref->aggkind = source_aggref->aggkind;
+  count_aggref->agglevelsup = source_aggref->agglevelsup;
+  count_aggref->aggsplit = source_aggref->aggsplit;
+  count_aggref->location = source_aggref->location;
+  return count_aggref;
+}
+
+static FuncExpr *make_cast_common(List *args, Oid location)
+{
+  FuncExpr *cast = makeNode(FuncExpr);
+  cast->funcretset = false;
+  cast->funcvariadic = false;
+  cast->funcformat = COERCE_EXPLICIT_CAST;
+  cast->args = args;
+  cast->funccollid = 0;  /* funccollid */
+  cast->inputcollid = 0; /* inputcollid */
+  cast->location = location;
+  return cast;
+}
+
+static FuncExpr *make_i4tod(List *args, Oid location)
+{
+  FuncExpr *cast = make_cast_common(args, location);
+#if PG_MAJORVERSION_NUM == 13
+  cast->funcid = F_I4TOD;
+#elif PG_MAJORVERSION_NUM >= 14
+  cast->funcid = F_FLOAT8_INT4;
+#endif
+  cast->funcresulttype = FLOAT8OID;
+  return cast;
+}
+
+static FuncExpr *make_ftod(List *args, Oid location)
+{
+  FuncExpr *cast = make_cast_common(args, location);
+#if PG_MAJORVERSION_NUM == 13
+  cast->funcid = F_FTOD;
+#elif PG_MAJORVERSION_NUM >= 14
+  cast->funcid = F_FLOAT8_FLOAT4;
+#endif
+  cast->funcresulttype = FLOAT8OID;
+  return cast;
+}
+
+static FuncExpr *make_int4_numeric(List *args, Oid location)
+{
+  FuncExpr *cast = make_cast_common(args, location);
+#if PG_MAJORVERSION_NUM == 13
+  cast->funcid = F_INT4_NUMERIC;
+#elif PG_MAJORVERSION_NUM >= 14
+  cast->funcid = F_NUMERIC_INT4;
+#endif
+  cast->funcresulttype = NUMERICOID;
+  return cast;
+}
+
+static FuncExpr *make_int8_numeric(List *args, Oid location)
+{
+  FuncExpr *cast = make_cast_common(args, location);
+#if PG_MAJORVERSION_NUM == 13
+  cast->funcid = F_INT8_NUMERIC;
+#elif PG_MAJORVERSION_NUM >= 14
+  cast->funcid = F_NUMERIC_INT8;
+#endif
+  cast->funcresulttype = NUMERICOID;
+  return cast;
+}
+
+static OpExpr *make_div_operator_common(List *args, Oid location)
+{
+  OpExpr *division = makeNode(OpExpr);
+  division->opretset = false;
+  division->opcollid = 0; /* funccollid */
+  division->inputcollid = 0 /* inputcollid */,
+  division->location = location;
+  division->args = args;
+  return division;
+}
+
+static OpExpr *make_float8div(List *args, Oid location)
+{
+  OpExpr *division = make_div_operator_common(args, location);
+  division->opno = 593;
+  division->opfuncid = F_FLOAT8DIV;
+  division->opresulttype = FLOAT8OID;
+  return division;
+}
+
+static OpExpr *make_numeric_div(List *args, Oid location)
+{
+  OpExpr *division = make_div_operator_common(args, location);
+  division->opno = 1761;
+  division->opfuncid = F_NUMERIC_DIV;
+  division->opresulttype = NUMERICOID;
+  return division;
+}
+
+/*
+ * The `aggref` expected to be the `avg(col)` is going to be mutated into a `sum(col)`.
+ * A `count(col)` will be instantiated and put together into a `sum(col) / count(col)` expr.
+ */
+static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_sum;
+  aggref->aggstar = false;
+  aggref->aggdistinct = false;
+
+  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
+
+  append_aid_args(aggref, aid_refs);
+  append_aid_args(count_aggref, aid_refs);
+
+  FuncExpr *cast_sum;
+  FuncExpr *cast_count;
+  OpExpr *division;
+
+  /*
+   * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,
+   * as documented here: https://www.postgresql.org/docs/current/functions-aggregate.html.
+   */
+  switch (list_nth_oid(aggref->aggargtypes, 0))
+  {
+  case INT2OID:
+  case INT4OID:
+    aggref->aggtype = INT8OID;
+    cast_sum = make_int8_numeric(list_make1(aggref), aggref->location);
+    cast_count = make_int4_numeric(list_make1(count_aggref), aggref->location);
+    division = make_numeric_div(list_make2(cast_sum, cast_count), aggref->location);
+    break;
+  case INT8OID:
+    aggref->aggtype = NUMERICOID;
+    cast_count = make_int4_numeric(list_make1(count_aggref), aggref->location);
+    division = make_numeric_div(list_make2(aggref, cast_count), aggref->location);
+    break;
+  case FLOAT4OID:
+    aggref->aggtype = FLOAT4OID;
+    cast_sum = make_ftod(list_make1(aggref), aggref->location);
+    cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
+    division = make_float8div(list_make2(cast_sum, cast_count), aggref->location);
+    break;
+  case FLOAT8OID:
+    aggref->aggtype = FLOAT8OID;
+    cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
+    division = make_float8div(list_make2(aggref, cast_count), aggref->location);
+    break;
+  default:
+    FAILWITH_LOCATION(aggref->location, "Unexpected avg aggregator type");
+  }
+
+  return (Node *)division;
+}
+
+/*
+ * The `aggref` expected to be the `avg_noise(col)` is going to be mutated into a `sum_noise(col)`.
+ * A `count(col)` will be instantiated and put together into a `sum_noise(col) / count(col)` expr.
+ */
+static Node *rewrite_to_avg_noise_aggregator(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_sum_noise;
+  aggref->aggtype = FLOAT8OID;
+  aggref->aggstar = false;
+  aggref->aggdistinct = false;
+
+  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
+
+  append_aid_args(aggref, aid_refs);
+  append_aid_args(count_aggref, aid_refs);
+
+  FuncExpr *cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
+  OpExpr *division = make_float8div(list_make2(aggref, cast_count), aggref->location);
+
+  return (Node *)division;
+}
+
 static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
 {
   if (node == NULL)
@@ -172,6 +364,8 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value);
     else if (is_sum_oid(aggfnoid))
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_sum);
+    else if (is_avg_oid(aggfnoid))
+      return rewrite_to_avg_aggregator(aggref, aid_refs);
     else if (aggfnoid == g_oid_cache.count_star_noise)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_star_noise);
     else if (aggfnoid == g_oid_cache.count_value_noise && aggref->aggdistinct)
@@ -180,6 +374,8 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value_noise);
     else if (aggfnoid == g_oid_cache.sum_noise)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_sum_noise);
+    else if (aggfnoid == g_oid_cache.avg_noise)
+      return rewrite_to_avg_noise_aggregator(aggref, aid_refs);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");

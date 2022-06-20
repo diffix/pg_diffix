@@ -27,10 +27,17 @@ void oid_cache_init(void)
   g_oid_cache.sum_numeric = lookup_function(NULL, "sum", 1, (Oid[]){NUMERICOID});
   g_oid_cache.sum_float4 = lookup_function(NULL, "sum", 1, (Oid[]){FLOAT4OID});
   g_oid_cache.sum_float8 = lookup_function(NULL, "sum", 1, (Oid[]){FLOAT8OID});
+  g_oid_cache.avg_int2 = lookup_function(NULL, "avg", 1, (Oid[]){INT2OID});
+  g_oid_cache.avg_int4 = lookup_function(NULL, "avg", 1, (Oid[]){INT4OID});
+  g_oid_cache.avg_int8 = lookup_function(NULL, "avg", 1, (Oid[]){INT8OID});
+  g_oid_cache.avg_numeric = lookup_function(NULL, "avg", 1, (Oid[]){NUMERICOID});
+  g_oid_cache.avg_float4 = lookup_function(NULL, "avg", 1, (Oid[]){FLOAT4OID});
+  g_oid_cache.avg_float8 = lookup_function(NULL, "avg", 1, (Oid[]){FLOAT8OID});
 
   g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, (Oid[]){});
   g_oid_cache.count_value_noise = lookup_function("diffix", "count_noise", 1, (Oid[]){ANYOID});
   g_oid_cache.sum_noise = lookup_function("diffix", "sum_noise", 1, (Oid[]){ANYOID});
+  g_oid_cache.avg_noise = lookup_function("diffix", "avg_noise", 1, (Oid[]){ANYOID});
 
   g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, (Oid[]){});
   g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
@@ -62,6 +69,12 @@ bool is_sum_oid(Oid aggoid)
 {
   return aggoid == g_oid_cache.sum_int2 || aggoid == g_oid_cache.sum_int4 || aggoid == g_oid_cache.sum_int8 ||
          aggoid == g_oid_cache.sum_numeric || aggoid == g_oid_cache.sum_float4 || aggoid == g_oid_cache.sum_float8;
+}
+
+bool is_avg_oid(Oid aggoid)
+{
+  return aggoid == g_oid_cache.avg_int2 || aggoid == g_oid_cache.avg_int4 || aggoid == g_oid_cache.avg_int8 ||
+         aggoid == g_oid_cache.avg_numeric || aggoid == g_oid_cache.avg_float4 || aggoid == g_oid_cache.avg_float8;
 }
 
 static Oid lookup_function(char *namespace, char *name, int num_args, Oid *arg_types)
