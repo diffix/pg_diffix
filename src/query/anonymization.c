@@ -162,94 +162,50 @@ static Aggref *make_anon_count_value_aggref(const Aggref *source_aggref)
   return count_aggref;
 }
 
-static FuncExpr *make_cast_common(List *args, Oid location)
+static FuncExpr *make_i4tod(List *args)
 {
-  FuncExpr *cast = makeNode(FuncExpr);
-  cast->funcretset = false;
-  cast->funcvariadic = false;
-  cast->funcformat = COERCE_EXPLICIT_CAST;
-  cast->args = args;
-  cast->funccollid = 0;
-  cast->inputcollid = 0;
-  cast->location = location;
-  return cast;
-}
-
-static FuncExpr *make_i4tod(List *args, Oid location)
-{
-  FuncExpr *cast = make_cast_common(args, location);
 #if PG_MAJORVERSION_NUM == 13
-  cast->funcid = F_I4TOD;
+  return makeFuncExpr(F_I4TOD, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #elif PG_MAJORVERSION_NUM >= 14
-  cast->funcid = F_FLOAT8_INT4;
+  return makeFuncExpr(F_FLOAT8_INT4, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #endif
-  cast->funcresulttype = FLOAT8OID;
-  return cast;
 }
 
-static FuncExpr *make_ftod(List *args, Oid location)
+static FuncExpr *make_ftod(List *args)
 {
-  FuncExpr *cast = make_cast_common(args, location);
 #if PG_MAJORVERSION_NUM == 13
-  cast->funcid = F_FTOD;
+  return makeFuncExpr(F_FTOD, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #elif PG_MAJORVERSION_NUM >= 14
-  cast->funcid = F_FLOAT8_FLOAT4;
+  return makeFuncExpr(F_FLOAT8_FLOAT4, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #endif
-  cast->funcresulttype = FLOAT8OID;
-  return cast;
 }
 
-static FuncExpr *make_int4_numeric(List *args, Oid location)
+static FuncExpr *make_int4_numeric(List *args)
 {
-  FuncExpr *cast = make_cast_common(args, location);
 #if PG_MAJORVERSION_NUM == 13
-  cast->funcid = F_INT4_NUMERIC;
+  return makeFuncExpr(F_INT4_NUMERIC, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #elif PG_MAJORVERSION_NUM >= 14
-  cast->funcid = F_NUMERIC_INT4;
+  return makeFuncExpr(F_NUMERIC_INT4, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #endif
-  cast->funcresulttype = NUMERICOID;
-  return cast;
 }
 
-static FuncExpr *make_int8_numeric(List *args, Oid location)
+static FuncExpr *make_int8_numeric(List *args)
 {
-  FuncExpr *cast = make_cast_common(args, location);
 #if PG_MAJORVERSION_NUM == 13
-  cast->funcid = F_INT8_NUMERIC;
+  return makeFuncExpr(F_INT8_NUMERIC, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #elif PG_MAJORVERSION_NUM >= 14
-  cast->funcid = F_NUMERIC_INT8;
+  return makeFuncExpr(F_NUMERIC_INT8, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
 #endif
-  cast->funcresulttype = NUMERICOID;
-  return cast;
 }
 
-static FuncExpr *make_div_operator_common(List *args, Oid location)
+static FuncExpr *make_float8div(List *args)
 {
-  FuncExpr *division = makeNode(FuncExpr);
-  division->funcretset = false;
-  division->funcvariadic = false;
-  division->funcformat = COERCE_EXPLICIT_CALL;
-  division->args = args;
-  division->funccollid = 0;
-  division->inputcollid = 0;
-  division->location = location;
-  return division;
+  return makeFuncExpr(F_FLOAT8DIV, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CALL);
 }
 
-static FuncExpr *make_float8div(List *args, Oid location)
+static FuncExpr *make_numeric_div(List *args)
 {
-  FuncExpr *division = make_div_operator_common(args, location);
-  division->funcid = F_FLOAT8DIV;
-  division->funcresulttype = FLOAT8OID;
-  return division;
-}
-
-static FuncExpr *make_numeric_div(List *args, Oid location)
-{
-  FuncExpr *division = make_div_operator_common(args, location);
-  division->funcid = F_NUMERIC_DIV;
-  division->funcresulttype = NUMERICOID;
-  return division;
+  return makeFuncExpr(F_NUMERIC_DIV, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CALL);
 }
 
 /*
@@ -280,25 +236,25 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
   case INT2OID:
   case INT4OID:
     aggref->aggtype = INT8OID;
-    cast_sum = make_int8_numeric(list_make1(aggref), aggref->location);
-    cast_count = make_int4_numeric(list_make1(count_aggref), aggref->location);
-    division = make_numeric_div(list_make2(cast_sum, cast_count), aggref->location);
+    cast_sum = make_int8_numeric(list_make1(aggref));
+    cast_count = make_int4_numeric(list_make1(count_aggref));
+    division = make_numeric_div(list_make2(cast_sum, cast_count));
     break;
   case INT8OID:
     aggref->aggtype = NUMERICOID;
-    cast_count = make_int4_numeric(list_make1(count_aggref), aggref->location);
-    division = make_numeric_div(list_make2(aggref, cast_count), aggref->location);
+    cast_count = make_int4_numeric(list_make1(count_aggref));
+    division = make_numeric_div(list_make2(aggref, cast_count));
     break;
   case FLOAT4OID:
     aggref->aggtype = FLOAT4OID;
-    cast_sum = make_ftod(list_make1(aggref), aggref->location);
-    cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
-    division = make_float8div(list_make2(cast_sum, cast_count), aggref->location);
+    cast_sum = make_ftod(list_make1(aggref));
+    cast_count = make_i4tod(list_make1(count_aggref));
+    division = make_float8div(list_make2(cast_sum, cast_count));
     break;
   case FLOAT8OID:
     aggref->aggtype = FLOAT8OID;
-    cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
-    division = make_float8div(list_make2(aggref, cast_count), aggref->location);
+    cast_count = make_i4tod(list_make1(count_aggref));
+    division = make_float8div(list_make2(aggref, cast_count));
     break;
   default:
     FAILWITH_LOCATION(aggref->location, "Unexpected avg(col) aggregator argument type.");
@@ -323,8 +279,8 @@ static Node *rewrite_to_avg_noise_aggregator(Aggref *aggref, List *aid_refs)
   append_aid_args(aggref, aid_refs);
   append_aid_args(count_aggref, aid_refs);
 
-  FuncExpr *cast_count = make_i4tod(list_make1(count_aggref), aggref->location);
-  FuncExpr *division = make_float8div(list_make2(aggref, cast_count), aggref->location);
+  FuncExpr *cast_count = make_i4tod(list_make1(count_aggref));
+  FuncExpr *division = make_float8div(list_make2(aggref, cast_count));
 
   return (Node *)division;
 }
