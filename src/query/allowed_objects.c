@@ -10,7 +10,7 @@
 #include "pg_diffix/utils.h"
 
 static const char *const g_allowed_casts[] = {
-    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof",
+    "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof", "int48", "int84",
     "ftod", "dtof",
     "int4_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
@@ -59,10 +59,8 @@ static const char *const g_pg_catalog_allowed_rels[] = {
     "pg_opclass", "pg_operator", "pg_opfamily", "pg_policy", "pg_prepared_statements", "pg_prepared_xacts", "pg_publication",
     "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_seclabel", "pg_seclabels", "pg_sequence", "pg_settings", "pg_shadow",
     "pg_shdepend", "pg_shdescription", "pg_shseclabel", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace",
-    "pg_trigger", "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user",
-    /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
-    "pg_proc",
-    /**/
+    "pg_trigger", "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user", "pg_tables", "pg_matviews",
+    "pg_indexes", "pg_proc" /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
 };
 
 static AllowedCols g_pg_catalog_allowed_cols[] = {

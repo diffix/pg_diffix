@@ -51,6 +51,8 @@ void verify_utility_command(Node *utility_stmt)
     case T_LockStmt:
     case T_CheckPointStmt:
     case T_DeclareCursorStmt:
+    case T_DeallocateStmt:
+    case T_FetchStmt:
       break;
     default:
       FAILWITH("Statement requires direct access level.");

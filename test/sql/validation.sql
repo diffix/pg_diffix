@@ -54,6 +54,12 @@ SELECT COUNT(*) FROM test_validation
 SELECT COUNT(*) FROM test_validation
   GROUP BY round(id::numeric), ceil(id::numeric), ceiling(id::numeric), floor(id::numeric);
 
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::integer), ceil(id::integer), ceiling(id::integer), floor(id::integer);
+
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::bigint), ceil(id::bigint), ceiling(id::bigint), floor(id::bigint);
+
 SELECT
   diffix.round_by(id::numeric, 5),
   diffix.round_by(id::double precision, 5),
@@ -129,6 +135,10 @@ SELECT (SELECT city FROM test_validation);
 \d empty_test_customers
 \dt+ empty_test_customers
 \d+ empty_test_customers
+
+-- Allow discovery statements
+SELECT EXISTS (SELECT FROM PG_Catalog.pg_tables WHERE schemaname='public' AND tablename='test_customers');
+SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public' AND table_name='test_customers');
 
 -- Settings and labels UDFs work
 SELECT * FROM diffix.show_settings() LIMIT 2;

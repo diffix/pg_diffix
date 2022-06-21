@@ -69,6 +69,18 @@ SELECT COUNT(*) FROM test_validation
 -------
 (0 rows)
 
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::integer), ceil(id::integer), ceiling(id::integer), floor(id::integer);
+ count 
+-------
+(0 rows)
+
+SELECT COUNT(*) FROM test_validation
+  GROUP BY round(id::bigint), ceil(id::bigint), ceiling(id::bigint), floor(id::bigint);
+ count 
+-------
+(0 rows)
+
 SELECT
   diffix.round_by(id::numeric, 5),
   diffix.round_by(id::double precision, 5),
@@ -238,6 +250,19 @@ Indexes:
  discount | real    |           |          |         | plain    |              | 
 Indexes:
     "empty_test_customers_pkey" PRIMARY KEY, btree (id)
+
+-- Allow discovery statements
+SELECT EXISTS (SELECT FROM PG_Catalog.pg_tables WHERE schemaname='public' AND tablename='test_customers');
+ exists 
+--------
+ t
+(1 row)
+
+SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public' AND table_name='test_customers');
+ exists 
+--------
+ t
+(1 row)
 
 -- Settings and labels UDFs work
 SELECT * FROM diffix.show_settings() LIMIT 2;
