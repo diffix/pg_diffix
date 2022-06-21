@@ -218,6 +218,14 @@ CREATE AGGREGATE sum_noise(value "any") (
   finalfunc_modify = read_write
 );
 
+CREATE AGGREGATE avg_noise(value "any") (
+  sfunc = dummy_agg_noise_transfn,
+  stype = AnonAggState,
+  finalfunc = dummy_agg_noise_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
 /* ----------------------------------------------------------------
  * Anonymizing aggregators
  * ----------------------------------------------------------------

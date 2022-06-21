@@ -38,6 +38,18 @@ SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
 SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
 
 ----------------------------------------------------------------
+-- Basic queries - avg
+----------------------------------------------------------------
+
+SELECT city, AVG(discount), diffix.avg_noise(discount) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(discount) / COUNT(discount), diffix.sum_noise(discount) / COUNT(discount) FROM test_customers GROUP BY 1;
+
+SELECT city, AVG(id), diffix.avg_noise(id) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(id)::float8 / COUNT(id), diffix.sum_noise(id) / COUNT(id) FROM test_customers GROUP BY 1;
+
+----------------------------------------------------------------
 -- Reporting noise
 ----------------------------------------------------------------
 
