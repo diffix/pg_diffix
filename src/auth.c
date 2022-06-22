@@ -99,10 +99,11 @@ static bool is_metadata_relation(Oid relation_oid)
   if (namespace_oid == PG_CATALOG_NAMESPACE)
     return true; /* PG_CATALOG relations are checked in `ExecutorCheckPerms` hook. */
 
-  if (strcmp(get_namespace_name(namespace_oid), "information_schema") == 0)
-    return true; /* INFORMATION_SCHEMA relations are safe to query. */
+  char *namespace_name = get_namespace_name(namespace_oid);
+  bool result = strcmp(namespace_name, "information_schema") == 0; /* INFORMATION_SCHEMA relations are safe to query. */
+  pfree(namespace_name);
 
-  return false;
+  return result;
 }
 
 bool is_personal_relation(Oid relation_oid)
