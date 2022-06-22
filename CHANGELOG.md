@@ -1,6 +1,11 @@
 # Changelog
 
 ## Next version
+  - Allow casts between `int4` and `int8`.
+  - Allow more metadata discovery queries.
+  - Allow more statement types.
+
+## Version 1.0.1
   - Fixed some docs links.
   - Fixed setup script version.
 

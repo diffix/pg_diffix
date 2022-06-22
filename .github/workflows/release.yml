@@ -22,4 +22,4 @@ jobs:
         with:
           body_path: CHANGELOG.md
           draft: true
-          prerelease: true
+          prerelease: false

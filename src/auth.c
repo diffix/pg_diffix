@@ -92,9 +92,18 @@ AccessLevel get_session_access_level(void)
   return (AccessLevel)g_config.session_access_level;
 }
 
-static bool is_pg_catalog_relation(Oid relation_oid)
+static bool is_metadata_relation(Oid relation_oid)
 {
-  return get_rel_namespace(relation_oid) == PG_CATALOG_NAMESPACE;
+  Oid namespace_oid = get_rel_namespace(relation_oid);
+
+  if (namespace_oid == PG_CATALOG_NAMESPACE)
+    return true; /* PG_CATALOG relations are checked in `ExecutorCheckPerms` hook. */
+
+  char *namespace_name = get_namespace_name(namespace_oid);
+  bool result = strcmp(namespace_name, "information_schema") == 0; /* INFORMATION_SCHEMA relations are safe to query. */
+  pfree(namespace_name);
+
+  return result;
 }
 
 bool is_personal_relation(Oid relation_oid)
@@ -103,8 +112,8 @@ bool is_personal_relation(Oid relation_oid)
   const char *seclabel = GetSecurityLabel(&relation_object, PROVIDER_TAG);
 
   if (seclabel == NULL)
-    if (g_config.treat_unmarked_tables_as_public || is_pg_catalog_relation(relation_oid))
-      return false; /* PG_CATALOG relations are checked in `ExecutorCheckPerms` hook. */
+    if (g_config.treat_unmarked_tables_as_public || is_metadata_relation(relation_oid))
+      return false;
     else
       FAILWITH_CODE(ERRCODE_INSUFFICIENT_PRIVILEGE,
                     "Tables without an anonymization label can't be accessed in anonymized mode.");
