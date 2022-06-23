@@ -9,6 +9,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "parser/parse_coerce.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
@@ -271,7 +272,7 @@ static void verify_bucket_expression(Node *node)
 
 static void verify_substring(FuncExpr *func_expr)
 {
-  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
+  Node *node = unwrap_cast(lsecond(func_expr->args));
   Assert(IsA(node, Const)); /* Checked by prior validations */
   Const *second_arg = (Const *)node;
 
@@ -302,7 +303,7 @@ static void verify_untrusted_bucket_expression(Node *node)
     if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr);
     else if (is_implicit_range_udf_untrusted(func_expr->funcid))
-      verify_bin_size((Node *)list_nth(func_expr->args, 1));
+      verify_bin_size(lsecond(func_expr->args));
     else if (is_implicit_range_builtin_untrusted(func_expr->funcid))
       ;
     else
@@ -401,11 +402,26 @@ void collect_equalities_from_filters(Node *node, List **subjects, List **targets
   FAILWITH("Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.");
 }
 
+static Var *get_bucket_expression_column_ref(Node *bucket_expression)
+{
+  bucket_expression = unwrap_cast(bucket_expression);
+  if (IsA(bucket_expression, Var))
+    return (Var *)bucket_expression;
+  /* If the bucket expression is not a direct column reference, it means it is a simple function call. */
+  FuncExpr *func_expr = castNode(FuncExpr, bucket_expression);
+  return castNode(Var, unwrap_cast(linitial(func_expr->args)));
+}
+
+static void verify_aid_usage_in_filter(Node *bucket_expression, List *range_tables)
+{
+  Var *var_expr = get_bucket_expression_column_ref(bucket_expression);
+  RangeTblEntry *rte = rt_fetch(var_expr->varno, range_tables);
+  if (is_aid_column(rte->relid, var_expr->varattno))
+    FAILWITH("AID columns can't be referenced by pre-anonymization filters.");
+}
+
 static void verify_where(Query *query)
 {
-  if (get_session_access_level() == ACCESS_ANONYMIZED_UNTRUSTED)
-    NOT_SUPPORTED(query->jointree->quals, "pre-anonymization filters in untrusted mode");
-
   List *subjects = NIL, *targets = NIL;
   collect_equalities_from_filters(query->jointree->quals, &subjects, &targets);
 
@@ -413,6 +429,7 @@ static void verify_where(Query *query)
   forboth(subject_cell, subjects, target_cell, targets)
   {
     verify_bucket_expression(lfirst(subject_cell));
+    verify_aid_usage_in_filter(lfirst(subject_cell), query->rtable);
 
     if (!IsA(unwrap_cast(lfirst(target_cell)), Const))
       FAILWITH("Generalization expressions can only be matched against constants in pre-anonymization filters.");
