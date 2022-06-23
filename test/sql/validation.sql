@@ -278,6 +278,7 @@ SELECT diffix.floor_by(discount, 2.0) from test_validation;
 SELECT diffix.floor_by(discount, 0.2) from test_validation;
 SELECT diffix.floor_by(discount, 20.0) from test_validation;
 SELECT diffix.floor_by(discount, 50.0) from test_validation;
+SELECT count(*) FROM test_validation WHERE discount = 3;
 
 -- Get rejected because of invalid generalization parameters
 SELECT substring(city, 2, 2) from test_validation;
@@ -289,6 +290,3 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 SELECT ceil(discount) from test_validation;
 SELECT diffix.ceil_by(discount, 2) from test_validation;
-
--- Get rejected because of unsupported features
-SELECT count(*) FROM test_validation WHERE discount = 3;

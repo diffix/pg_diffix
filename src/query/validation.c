@@ -403,9 +403,6 @@ void collect_equalities_from_filters(Node *node, List **subjects, List **targets
 
 static void verify_where(Query *query)
 {
-  if (get_session_access_level() == ACCESS_ANONYMIZED_UNTRUSTED)
-    NOT_SUPPORTED(query->jointree->quals, "pre-anonymization filters in untrusted mode");
-
   List *subjects = NIL, *targets = NIL;
   collect_equalities_from_filters(query->jointree->quals, &subjects, &targets);
 

@@ -585,6 +585,12 @@ SELECT diffix.floor_by(discount, 50.0) from test_validation;
 ----------
 (0 rows)
 
+SELECT count(*) FROM test_validation WHERE discount = 3;
+ count 
+-------
+     0
+(1 row)
+
 -- Get rejected because of invalid generalization parameters
 SELECT substring(city, 2, 2) from test_validation;
 ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
@@ -615,6 +621,3 @@ SELECT diffix.ceil_by(discount, 2) from test_validation;
 ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.ceil_by(discount, 2) from test_validation;
                ^
--- Get rejected because of unsupported features
-SELECT count(*) FROM test_validation WHERE discount = 3;
-ERROR:  [PG_DIFFIX] Feature 'pre-anonymization filters in untrusted mode' is not currently supported.
