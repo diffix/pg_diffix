@@ -252,6 +252,40 @@ CREATE AGGREGATE avg_noise(value "any") (
   initcond = 0.0
 );
 
+/*
+ * count_histogram
+ */
+
+CREATE FUNCTION count_histogram_transfn(internal, value "any")
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION count_histogram_transfn(internal, value "any", bin_size bigint)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION count_histogram_finalfn(internal)
+RETURNS bigint[][]
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE AGGREGATE count_histogram(value "any") (
+  sfunc = count_histogram_transfn,
+  stype = internal,
+  finalfunc = count_histogram_finalfn
+);
+
+CREATE AGGREGATE count_histogram(value "any", bin_size bigint) (
+  sfunc = count_histogram_transfn,
+  stype = internal,
+  finalfunc = count_histogram_finalfn
+);
+
 /* ----------------------------------------------------------------
  * Anonymizing aggregators
  * ----------------------------------------------------------------
