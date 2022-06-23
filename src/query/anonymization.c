@@ -231,7 +231,7 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
    * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,
    * as documented here: https://www.postgresql.org/docs/current/functions-aggregate.html.
    */
-  switch (list_nth_oid(aggref->aggargtypes, 0))
+  switch (linitial_oid(aggref->aggargtypes))
   {
   case INT2OID:
   case INT4OID:

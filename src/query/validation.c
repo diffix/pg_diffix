@@ -271,7 +271,7 @@ static void verify_bucket_expression(Node *node)
 
 static void verify_substring(FuncExpr *func_expr)
 {
-  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
+  Node *node = unwrap_cast(lsecond(func_expr->args));
   Assert(IsA(node, Const)); /* Checked by prior validations */
   Const *second_arg = (Const *)node;
 
@@ -302,7 +302,7 @@ static void verify_untrusted_bucket_expression(Node *node)
     if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr);
     else if (is_implicit_range_udf_untrusted(func_expr->funcid))
-      verify_bin_size((Node *)list_nth(func_expr->args, 1));
+      verify_bin_size(lsecond(func_expr->args));
     else if (is_implicit_range_builtin_untrusted(func_expr->funcid))
       ;
     else

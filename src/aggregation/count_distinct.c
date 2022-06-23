@@ -157,7 +157,7 @@ static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum val
   while (start <= end)
   {
     int middle = start + (end - start) / 2;
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(list_nth_cell(per_aid_values, middle));
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)list_nth(per_aid_values, middle);
     if (entry->aid < aid)
     {
       start = middle + 1;
