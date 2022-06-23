@@ -402,19 +402,19 @@ void collect_equalities_from_filters(Node *node, List **subjects, List **targets
   FAILWITH("Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.");
 }
 
-static Var *get_bucket_expression_column_ref(Node *node)
+static Var *get_bucket_expression_column_ref(Node *bucket_expression)
 {
-  node = unwrap_cast(node);
-  if (IsA(node, Var))
-    return (Var *)node;
+  bucket_expression = unwrap_cast(bucket_expression);
+  if (IsA(bucket_expression, Var))
+    return (Var *)bucket_expression;
   /* If the bucket expression is not a direct column reference, it means it is a simple function call. */
-  FuncExpr *func_expr = castNode(FuncExpr, node);
+  FuncExpr *func_expr = castNode(FuncExpr, bucket_expression);
   return castNode(Var, unwrap_cast(linitial(func_expr->args)));
 }
 
-static void verify_aid_usage_in_filter(Node *node, List *range_tables)
+static void verify_aid_usage_in_filter(Node *bucket_expression, List *range_tables)
 {
-  Var *var_expr = get_bucket_expression_column_ref(node);
+  Var *var_expr = get_bucket_expression_column_ref(bucket_expression);
   RangeTblEntry *rte = rt_fetch(var_expr->varno, range_tables);
   if (is_aid_column(rte->relid, var_expr->varattno))
     FAILWITH("AID columns can't be referenced by pre-anonymization filters.");
