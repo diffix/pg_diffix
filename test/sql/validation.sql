@@ -223,6 +223,7 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY
 -- Get rejected because of invalid WHERE clauses
 SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
 SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
+SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
 
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;

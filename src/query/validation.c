@@ -9,6 +9,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "parser/parse_coerce.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
@@ -401,6 +402,24 @@ void collect_equalities_from_filters(Node *node, List **subjects, List **targets
   FAILWITH("Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.");
 }
 
+static Var *get_bucket_expression_column_ref(Node *node)
+{
+  node = unwrap_cast(node);
+  if (IsA(node, Var))
+    return (Var *)node;
+  /* If the bucket expression is not a direct column reference, it means it is a simple function call. */
+  FuncExpr *func_expr = castNode(FuncExpr, node);
+  return castNode(Var, unwrap_cast(linitial(func_expr->args)));
+}
+
+static void verify_aid_usage_in_filter(Node *node, List *range_tables)
+{
+  Var *var_expr = get_bucket_expression_column_ref(node);
+  RangeTblEntry *rte = rt_fetch(var_expr->varno, range_tables);
+  if (is_aid_column(rte->relid, var_expr->varattno))
+    FAILWITH("AID columns can't be referenced by pre-anonymization filters.");
+}
+
 static void verify_where(Query *query)
 {
   List *subjects = NIL, *targets = NIL;
@@ -410,6 +429,7 @@ static void verify_where(Query *query)
   forboth(subject_cell, subjects, target_cell, targets)
   {
     verify_bucket_expression(lfirst(subject_cell));
+    verify_aid_usage_in_filter(lfirst(subject_cell), query->rtable);
 
     if (!IsA(unwrap_cast(lfirst(target_cell)), Const))
       FAILWITH("Generalization expressions can only be matched against constants in pre-anonymization filters.");

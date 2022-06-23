@@ -432,6 +432,8 @@ SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
 ERROR:  [PG_DIFFIX] Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.
 SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
 ERROR:  [PG_DIFFIX] Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.
+SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
+ERROR:  [PG_DIFFIX] AID columns can't be referenced by pre-anonymization filters.
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
