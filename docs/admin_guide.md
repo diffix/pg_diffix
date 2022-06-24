@@ -1,6 +1,6 @@
 # Configuration
 
-This document descriptions of all the configuration commands, and detailed information about the configuration, behavior and recommended usage of `pg_diffix`. The [Administration Tutorial](admin_tutorial.md) contains simple step-by-step configuration instructions and several examples from real datasets.
+This reference contains descriptions of all the configuration commands, and detailed information about the configuration, behavior and recommended usage of `pg_diffix`. The [Administration Tutorial](admin_tutorial.md) contains simple step-by-step configuration instructions and several examples from real datasets, and is a good starting point.
 
 ## Background reading
 
