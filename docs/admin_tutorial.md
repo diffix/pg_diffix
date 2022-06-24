@@ -225,38 +225,40 @@ SELECT * FROM diffix.show_labels();
 
 The NYC Taxi database is named `raw_taxi`. It has a single table `rides`. The table `rides` has 29 columns:
 
-
-|       Column       |            Type             | 
-| -------            | -----------                 |
-|  med               | character varying(33)       |
-|  uid               | character varying(33)       |
-|  vendor_id         | character varying(3)        |
-|  rate_code         | smallint                    |
-|  sf_flag           | character varying(1)        |
-|  pickup_datetime   | timestamp without time zone |
-|  dropoff_datetime  | timestamp without time zone |
-|  passenger_count   | smallint                    |
-|  trip_time_in_secs | bigint                      |
-|  trip_distance     | numeric(8,2)                |
-|  pickup_longitude  | numeric(18,14)              |
-|  pickup_latitude   | numeric(18,14)              |
-|  dropoff_longitude | numeric(18,14)              |
-|  dropoff_latitude  | numeric(18,14)              |
-|  payment_type      | character varying(6)        |
-|  fare_amount       | numeric(8,2)                |
-|  surcharge         | numeric(8,2)                |
-|  mta_tax           | numeric(8,2)                |
-|  tip_amount        | numeric(8,2)                |
-|  tolls_amount      | numeric(8,2)                |
-|  total_amount      | numeric(8,2)                |
-|  lastname          | text                        |
-|  firstname         | text                        |
-|  birthdate         | date                        |
-|  gender            | text                        |
-|  ssn               | text                        |
-|  email             | text                        |
-|  street            | text                        |
-|  zip               | text                        |
+```
+    column_name    |          data_type
+-------------------+-----------------------------
+ mta_tax           | numeric
+ tip_amount        | numeric
+ tolls_amount      | numeric
+ total_amount      | numeric
+ pickup_datetime   | timestamp without time zone
+ dropoff_datetime  | timestamp without time zone
+ birthdate         | date
+ passenger_count   | smallint
+ trip_time_in_secs | bigint
+ trip_distance     | numeric
+ pickup_longitude  | numeric
+ pickup_latitude   | numeric
+ dropoff_longitude | numeric
+ dropoff_latitude  | numeric
+ rate_code         | smallint
+ fare_amount       | numeric
+ surcharge         | numeric
+ zip               | text
+ uid               | character varying
+ vendor_id         | character varying
+ sf_flag           | character varying
+ payment_type      | character varying
+ lastname          | text
+ firstname         | text
+ gender            | text
+ ssn               | text
+ email             | text
+ street            | text
+ med               | character varying
+(29 rows)
+```
 
 ### Generalizable types
 
