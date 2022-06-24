@@ -8,7 +8,7 @@ Following this are [several examples of real datasets](#real-examples) which dis
 
 # Simple Example
 
-## Installation
+## Installation (per PostgreSQL installation)
 
 1\. Install the packages required for building the extension:
 
@@ -28,7 +28,7 @@ sudo apt-get install pgxnclient
 sudo pgxn install pg_diffix
 ```
 
-## Activation
+## Activation (per database)
 
 1\. Connect to the database as a superuser:
 
@@ -48,35 +48,36 @@ CREATE EXTENSION pg_diffix;
 ALTER DATABASE test_db SET session_preload_libraries TO 'pg_diffix';
 ```
 
-## Configuration
+## User configuration (per database)
 
-1\. Label the test data as personal (requiring anonymization):
-
-```
-CALL diffix.mark_personal('test_table', 'id');
-```
-
-2\. Create an account for the analyst:
+1\. Create an account for the analyst:
 
 ```
 CREATE USER analyst_role WITH PASSWORD 'some_password';
 ```
 
-3\. Give the analyst read-only access to the test database:
+2\. Give the analyst read-only access to the test database:
 
 ```
 GRANT CONNECT ON DATABASE test_db TO analyst_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst_role;
 ```
 
-4\. Label the analyst as restricted and trusted:
+3\. Label the analyst as restricted and trusted:
 
 ```
 CALL diffix.mark_role('analyst_role', 'anonymized_trusted');
 ```
 
+## Anonymization configuration (per table)
 
-__That's it!__ The analyst can now connect to the database and issue (only) anonymizing queries against the test dataset.
+1\. Label the test data table as personal (requiring anonymization):
+
+```
+CALL diffix.mark_personal('test_table', 'id');
+```
+
+__That's it!__ The analyst can now connect to the database and issue (only) anonymizing queries against the test dataset. Refer to the [Administration Guide](admin_guide.md) for additional details, or if you wish to modify default anonymization parameters.
 
 # Real Examples
 
