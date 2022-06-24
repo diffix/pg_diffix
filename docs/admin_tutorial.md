@@ -50,7 +50,7 @@ ALTER DATABASE test_db SET session_preload_libraries TO 'pg_diffix';
 
 ## User configuration (per database)
 
-1\. Create an account for the analyst:
+1\. Create a user account for the analyst:
 
 ```
 CREATE USER analyst_role WITH PASSWORD 'some_password';
