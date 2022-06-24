@@ -1,6 +1,6 @@
 # Configuration
 
-This document provides detailed information about the configuration, behavior and recommended usage of `pg_diffix`.
+This document descriptions of all the configuration commands, and detailed information about the configuration, behavior and recommended usage of `pg_diffix`. The [Administration Tutorial](admin_tutorial.md) contains simple step-by-step configuration instructions and several examples from real datasets.
 
 ## Background reading
 
@@ -12,7 +12,7 @@ Extension behavior is controlled by __security labels__ and __settings__. Securi
 
 Only superusers can assign security labels. To remove a security label from an object, set it to `NULL`.
 
-The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
+The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension. Note that if this command fails, then probably `pg_diffix` has not been enabled for the database. See the [Administration Tutorial](admin_tutorial.md) for step-by-step instructions.
 
 The command `SELECT diffix.access_level();` displays the current access level of the active session.
 The access level depends on the current role's security label and the `session_access_level`/`default_access_level` settings.
