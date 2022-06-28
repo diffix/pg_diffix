@@ -901,7 +901,7 @@ static void unwrap_having_qual(Plan *plan)
   plan->qual = make_ands_implicit(having_qual);
 }
 
-static void rewrite_plan_list(List *plans, AnonQueryLinks *links)
+void rewrite_plan_list(List *plans, AnonQueryLinks *links)
 {
   ListCell *cell;
   foreach (cell, plans)

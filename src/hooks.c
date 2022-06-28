@@ -90,13 +90,11 @@ static PlannedStmt *pg_diffix_planner(
 
   AnonQueryLinks *links = prepare_query(query);
 
-  PlannedStmt *plan;
-  if (prev_planner_hook)
-    plan = prev_planner_hook(query, query_string, cursorOptions, boundParams);
-  else
-    plan = standard_planner(query, query_string, cursorOptions, boundParams);
+  planner_hook_type planner = (prev_planner_hook ? prev_planner_hook : standard_planner);
+  PlannedStmt *plan = planner(query, query_string, cursorOptions, boundParams);
 
   plan->planTree = rewrite_plan(plan->planTree, links);
+  rewrite_plan_list(plan->subplans, links);
 
   return plan;
 }

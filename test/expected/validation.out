@@ -169,6 +169,12 @@ SELECT 1 WHERE EXISTS (SELECT city FROM test_validation);
 ----------
 (0 rows)
 
+SELECT 'London' IN (SELECT city FROM test_validation);
+ ?column? 
+----------
+ f
+(1 row)
+
 -- Anonymizing leaf subqueries are supported.
 SELECT * FROM ( SELECT COUNT(*) FROM test_validation ) x;
  count 
