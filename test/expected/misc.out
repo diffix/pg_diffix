@@ -51,6 +51,12 @@ HAVING age IS NULL OR age > 40;
   64 |     2
 (3 rows)
 
+SELECT 'London' IN (SELECT city FROM test_customers);
+ ?column? 
+----------
+ f
+(1 row)
+
 -- Prevent post-processing filters from being pushed down
 EXPLAIN SELECT age, count(*)
 FROM test_patients

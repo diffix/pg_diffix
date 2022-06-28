@@ -94,6 +94,7 @@ static PlannedStmt *pg_diffix_planner(
   PlannedStmt *plan = planner(query, query_string, cursorOptions, boundParams);
 
   plan->planTree = rewrite_plan(plan->planTree, links);
+  rewrite_plan_list(plan->subplans, links);
 
   return plan;
 }
