@@ -3,6 +3,7 @@
 
 #include "access/attnum.h"
 #include "nodes/pg_list.h"
+#include "nodes/primnodes.h"
 
 #include "pg_diffix/aggregation/noise.h"
 
@@ -78,6 +79,7 @@
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor
 {
+  Expr *expr;    /* Expression of argument or NULL if unknown */
   Oid type_oid;  /* Type OID of argument */
   int16 typlen;  /* Length of argument type */
   bool typbyval; /* Whether argument type is by val */
@@ -89,6 +91,11 @@ typedef struct ArgsDescriptor
   int num_args;                              /* Number of arguments in function call */
   ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
 } ArgsDescriptor;
+
+/*
+ * Describes the transfn arguments of an anonymizing aggregator.
+ */
+extern ArgsDescriptor *build_args_desc(Aggref *aggref);
 
 typedef struct AnonAggFuncs AnonAggFuncs;
 typedef struct AnonAggState AnonAggState;

@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "fmgr.h"
+#include "nodes/nodeFuncs.h"
 #include "nodes/primnodes.h"
 #include "utils/lsyscache.h"
 
@@ -21,6 +22,31 @@ PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);
 PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
 PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
+
+ArgsDescriptor *build_args_desc(Aggref *aggref)
+{
+  List *args = aggref->args;
+
+  int num_args = 1 + list_length(args); /* First item is AnonAggState. */
+  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
+  args_desc->num_args = num_args;
+
+  args_desc->args[0].expr = NULL; /* Agg state has no expression. */
+  args_desc->args[0].type_oid = g_oid_cache.anon_agg_state;
+  args_desc->args[0].typlen = sizeof(Datum);
+  args_desc->args[0].typbyval = true;
+
+  for (int i = 1; i < num_args; i++)
+  {
+    TargetEntry *arg_tle = list_nth_node(TargetEntry, args, i - 1);
+    ArgDescriptor *arg_desc = &args_desc->args[i];
+    arg_desc->expr = arg_tle->expr;
+    arg_desc->type_oid = exprType((Node *)arg_tle->expr);
+    get_typlenbyval(arg_desc->type_oid, &arg_desc->typlen, &arg_desc->typbyval);
+  }
+
+  return args_desc;
+}
 
 const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
@@ -76,21 +102,6 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
   }
 }
 
-static ArgsDescriptor *get_args_desc(PG_FUNCTION_ARGS)
-{
-  int num_args = PG_NARGS();
-  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
-  args_desc->num_args = num_args;
-  for (int i = 0; i < num_args; i++)
-  {
-    ArgDescriptor *arg = &args_desc->args[i];
-    arg->type_oid = get_fn_expr_argtype(fcinfo->flinfo, i);
-    get_typlenbyval(arg->type_oid, &arg->typlen, &arg->typbyval);
-  }
-
-  return args_desc;
-}
-
 static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
 {
   if (!PG_ARGISNULL(0))
@@ -109,7 +120,7 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (unlikely(agg_funcs == NULL))
     FAILWITH("Unsupported anonymizing aggregator (OID %u)", aggref->aggfnoid);
 
-  return create_anon_agg_state(agg_funcs, bucket_context, get_args_desc(fcinfo));
+  return create_anon_agg_state(agg_funcs, bucket_context, build_args_desc(aggref));
 }
 
 Datum anon_agg_state_input(PG_FUNCTION_ARGS)

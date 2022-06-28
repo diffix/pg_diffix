@@ -10,7 +10,7 @@
 #define SH_ELEMENT_TYPE AidTrackerHashEntry
 #define SH_KEY aid
 #define SH_KEY_TYPE aid_t
-#define SH_EQUAL(tb, a, b) a == b
+#define SH_EQUAL(tb, a, b) (a == b)
 #define SH_HASH_KEY(tb, key) (uint32) key /* `key` is already a hash */
 #define SH_SCOPE inline
 #define SH_DEFINE
