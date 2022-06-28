@@ -19,8 +19,12 @@ typedef struct AnonQueryLinks AnonQueryLinks;
 extern AnonQueryLinks *compile_query(Query *query, List *personal_relations);
 
 /*
+ * Calls `rewrite_plan` for each item in a list of Plan nodes.
+ */
+extern void rewrite_plan_list(List *plans, AnonQueryLinks *links);
+
+/*
  * Wraps anonymizing Agg nodes with BucketScan nodes. Does nothing if links is NULL.
- * Frees memory associated with links after rewriting.
  */
 extern Plan *rewrite_plan(Plan *plan, AnonQueryLinks *links);
 

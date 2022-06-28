@@ -101,6 +101,7 @@ SELECT city FROM test_validation UNION SELECT city FROM test_validation;
 -- Anonymizing sublinks are supported.
 SELECT EXISTS (SELECT city FROM test_validation);
 SELECT 1 WHERE EXISTS (SELECT city FROM test_validation);
+SELECT 'London' IN (SELECT city FROM test_validation);
 
 -- Anonymizing leaf subqueries are supported.
 SELECT * FROM ( SELECT COUNT(*) FROM test_validation ) x;

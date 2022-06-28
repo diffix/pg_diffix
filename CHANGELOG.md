@@ -4,6 +4,7 @@
   - Allow casts between `int4` and `int8`.
   - Allow more metadata discovery queries.
   - Allow more statement types.
+  - Fixed handling of `IN (subquery)` expressions.
 
 ## Version 1.0.1
   - Fixed some docs links.

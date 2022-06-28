@@ -35,6 +35,8 @@ FROM test_patients
 GROUP BY age
 HAVING age IS NULL OR age > 40;
 
+SELECT 'London' IN (SELECT city FROM test_customers);
+
 -- Prevent post-processing filters from being pushed down
 EXPLAIN SELECT age, count(*)
 FROM test_patients
