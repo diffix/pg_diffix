@@ -21,8 +21,6 @@ PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);
 PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
 PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
-PG_FUNCTION_INFO_V1(dummy_agg_noise_transfn);
-PG_FUNCTION_INFO_V1(dummy_agg_noise_finalfn);
 
 const AnonAggFuncs *find_agg_funcs(Oid oid)
 {
@@ -142,20 +140,6 @@ Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
   PG_RETURN_AGG_STATE(state);
-}
-
-/* 
- * These functions should never be called except in `direct` access level. Non-anonymized `_noise` aggregators are to be
- * always rewritten to their anonymized versions. In `direct`, they return the true result: 0.0 noise.
- */
-Datum dummy_agg_noise_transfn(PG_FUNCTION_ARGS)
-{
-  PG_RETURN_AGG_STATE(0);
-}
-
-Datum dummy_agg_noise_finalfn(PG_FUNCTION_ARGS)
-{
-  PG_RETURN_AGG_STATE(0);
 }
 
 bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count)
