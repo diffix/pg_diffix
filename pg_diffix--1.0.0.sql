@@ -12,6 +12,29 @@ DO $$ BEGIN
 END $$ LANGUAGE plpgsql;
 
 /* ----------------------------------------------------------------
+ * Internal functions
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION placeholder_func(anyelement)
+RETURNS anyelement
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION placeholder_func(anyelement, "any")
+RETURNS anyelement
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION internal_qual_wrapper(boolean)
+RETURNS boolean
+AS 'MODULE_PATHNAME'
+LANGUAGE C VOLATILE
+SECURITY INVOKER SET search_path = '';
+
+/* ----------------------------------------------------------------
  * Utilities
  * ----------------------------------------------------------------
  */
@@ -159,71 +182,33 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
-
 /* ----------------------------------------------------------------
  * Non-anonymizing aggregators
  * ----------------------------------------------------------------
  */
 
-/*
- * Present here only to provide the proper signatures for the aggregators available
- * to the non-direct access users.
- */
-
-CREATE FUNCTION dummy_agg_noise_transfn(AnonAggState)
-RETURNS AnonAggState
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE
-SECURITY INVOKER SET search_path = '';
-
-CREATE FUNCTION dummy_agg_noise_transfn(AnonAggState, value "any")
-RETURNS AnonAggState
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE
-SECURITY INVOKER SET search_path = '';
-
-CREATE FUNCTION dummy_agg_noise_finalfn(AnonAggState)
-RETURNS float8
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE
-SECURITY INVOKER SET search_path = '';
-
-CREATE FUNCTION dummy_agg_noise_finalfn(AnonAggState, value "any")
-RETURNS float8
-AS 'MODULE_PATHNAME'
-LANGUAGE C STABLE
-SECURITY INVOKER SET search_path = '';
-
 CREATE AGGREGATE count_noise(*) (
-  sfunc = dummy_agg_noise_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_agg_noise_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
 );
 
 CREATE AGGREGATE count_noise(value "any") (
-  sfunc = dummy_agg_noise_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_agg_noise_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
 );
 
 CREATE AGGREGATE sum_noise(value "any") (
-  sfunc = dummy_agg_noise_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_agg_noise_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
 );
 
 CREATE AGGREGATE avg_noise(value "any") (
-  sfunc = dummy_agg_noise_transfn,
-  stype = AnonAggState,
-  finalfunc = dummy_agg_noise_finalfn,
-  finalfunc_extra = true,
-  finalfunc_modify = read_write
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
 );
 
 /* ----------------------------------------------------------------
@@ -314,23 +299,11 @@ CREATE AGGREGATE anon_sum_noise(value "any", variadic aids "any") (
  * ----------------------------------------------------------------
  */
 
-CREATE FUNCTION placeholder_func(anyelement)
-RETURNS anyelement
-AS 'MODULE_PATHNAME'
-LANGUAGE C IMMUTABLE STRICT
-SECURITY INVOKER SET search_path = '';
-
 CREATE AGGREGATE is_suppress_bin(*) (
   sfunc = placeholder_func,
   stype = boolean,
   initcond = false
 );
-
-CREATE FUNCTION internal_qual_wrapper(boolean)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C VOLATILE
-SECURITY INVOKER SET search_path = '';
 
 /* ----------------------------------------------------------------
  * Scalar functions
