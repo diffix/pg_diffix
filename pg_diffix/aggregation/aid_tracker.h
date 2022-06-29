@@ -34,8 +34,31 @@ typedef struct AidTrackerState
 extern void aid_tracker_update(AidTrackerState *state, aid_t aid);
 
 /*
+ * Initializes given state for tracking AID values.
+ */
+extern void aid_tracker_init(AidTrackerState *state, MapAidFunc aid_mapper);
+
+/*
  * Creates a new state for tracking AID values.
  */
-extern AidTrackerState *aid_tracker_new(MapAidFunc aid_mapper);
+static inline AidTrackerState *aid_tracker_new(MapAidFunc aid_mapper)
+{
+  AidTrackerState *state = palloc0(sizeof(AidTrackerState));
+  aid_tracker_init(state, aid_mapper);
+  return state;
+}
+
+/*
+ * Returns the number of AIDs in the tracker.
+ */
+static inline uint32 aid_tracker_members(const AidTrackerState *state)
+{
+  return state->aid_set->members;
+}
+
+/*
+ * Adds all AIDs from source state into destination state.
+ */
+extern void aid_tracker_merge(AidTrackerState *dst_tracker, const AidTrackerState *src_tracker);
 
 #endif /* PG_DIFFIX_AID_TRACKER_H */

@@ -266,7 +266,7 @@ static inline bool is_marked_as_used(DatumSet_hash *used_values, Datum value)
 
 static inline void mark_as_used(DatumSet_hash *used_values, Datum value)
 {
-  bool found = false;
+  bool found;
   DatumSet_insert(used_values, value, &found);
 }
 

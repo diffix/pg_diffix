@@ -18,7 +18,7 @@ static AidResult calculate_aid_result(const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
   result.threshold = generate_lcf_threshold(tracker->aid_seed);
-  result.low_count = tracker->aid_set->members < result.threshold;
+  result.low_count = aid_tracker_members(tracker) < result.threshold;
 
   return result;
 }
@@ -102,12 +102,7 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
   {
     AidTrackerState *dst_tracker = dst_state->trackers[i];
     const AidTrackerState *src_tracker = src_state->trackers[i];
-
-    AidTrackerHashEntry *entry = NULL;
-    foreach_entry(entry, src_tracker->aid_set, AidTracker)
-    {
-      aid_tracker_update(dst_tracker, entry->aid);
-    }
+    aid_tracker_merge(dst_tracker, src_tracker);
   }
 }
 
