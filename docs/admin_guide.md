@@ -51,7 +51,7 @@ Tables may have one of two security labels: `public` or `personal`.
 
 * Tables labeled as `personal` are anonymized by the extension for `anonymized_*` access levels.
 * Tables labeled as `public` are not anonymized: all users have direct access to these tables.
-* Unabeled tables are not accessible for `anonymized_*` access levels (unless the value of the configuration
+* Unlabeled tables are not accessible for `anonymized_*` access levels (unless the value of the configuration
 variable `pg_diffix.treat_unmarked_tables_as_public` is set to `true`, in which case they are considered `public`).
 
 The procedure `diffix.mark_public(table_name)` labels a table as `public`.
