@@ -12,6 +12,15 @@
 /* Calculates the length of an array. */
 #define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
 
+/* clang-format off */
+
+/* Loops through given hash table entries. */
+#define foreach_entry(entry, table, prefix) \
+  for (prefix##_iterator iterator = ({ prefix##_start_iterate(table, &iterator); iterator; });  \
+       (entry = prefix##_iterate(table, &iterator)) != NULL;)
+
+/* clang-format on */
+
 /*-------------------------------------------------------------------------
  * Hash utils
  *-------------------------------------------------------------------------
