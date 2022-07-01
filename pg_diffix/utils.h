@@ -16,8 +16,8 @@
 
 /* Loops through given hash table entries. */
 #define foreach_entry(entry, table, prefix) \
-  for (prefix##_iterator iterator = ({ prefix##_start_iterate(table, &iterator); iterator; });  \
-       (entry = prefix##_iterate(table, &iterator)) != NULL;)
+  for (prefix##_iterator entry##__iterator = ({ prefix##_start_iterate(table, &entry##__iterator); entry##__iterator; }); \
+       (entry = prefix##_iterate(table, &entry##__iterator)) != NULL;)
 
 /* clang-format on */
 
