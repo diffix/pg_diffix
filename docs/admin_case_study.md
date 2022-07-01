@@ -167,41 +167,34 @@ SELECT * FROM diffix.show_labels();
 
 ## NYC Taxi Database
 
-The NYC Taxi database is named `taxi`. It has a single table `rides`. The table `rides` has 29 columns:
+The NYC Taxi database is named `taxi`. It has a single table `jan08`. The table `jan08` has 22 columns:
 
 ```
     column_name    |          data_type
 -------------------+-----------------------------
- mta_tax           | numeric
- tip_amount        | numeric
- tolls_amount      | numeric
- total_amount      | numeric
+ surcharge         | double precision
+ mta_tax           | double precision
+ tip_amount        | double precision
+ tolls_amount      | double precision
+ total_amount      | double precision
  pickup_datetime   | timestamp without time zone
  dropoff_datetime  | timestamp without time zone
- birthdate         | date
  passenger_count   | smallint
  trip_time_in_secs | bigint
- trip_distance     | numeric
+ trip_distance     | double precision
  pickup_longitude  | numeric
  pickup_latitude   | numeric
  dropoff_longitude | numeric
  dropoff_latitude  | numeric
  rate_code         | smallint
- fare_amount       | numeric
- surcharge         | numeric
- zip               | text
- uid               | character varying
+ fare_amount       | double precision
+ lastname          | text
+ hack              | character varying
  vendor_id         | character varying
  sf_flag           | character varying
  payment_type      | character varying
- lastname          | text
- firstname         | text
- gender            | text
- ssn               | text
- email             | text
- street            | text
  med               | character varying
-(29 rows)
+(22 rows)
 ```
 
 ### Generalizable types
@@ -219,12 +212,12 @@ ALTER DATABASE taxi SET session_preload_libraries TO 'pg_diffix';
 
 ### Selecting the AID columns
 
-The `med` column is the taxi medallion. It identifies the taxi itself. The `uid` column identifies the driver (originally named `hack`). We would like to provide anonymity for the driver. (No passenger data is in the table: otherwise we'd certainly like to protect the passenger as well.)
+The `med` column is the taxi medallion. It identifies the taxi itself. The `hack` column identifies the driver. We would like to provide anonymity for the driver. (No passenger data is in the table: otherwise we'd certainly like to protect the passenger as well.)
 
 We configure the AID column as follows:
 
 ```sql
-CALL diffix.mark_personal('rides', 'uid');
+CALL diffix.mark_personal('jan08', 'hack');
 ```
 
 We can check that this succeeded with:
@@ -236,11 +229,10 @@ SELECT * FROM diffix.show_labels();
 which outputs:
 
 ```
- objtype |     objname      |  label
----------+------------------+----------
- table   | public.rides     | personal
- column  | public.rides.uid | aid
-(2 rows)
+ objtype |      objname      |        label
+---------+-------------------+----------------------
+ table   | public.jan08      | personal
+ column  | public.jan08.hack | aid
 ```
 
 ### Create users
@@ -275,19 +267,19 @@ And check:
 ```
 SELECT * FROM diffix.show_labels();
 
- objtype |     objname      |        label
----------+------------------+----------------------
- table   | public.rides     | personal
- column  | public.rides.uid | aid
- role    | direct_user      | direct
- role    | trusted_user     | anonymized_trusted
- role    | untrusted_user   | anonymized_untrusted
+ objtype |      objname      |        label
+---------+-------------------+----------------------
+ table   | public.jan08      | personal
+ column  | public.jan08.hack | aid
+ role    | direct_user       | direct
+ role    | trusted_user      | anonymized_trusted
+ role    | untrusted_user    | anonymized_untrusted
 (5 rows)
 ```
 
 ## The Sci-Hub database
 
-Sci-Hub is a service that downloads scientific articles free of charge. The associated database is named `scihub`. It has a single table `downloads`.
+Sci-Hub is a service that downloads scientific articles free of charge. The associated database is named `scihub`. It has a single table `sep2015`.
 
 Each entry represents one download from an IP address (which has been hashed). We wish to protect the downloading individuals, which are best represented by the hashed IP address. The database has named this column `uid`.
 
@@ -298,7 +290,7 @@ Here we simply list the complete set of commands needed to label the AID column 
 CREATE EXTENSION pg_diffix;
 ALTER DATABASE scihub SET session_preload_libraries TO 'pg_diffix';
 
-CALL diffix.mark_personal('downloads', 'uid');
+CALL diffix.mark_personal('sep2015', 'uid');
 
 CREATE USER direct_user WITH PASSWORD 'demo';
 GRANT CONNECT ON DATABASE scihub TO direct_user;
@@ -323,19 +315,19 @@ SELECT * FROM diffix.show_labels();
 ```
 
 ```
- objtype |       objname        |        label
----------+----------------------+----------------------
- table   | public.downloads     | personal
- column  | public.downloads.uid | aid
- role    | direct_user          | direct
- role    | trusted_user         | anonymized_trusted
- role    | untrusted_user       | anonymized_untrusted
+ objtype |      objname       |        label
+---------+--------------------+----------------------
+ table   | public.sep2015     | personal
+ column  | public.sep2015.uid | aid
+ role    | direct_user        | direct
+ role    | trusted_user       | anonymized_trusted
+ role    | untrusted_user     | anonymized_untrusted
 (5 rows)
 ```
 
 ## The Census database
 
-The `census` database has a single table `persons` with 119 columns. Each row refers to one person, and the column `uid` has a unique identifier per row.
+The `census0` database has a single table `uidperhousehold` with 119 columns. Each row refers to one person, and the column `uid` has a unique identifier per row.
 
 Here again we simply list the complete set of commands needed to label the AID column and create the three users.
 
@@ -343,7 +335,7 @@ Here again we simply list the complete set of commands needed to label the AID c
 CREATE EXTENSION pg_diffix;
 ALTER DATABASE census SET session_preload_libraries TO 'pg_diffix';
 
-CALL diffix.mark_personal('persons', 'uid');
+CALL diffix.mark_personal('uidperhousehold', 'uid');
 
 CREATE USER direct_user WITH PASSWORD 'demo';
 GRANT CONNECT ON DATABASE census TO direct_user;
@@ -368,12 +360,12 @@ SELECT * FROM diffix.show_labels();
 ```
 
 ```
- objtype |      objname       |        label
----------+--------------------+----------------------
- table   | public.persons     | personal
- column  | public.persons.uid | aid
- role    | direct_user        | direct
- role    | trusted_user       | anonymized_trusted
- role    | untrusted_user     | anonymized_untrusted
+ objtype |          objname           |        label
+---------+----------------------------+----------------------
+ table   | public.uidperhousehold     | personal
+ column  | public.uidperhousehold.uid | aid
+ role    | direct_user                | direct
+ role    | trusted_user               | anonymized_trusted
+ role    | untrusted_user             | anonymized_untrusted
 (5 rows)
 ```
