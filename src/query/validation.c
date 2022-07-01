@@ -412,27 +412,40 @@ static Var *get_bucket_expression_column_ref(Node *bucket_expression)
   return castNode(Var, unwrap_cast(linitial(func_expr->args)));
 }
 
-static void verify_aid_usage_in_filter(Node *bucket_expression, List *range_tables)
+static void verify_column_usage_in_filter(AccessLevel access_level, Node *bucket_expression, List *range_tables)
 {
   Var *var_expr = get_bucket_expression_column_ref(bucket_expression);
   RangeTblEntry *rte = rt_fetch(var_expr->varno, range_tables);
+
   if (is_aid_column(rte->relid, var_expr->varattno))
-    FAILWITH("AID columns can't be referenced by pre-anonymization filters.");
+    FAILWITH_LOCATION(var_expr->location, "AID columns can't be referenced by pre-anonymization filters.");
+
+  if (access_level == ACCESS_ANONYMIZED_UNTRUSTED && is_not_filterable_column(rte->relid, var_expr->varattno))
+    FAILWITH_LOCATION(var_expr->location,
+                      "Column marked `not_filterable` can't be referenced by pre-anonymization filters in untrusted-mode.");
 }
 
 static void verify_where(Query *query)
 {
+  AccessLevel access_level = get_session_access_level();
+
   List *subjects = NIL, *targets = NIL;
   collect_equalities_from_filters(query->jointree->quals, &subjects, &targets);
 
   ListCell *subject_cell = NULL, *target_cell = NULL;
   forboth(subject_cell, subjects, target_cell, targets)
   {
-    verify_bucket_expression(lfirst(subject_cell));
-    verify_aid_usage_in_filter(lfirst(subject_cell), query->rtable);
+    Node *bucket_expression = lfirst(subject_cell);
+    verify_bucket_expression(bucket_expression);
+    verify_column_usage_in_filter(access_level, bucket_expression, query->rtable);
 
-    if (!IsA(unwrap_cast(lfirst(target_cell)), Const))
-      FAILWITH("Generalization expressions can only be matched against constants in pre-anonymization filters.");
+    Node *target_expression = unwrap_cast(lfirst(target_cell));
+    if (!IsA(target_expression, Const))
+    {
+      Const *const_expr = (Const*)target_expression;
+      FAILWITH_LOCATION(const_expr->location,
+                        "Generalization expressions can only be matched against constants in pre-anonymization filters.");
+    }
   }
 
   list_free(subjects);

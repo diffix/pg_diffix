@@ -116,6 +116,47 @@ AS $$
   END;
 $$ LANGUAGE plpgsql;
 
+CREATE PROCEDURE assert_column_is_not_aid(table_name text, column_name text)
+AS $$
+  DECLARE
+    column_subid integer;
+    table_id integer;
+    is_aid_column boolean;
+  BEGIN
+    table_id := table_name::regclass::oid;
+
+    EXECUTE 'SELECT attnum FROM pg_catalog.pg_attribute
+        WHERE attrelid = ' || table_id || ' AND
+          NOT attisdropped AND
+          attname = ' || quote_literal(column_name) INTO STRICT column_subid;
+
+    EXECUTE 'SELECT EXISTS (SELECT FROM pg_catalog.pg_seclabel
+      WHERE provider = ''pg_diffix'' AND
+        objoid = ' || table_id || ' AND
+        objsubid = ' || column_subid || ' AND
+        label = ''aid'')' INTO is_aid_column;
+    IF is_aid_column THEN
+      RAISE EXCEPTION 'Column `%` is already marked as an AID.', column_name;
+    END IF;
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE mark_not_filterable(table_name text, column_name text)
+AS $$
+  BEGIN
+    CALL diffix.assert_column_is_not_aid(table_name, column_name);
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_name || '.' || column_name || ' IS ''not_filterable''';
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE mark_filterable(table_name text, column_name text)
+AS $$
+  BEGIN
+    CALL diffix.assert_column_is_not_aid(table_name, column_name);
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_name || '.' || column_name || ' IS NULL';
+  END;
+$$ LANGUAGE plpgsql;
+
 /* ----------------------------------------------------------------
  * Common aggregation interface
  * ----------------------------------------------------------------
