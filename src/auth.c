@@ -134,7 +134,6 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
 {
   ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = attnum};
   const char *seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
-
   return seclabel != NULL && is_aid_label(seclabel);
 }
 
