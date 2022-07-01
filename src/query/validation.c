@@ -442,7 +442,7 @@ static void verify_where(Query *query)
     Node *target_expression = unwrap_cast(lfirst(target_cell));
     if (!IsA(target_expression, Const))
     {
-      Const *const_expr = (Const*)target_expression;
+      Const *const_expr = (Const *)target_expression;
       FAILWITH_LOCATION(const_expr->location,
                         "Generalization expressions can only be matched against constants in pre-anonymization filters.");
     }
