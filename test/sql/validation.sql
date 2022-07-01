@@ -11,6 +11,9 @@ CREATE TABLE test_validation (
 );
 
 CALL diffix.mark_personal('test_validation', 'id');
+CALL diffix.mark_not_filterable('test_validation', 'birthday');
+CALL diffix.mark_not_filterable('test_validation', 'last_seen');
+CALL diffix.mark_filterable('test_validation', 'last_seen');
 
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
@@ -292,3 +295,8 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 SELECT ceil(discount) from test_validation;
 SELECT diffix.ceil_by(discount, 2) from test_validation;
+
+-- Marking columns as `not_filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(birthday as text), 4) = '2000';
+-- Marking columns as `filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4) = '2000';

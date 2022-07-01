@@ -41,6 +41,11 @@ static inline bool is_aid_label(const char *seclabel)
   return strcasecmp(seclabel, "aid") == 0;
 }
 
+static inline bool is_not_filterable_label(const char *seclabel)
+{
+  return strcasecmp(seclabel, "not_filterable") == 0;
+}
+
 static inline bool is_anonymized_trusted_label(const char *seclabel)
 {
   return strcasecmp(seclabel, "anonymized_trusted") == 0;
@@ -129,13 +134,14 @@ bool is_aid_column(Oid relation_oid, AttrNumber attnum)
 {
   ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = attnum};
   const char *seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
+  return seclabel != NULL && is_aid_label(seclabel);
+}
 
-  if (seclabel == NULL)
-    return false;
-  else if (is_aid_label(seclabel))
-    return true;
-  else
-    FAIL_ON_INVALID_LABEL(seclabel);
+bool is_not_filterable_column(Oid relation_oid, AttrNumber attnum)
+{
+  ObjectAddress object = {.classId = RelationRelationId, .objectId = relation_oid, .objectSubId = attnum};
+  const char *seclabel = GetSecurityLabel(&object, PROVIDER_TAG);
+  return seclabel != NULL && is_not_filterable_label(seclabel);
 }
 
 #define FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object)                   \
@@ -170,7 +176,7 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
 
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
-  else if (is_aid_label(seclabel))
+  else if (is_aid_label(seclabel) || is_not_filterable_label(seclabel))
   {
     if (object->classId == RelationRelationId && object->objectSubId != 0)
       return;

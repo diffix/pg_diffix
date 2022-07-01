@@ -9,6 +9,9 @@ CREATE TABLE test_validation (
   last_seen TIMESTAMP
 );
 CALL diffix.mark_personal('test_validation', 'id');
+CALL diffix.mark_not_filterable('test_validation', 'birthday');
+CALL diffix.mark_not_filterable('test_validation', 'last_seen');
+CALL diffix.mark_filterable('test_validation', 'last_seen');
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
@@ -440,6 +443,8 @@ SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
 ERROR:  [PG_DIFFIX] Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.
 SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
 ERROR:  [PG_DIFFIX] AID columns can't be referenced by pre-anonymization filters.
+LINE 1: ...UNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0...
+                                                             ^
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
@@ -629,3 +634,15 @@ SELECT diffix.ceil_by(discount, 2) from test_validation;
 ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.ceil_by(discount, 2) from test_validation;
                ^
+-- Marking columns as `not_filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(birthday as text), 4) = '2000';
+ERROR:  [PG_DIFFIX] Column marked `not_filterable` can't be referenced by pre-anonymization filters in untrusted-mode.
+LINE 1: ...OUNT(*) FROM test_validation WHERE substring(cast(birthday a...
+                                                             ^
+-- Marking columns as `filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4) = '2000';
+ count 
+-------
+     0
+(1 row)
+
