@@ -109,10 +109,8 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
 {
   List *lc_entries = NIL;
 
-  DistinctTracker_iterator it;
-  DistinctTracker_start_iterate(tracker, &it);
-  DistinctTrackerHashEntry *entry = NULL;
-  while ((entry = DistinctTracker_iterate(tracker, &it)) != NULL)
+  DistinctTrackerHashEntry *entry;
+  foreach_entry(entry, tracker, DistinctTracker)
   {
     if (!aid_sets_are_high_count(entry->aid_values_sets))
       lc_entries = lappend(lc_entries, entry);
@@ -470,10 +468,8 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   int aids_count = dst_state->args_desc->num_args - AIDS_OFFSET;
   MemoryContext old_context = MemoryContextSwitchTo(dst_base_state->memory_context);
 
-  DistinctTracker_iterator src_iterator;
-  DistinctTracker_start_iterate(src_state->tracker, &src_iterator);
-  DistinctTrackerHashEntry *src_entry = NULL;
-  while ((src_entry = DistinctTracker_iterate(src_state->tracker, &src_iterator)) != NULL)
+  DistinctTrackerHashEntry *src_entry;
+  foreach_entry(src_entry, src_state->tracker, DistinctTracker)
   {
     DistinctTrackerHashEntry *dst_entry =
         get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);

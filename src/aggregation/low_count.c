@@ -103,10 +103,8 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
     AidTrackerState *dst_tracker = dst_state->trackers[i];
     const AidTrackerState *src_tracker = src_state->trackers[i];
 
-    AidTracker_iterator iterator;
-    AidTracker_start_iterate(src_tracker->aid_set, &iterator);
     AidTrackerHashEntry *entry = NULL;
-    while ((entry = AidTracker_iterate(src_tracker->aid_set, &iterator)) != NULL)
+    foreach_entry(entry, src_tracker->aid_set, AidTracker)
     {
       aid_tracker_update(dst_tracker, entry->aid);
     }

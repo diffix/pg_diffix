@@ -82,7 +82,7 @@ static void determine_outlier_top_counts(
 
   if (total_adjustment > 0)
   {
-    /* 
+    /*
      * At this point we know `0 < total_adjustment <= outlier_range + top_range` (*) because:
      * `total_adjustment = outlier_count_max + top_count_max - total_count
      *                  <= outlier_count_max + top_count_max - outlier_count_min - top_count_min`.
@@ -248,10 +248,8 @@ void merge_trackers(
 
     Assert(dst_tracker->contribution_descriptor.contribution_combine == src_tracker->contribution_descriptor.contribution_combine);
 
-    ContributionTracker_iterator iterator;
-    ContributionTracker_start_iterate(src_tracker->contribution_table, &iterator);
-    ContributionTrackerHashEntry *entry = NULL;
-    while ((entry = ContributionTracker_iterate(src_tracker->contribution_table, &iterator)) != NULL)
+    ContributionTrackerHashEntry *entry;
+    foreach_entry(entry, src_tracker->contribution_table, ContributionTracker)
     {
       contribution_tracker_update_contribution(dst_tracker, entry->contributor.aid, entry->contributor.contribution);
     }
