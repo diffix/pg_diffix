@@ -151,9 +151,9 @@ SummableResult aggregate_contributions(
 
   uint32 top_end_index = result.noisy_outlier_count + result.noisy_top_count;
 
-  /* Remove outliers from overall count. */
+  double outlier_contribution = 0.0;
   for (uint32 i = 0; i < result.noisy_outlier_count; i++)
-    result.flattening += contribution_to_double(top_contributors->members[i].contribution);
+    outlier_contribution += contribution_to_double(top_contributors->members[i].contribution);
 
   /* Compute average of top values. */
   double top_contribution = 0.0;
@@ -161,8 +161,11 @@ SummableResult aggregate_contributions(
     top_contribution += contribution_to_double(top_contributors->members[i].contribution);
   double top_average = top_contribution / result.noisy_top_count;
 
-  /* Compensate for dropped outliers. */
-  result.flattening -= top_average * result.noisy_outlier_count;
+  /* Remove outliers from overall count and compensate. */
+  result.flattening = outlier_contribution - top_average * result.noisy_outlier_count;
+  /* Flattening should be non-negative, but need to account for rounding errors. */
+  Assert(result.flattening > -1e-12);
+  result.flattening = Max(result.flattening, 0.0);
 
   /* Compensate for the unaccounted for NULL-value AIDs. */
   double flattened_unaccounted_for = Max(contribution_to_double(unaccounted_for) - result.flattening, 0.0);
@@ -199,8 +202,6 @@ void accumulate_result(SummableResultAccumulator *accumulator, const SummableRes
     accumulator->not_enough_aid_values = true;
     return;
   }
-
-  Assert(result->flattening >= 0);
 
   if (result->flattening > accumulator->max_flattening)
   {
