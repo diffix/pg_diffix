@@ -4,8 +4,6 @@ This document contains a simple tutorial on how to install and configure `pg_dif
 
 This simple example assumes assumes a database named `test_db` was created, and the personal data is in the table `test_table`, and contains a column named `id` that uniquely identifies protected entities (the anonymization ID).
 
-A separate document gives [several case studies](admin_case_study.md) based on real datasets.
-
 ## Installation
 
 1\. Install the packages required for building the extension:
