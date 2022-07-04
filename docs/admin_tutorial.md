@@ -1,4 +1,4 @@
-# Admin case study
+# Admin Tutorial
 
 This document contains a simple tutorial on how to install and configure `pg_diffix` to expose a simple dataset for anonymized querying.  It assumes that an existing installation of PostgreSQL 14 on a Linux system is available.
 
