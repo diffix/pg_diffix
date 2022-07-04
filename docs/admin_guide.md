@@ -89,7 +89,7 @@ Superusers can change these variables at runtime for their own session, while re
 To use different values for all future sessions, they have to be set in the server's configuration file.
 
 Execute `SELECT diffix.show_settings();` to display the current settings of the extension.
-If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
+If the result is empty, make sure `pg_diffix` is loaded.
 
 ### Anonymization salt
 
