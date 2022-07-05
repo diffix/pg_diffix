@@ -7,7 +7,7 @@ AS $$
   DECLARE
     rows_count bigint;
     column_name text;
-    top_occurences bigint;
+    top_occurrences bigint;
   BEGIN
     EXECUTE 'SELECT COUNT(*) FROM ' || table_name INTO STRICT rows_count;
     RAISE INFO 'Analyzing filterability of table `%` with % rows...', table_name, rows_count;
@@ -16,9 +16,9 @@ AS $$
           WHERE attrelid = ' || table_name::regclass::oid || ' AND attnum > 0 AND NOT attisdropped'
         LOOP
       RAISE INFO 'Inspecting column `%`...', column_name;
-      EXECUTE 'SELECT COUNT(' || column_name || ') AS occurences FROM ' || table_name ||
-        ' GROUP BY ' || column_name || ' ORDER BY occurences DESC LIMIT 1' INTO STRICT top_occurences;
-      IF top_occurences >= 0.65 * rows_count THEN -- warn if top value occurs in more than 65% of rows
+      EXECUTE 'SELECT COUNT(' || column_name || ') AS occurrences FROM ' || table_name ||
+        ' GROUP BY ' || column_name || ' ORDER BY occurrences DESC LIMIT 1' INTO STRICT top_occurrences;
+      IF top_occurrences >= 0.65 * rows_count THEN -- warn if top value occurs in more than 65% of rows
         RAISE WARNING 'Column `%` is dominated by one value and should be marked as `not_filterable`!', column_name;
       END IF;
     END LOOP;
