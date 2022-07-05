@@ -1,3 +1,7 @@
+-- Data analysis utility methods to guide admins in correctly configuring Diffix.
+
+-- Inspects all columns in a table for pre-anonymization filtering safety.
+-- Warns when a column should be rejected from filtering in untrusted-mode.
 CREATE OR REPLACE PROCEDURE analyze_filterability(table_name text)
 AS $$
   DECLARE
