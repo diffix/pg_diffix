@@ -125,38 +125,6 @@ static void verify_rtable(Query *query)
   }
 }
 
-static bool is_datetime_to_string_cast(CoerceViaIO *expr)
-{
-  Node *arg = (Node *)expr->arg;
-  return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
-}
-
-Node *unwrap_cast(Node *node)
-{
-  if (IsA(node, FuncExpr))
-  {
-    FuncExpr *func_expr = (FuncExpr *)node;
-    if (is_allowed_cast(func_expr->funcid))
-    {
-      Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
-      return unwrap_cast(linitial(func_expr->args));
-    }
-  }
-  else if (IsA(node, RelabelType))
-  {
-    RelabelType *relabel_expr = (RelabelType *)node;
-    return unwrap_cast((Node *)relabel_expr->arg);
-  }
-  else if (IsA(node, CoerceViaIO))
-  {
-    /* `cast as text`; we treat it as a valid cast for datetime-like types. */
-    CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
-    if (is_datetime_to_string_cast(coerce_expr))
-      return unwrap_cast((Node *)coerce_expr->arg);
-  }
-  return node;
-}
-
 static void verify_non_system_column(Var *var)
 {
   if (var->varattno < 0)

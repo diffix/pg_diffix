@@ -50,9 +50,4 @@ extern double numeric_value_to_double(Oid type, Datum value);
  */
 extern void collect_equalities_from_filters(Node *node, List **subjects, List **targets);
 
-/*
- * Returns the first non-cast node.
- */
-extern Node *unwrap_cast(Node *node);
-
 #endif /* PG_DIFFIX_VALIDATION_H */
