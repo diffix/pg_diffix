@@ -60,6 +60,8 @@ const AnonAggFuncs *find_agg_funcs(Oid oid)
     return &g_count_distinct_funcs;
   else if (oid == g_oid_cache.anon_sum)
     return &g_sum_funcs;
+  else if (oid == g_oid_cache.anon_count_histogram)
+    return &g_count_histogram_funcs;
   else if (oid == g_oid_cache.anon_count_star_noise)
     return &g_count_star_noise_funcs;
   else if (oid == g_oid_cache.anon_count_value_noise)

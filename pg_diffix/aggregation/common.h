@@ -110,6 +110,7 @@ extern const AnonAggFuncs g_count_value_noise_funcs;
 extern const AnonAggFuncs g_sum_noise_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_low_count_funcs;
+extern const AnonAggFuncs g_count_histogram_funcs;
 
 typedef enum BucketAttributeTag
 {

@@ -211,6 +211,12 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
+CREATE FUNCTION anon_agg_state_transfn(AnonAggState, arg1 "any", arg2 "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
 CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
@@ -218,6 +224,12 @@ LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
 CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, value "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, arg1 "any", arg2 "any", variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
@@ -330,6 +342,14 @@ CREATE AGGREGATE anon_count_value(value "any", variadic aids "any") (
 );
 
 CREATE AGGREGATE anon_sum(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_histogram(aid_index bigint, bin_size bigint, variadic aids "any") (
   sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
   finalfunc = anon_agg_state_finalfn,
