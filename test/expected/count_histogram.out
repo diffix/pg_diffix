@@ -22,6 +22,9 @@ EXECUTE add_rows(8, 6);   -- 1 user contributes 6 rows
 EXECUTE add_rows(9, 7);   -- 1 user contributes 7 rows
 EXECUTE add_rows(10, 13); -- 1 user contributes 13 rows
 CALL diffix.mark_personal('count_histogram_test', 'id');
+----------------------------------------------------------------
+-- Non-anonymizing count_histogram
+----------------------------------------------------------------
 SELECT diffix.count_histogram(id) FROM count_histogram_test;
          count_histogram          
 ----------------------------------
@@ -34,6 +37,9 @@ SELECT diffix.count_histogram(id, 5) FROM count_histogram_test;
  {{0,7},{5,2},{10,1}}
 (1 row)
 
+----------------------------------------------------------------
+-- Anonymizing count_histogram
+----------------------------------------------------------------
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT diffix.count_histogram(id) FROM count_histogram_test;
