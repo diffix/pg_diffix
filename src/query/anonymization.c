@@ -316,6 +316,7 @@ static void append_seed_material(
 typedef struct CollectMaterialContext
 {
   Query *query;
+  ParamListInfo bound_params;
   char material[MAX_SEED_MATERIAL_SIZE];
 } CollectMaterialContext;
 
@@ -356,14 +357,17 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     append_seed_material(context->material, attribute_name, '.');
   }
 
-  if (IsA(node, Const))
+  if (is_simple_constant(node))
   {
-    Const *const_expr = (Const *)node;
+    Oid type;
+    Datum value;
+    bool isnull;
+    get_simple_constant_typed_value(node, context->bound_params, &type, &value, &isnull);
 
-    if (!is_supported_numeric_type(const_expr->consttype))
-      FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
+    if (!is_supported_numeric_type(type))
+      FAILWITH_LOCATION(get_simple_constant_location(node), "Unsupported constant type used in bucket definition!");
 
-    double const_as_double = numeric_value_to_double(const_expr->consttype, const_expr->constvalue);
+    double const_as_double = numeric_value_to_double(type, value);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');
@@ -377,7 +381,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
  * Computes the SQL part of the bucket seed by combining the unique grouping expressions' seed material hashes.
  * Grouping clause (if any) must be made explicit before calling this.
  */
-static seed_t prepare_bucket_seeds(Query *query)
+static seed_t prepare_bucket_seeds(Query *query, ParamListInfo bound_params)
 {
   List *seed_material_hash_set = NULL;
 
@@ -388,7 +392,7 @@ static seed_t prepare_bucket_seeds(Query *query)
     Node *expr = lfirst(cell);
 
     /* Start from empty string and append material pieces for each non-cast expression. */
-    CollectMaterialContext collect_context = {.query = query, .material = ""};
+    CollectMaterialContext collect_context = {.query = query, .bound_params = bound_params, .material = ""};
     collect_seed_material(expr, &collect_context);
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
@@ -578,15 +582,15 @@ static void wrap_having_qual(Query *query)
       COERCE_EXPLICIT_CALL);
 }
 
-static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links)
+static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links, ParamListInfo bound_params)
 {
   verify_anonymization_requirements(query);
 
   AnonymizationContext *anon_context = make_query_anonymizing(query, personal_relations);
 
-  verify_bucket_expressions(query);
+  verify_bucket_expressions(query, bound_params);
 
-  anon_context->sql_seed = prepare_bucket_seeds(query);
+  anon_context->sql_seed = prepare_bucket_seeds(query, bound_params);
 
   link_anon_context(query, anon_links, anon_context);
 
@@ -613,6 +617,7 @@ typedef struct QueryCompileContext
 {
   List *personal_relations;
   AnonQueryLinks *anon_links;
+  ParamListInfo bound_params;
 } QueryCompileContext;
 
 static bool compile_query_walker(Node *node, QueryCompileContext *context)
@@ -651,7 +656,7 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   {
     Query *query = (Query *)node;
     if (is_anonymizing_query(query, context->personal_relations))
-      compile_anonymizing_query(query, context->personal_relations, context->anon_links);
+      compile_anonymizing_query(query, context->personal_relations, context->anon_links, context->bound_params);
     else
       query_tree_walker(query, compile_query_walker, context, QTW_EXAMINE_RTES_AFTER);
   }
@@ -659,11 +664,12 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   return expression_tree_walker(node, compile_query_walker, context);
 }
 
-AnonQueryLinks *compile_query(Query *query, List *personal_relations)
+AnonQueryLinks *compile_query(Query *query, List *personal_relations, ParamListInfo bound_params)
 {
   QueryCompileContext context = {
       .personal_relations = personal_relations,
       .anon_links = palloc0(sizeof(AnonQueryLinks)),
+      .bound_params = bound_params,
   };
 
   compile_query_walker((Node *)query, &context);
