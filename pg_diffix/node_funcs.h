@@ -10,7 +10,11 @@ extern bool is_datetime_to_string_cast(CoerceViaIO *expr);
  */
 extern Node *unwrap_cast(Node *node);
 
+extern int32 unwrap_const_int32(Expr *expr, int32 min_value, int32 max_value);
+
 extern int64 unwrap_const_int64(Expr *expr, int64 min_value, int64 max_value);
+
+extern Expr *make_const_int32(int32 value);
 
 extern Expr *make_const_int64(int64 value);
 

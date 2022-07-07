@@ -41,6 +41,25 @@ Node *unwrap_cast(Node *node)
   return node;
 }
 
+int32 unwrap_const_int32(Expr *expr, int32 min_value, int32 max_value)
+{
+  expr = (Expr *)unwrap_cast((Node *)expr);
+
+  if (!expr || !IsA(expr, Const))
+    FAILWITH_LOCATION(exprLocation((Node *)expr), "Expected a constant integer.");
+
+  Const *const_expr = (Const *)expr;
+  if (const_expr->constisnull || const_expr->consttype != INT4OID)
+    FAILWITH_LOCATION(exprLocation((Node *)expr), "Expected a constant integer.");
+
+  int32 val = DatumGetInt32(const_expr->constvalue);
+
+  if (val < min_value || val > max_value)
+    FAILWITH_LOCATION(exprLocation((Node *)expr), "Value is outside of valid bounds.");
+
+  return val;
+}
+
 int64 unwrap_const_int64(Expr *expr, int64 min_value, int64 max_value)
 {
   expr = (Expr *)unwrap_cast((Node *)expr);
@@ -60,6 +79,11 @@ int64 unwrap_const_int64(Expr *expr, int64 min_value, int64 max_value)
     FAILWITH_LOCATION(exprLocation((Node *)expr), "Value is outside of valid bounds.");
 
   return val;
+}
+
+Expr *make_const_int32(int32 value)
+{
+  return (Expr *)makeConst(INT4OID, -1, InvalidOid, sizeof(int32), Int32GetDatum(value), false, true);
 }
 
 Expr *make_const_int64(int64 value)

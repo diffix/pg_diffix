@@ -172,7 +172,7 @@ static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
     FAILWITH_LOCATION(counted_aid_var->location, "Counted AID not found in scope of query.");
 
   list_nth_cell(aggref->args, 0)->ptr_value = makeTargetEntry(
-      make_const_int64(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
+      make_const_int32(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
 
   if (list_length(aggref->args) < 2)
   {

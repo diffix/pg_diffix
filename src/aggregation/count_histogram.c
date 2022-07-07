@@ -100,7 +100,7 @@ Datum count_histogram_transfn(PG_FUNCTION_ARGS)
     if (!AggCheckCallContext(fcinfo, &agg_context))
       FAILWITH("count_histogram_transfn called in non-aggregate context.");
 
-    int bin_size = 1;
+    int64 bin_size = 1;
     if (PG_NARGS() > 2)
     {
       if (PG_ARGISNULL(BIN_SIZE_INDEX))
@@ -347,7 +347,7 @@ static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescript
   state->aid_mappers = palloc(aid_trackers_count * sizeof(MapAidFunc));
   for (int i = 0; i < aid_trackers_count; i++)
     state->aid_mappers[i] = get_aid_mapper(args_desc->args[AIDS_OFFSET + i].type_oid);
-  state->counted_aid_index = unwrap_const_int64(args_desc->args[COUNTED_AID_ARG].expr, 0, aid_trackers_count - 1);
+  state->counted_aid_index = unwrap_const_int32(args_desc->args[COUNTED_AID_ARG].expr, 0, aid_trackers_count - 1);
   state->bin_size = unwrap_const_int64(args_desc->args[BIN_SIZE_INDEX].expr, 1, INT64_MAX);
   state->aid_trackers_count = aid_trackers_count;
 

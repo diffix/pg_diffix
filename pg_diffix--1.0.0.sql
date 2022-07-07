@@ -349,7 +349,7 @@ CREATE AGGREGATE anon_sum(value "any", variadic aids "any") (
   finalfunc_modify = read_write
 );
 
-CREATE AGGREGATE anon_count_histogram(aid_index bigint, bin_size bigint, variadic aids "any") (
+CREATE AGGREGATE anon_count_histogram(aid_index integer, bin_size bigint, variadic aids "any") (
   sfunc = anon_agg_state_transfn,
   stype = AnonAggState,
   finalfunc = anon_agg_state_finalfn,
