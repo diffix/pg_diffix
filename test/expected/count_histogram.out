@@ -54,3 +54,18 @@ SELECT diffix.count_histogram(id, 5) FROM count_histogram_test;
  {{0,7},{5,2}}
 (1 row)
 
+----------------------------------------------------------------
+-- Misc
+----------------------------------------------------------------
+SELECT diffix.unnest_histogram(x.histogram)
+FROM (
+  SELECT diffix.count_histogram(id) AS histogram
+  FROM count_histogram_test
+) x;
+ unnest_histogram 
+------------------
+ {NULL,3}
+ {1,4}
+ {2,3}
+(3 rows)
+

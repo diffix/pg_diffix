@@ -69,6 +69,19 @@ AS $$
 $$
 SECURITY INVOKER SET search_path = '';
 
+CREATE FUNCTION unnest_histogram(a ANYARRAY, OUT a_1d ANYARRAY)
+RETURNS SETOF ANYARRAY
+LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE STRICT AS
+$$
+BEGIN
+  IF array_length(a, 1) > 0 THEN
+    FOREACH a_1d SLICE 1 IN ARRAY a LOOP
+      RETURN NEXT;
+    END LOOP;
+  END IF;
+END
+$$;
+
 CREATE PROCEDURE mark_personal(table_name text, variadic aid_columns text[])
 AS $$
   DECLARE

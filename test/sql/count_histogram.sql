@@ -45,3 +45,13 @@ SET pg_diffix.session_access_level = 'anonymized_trusted';
 
 SELECT diffix.count_histogram(id) FROM count_histogram_test;
 SELECT diffix.count_histogram(id, 5) FROM count_histogram_test;
+
+----------------------------------------------------------------
+-- Misc
+----------------------------------------------------------------
+
+SELECT diffix.unnest_histogram(x.histogram)
+FROM (
+  SELECT diffix.count_histogram(id) AS histogram
+  FROM count_histogram_test
+) x;
