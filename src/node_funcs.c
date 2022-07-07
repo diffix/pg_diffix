@@ -5,15 +5,10 @@
 
 static ParamExternData *get_param_data(ParamListInfo bound_params, int one_based_paramid)
 {
-#if PG_MAJORVERSION_NUM == 13
-  int paramid = one_based_paramid;
-#else
-  int paramid = one_based_paramid - 1;
-#endif
   if (bound_params->paramFetch != NULL)
-    return bound_params->paramFetch(bound_params, paramid, true, NULL);
+    return bound_params->paramFetch(bound_params, one_based_paramid - 1, true, NULL);
   else
-    return &bound_params->params[paramid];
+    return &bound_params->params[one_based_paramid - 1];
 }
 
 bool is_simple_constant(Node *node)
