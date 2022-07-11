@@ -15,6 +15,7 @@
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/auth.h"
+#include "pg_diffix/node_funcs.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/validation.h"
@@ -238,7 +239,7 @@ static void verify_bucket_expression(Node *node)
   }
   else if (is_simple_constant(node))
   {
-    FAILWITH_LOCATION(get_simple_constant_location(node), "Simple constants are not allowed as bucket expressions.");
+    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as bucket expressions.");
   }
   else if (IsA(node, RelabelType))
   {
@@ -273,7 +274,7 @@ static void verify_substring(FuncExpr *func_expr, ParamListInfo bound_params)
   get_simple_constant_typed_value(node, bound_params, &type, &value, &isnull);
 
   if (DatumGetUInt32(value) != 1)
-    FAILWITH_LOCATION(get_simple_constant_location(node), "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(exprLocation(node), "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 /* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
@@ -300,10 +301,10 @@ static void verify_bin_size(Node *range_expr, ParamListInfo bound_params)
   get_simple_constant_typed_value(range_node, bound_params, &type, &value, &isnull);
 
   if (!is_supported_numeric_type(type))
-    FAILWITH_LOCATION(get_simple_constant_location(range_node), "Unsupported constant type used in generalization.");
+    FAILWITH_LOCATION(exprLocation(range_node), "Unsupported constant type used in generalization.");
 
   if (!is_money_style(numeric_value_to_double(type, value)))
-    FAILWITH_LOCATION(get_simple_constant_location(range_node), "Generalization used in the query is not allowed in untrusted access level.");
+    FAILWITH_LOCATION(exprLocation(range_node), "Generalization used in the query is not allowed in untrusted access level.");
 }
 
 static void verify_generalization(Node *node, ParamListInfo bound_params)

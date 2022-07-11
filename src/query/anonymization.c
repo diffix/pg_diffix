@@ -365,7 +365,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     get_simple_constant_typed_value(node, context->bound_params, &type, &value, &isnull);
 
     if (!is_supported_numeric_type(type))
-      FAILWITH_LOCATION(get_simple_constant_location(node), "Unsupported constant type used in bucket definition!");
+      FAILWITH_LOCATION(exprLocation(node), "Unsupported constant type used in bucket definition!");
 
     double const_as_double = numeric_value_to_double(type, value);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];

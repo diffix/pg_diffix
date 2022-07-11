@@ -1,9 +1,7 @@
 #ifndef PG_DIFFIX_UTILS_H
 #define PG_DIFFIX_UTILS_H
 
-#include "nodes/params.h"
 #include "nodes/pg_list.h"
-#include "nodes/primnodes.h"
 #include "utils/datum.h"
 
 /*-------------------------------------------------------------------------
@@ -120,69 +118,5 @@ static inline List *hash_set_union(List *dst_set, const List *src_set)
 #define DEBUG_DUMP_NODE(label, node)
 
 #endif
-
-/*-------------------------------------------------------------------------
- * Node utils
- *-------------------------------------------------------------------------
- */
-
-static inline ParamExternData *get_param_data(ParamListInfo bound_params, int one_based_paramid)
-{
-#if PG_MAJORVERSION_NUM == 13
-  int paramid = one_based_paramid;
-#else
-  int paramid = one_based_paramid - 1;
-#endif
-  if (bound_params->paramFetch != NULL)
-    return bound_params->paramFetch(bound_params, paramid, true, NULL);
-  else
-    return &bound_params->params[paramid];
-}
-
-static inline bool is_simple_constant(Node *node)
-{
-  return IsA(node, Const) || (IsA(node, Param) && ((Param *)node)->paramkind == PARAM_EXTERN);
-}
-
-static inline void get_simple_constant_typed_value(Node *node, ParamListInfo bound_params, Oid *type, Datum *value, bool *isnull)
-{
-  if (IsA(node, Const))
-  {
-    Const *const_expr = (Const *)node;
-    *type = const_expr->consttype;
-    *value = const_expr->constvalue;
-    *isnull = const_expr->constisnull;
-  }
-  else if (IsA(node, Param) && ((Param *)node)->paramkind == PARAM_EXTERN)
-  {
-    Param *param_expr = (Param *)node;
-    ParamExternData *param_data = get_param_data(bound_params, param_expr->paramid);
-    *type = param_data->ptype;
-    *value = param_data->value;
-    *isnull = param_data->isnull;
-  }
-  else
-  {
-    FAILWITH("Attempted to get simple constant value of non-Const, non-PARAM_EXTERN node");
-  }
-}
-
-static inline int get_simple_constant_location(Node *node)
-{
-  if (IsA(node, Const))
-  {
-    Const *const_expr = (Const *)node;
-    return const_expr->location;
-  }
-  else if (IsA(node, Param) && ((Param *)node)->paramkind == PARAM_EXTERN)
-  {
-    Param *param_expr = (Param *)node;
-    return param_expr->location;
-  }
-  else
-  {
-    FAILWITH("Attempted to get simple constant value of non-Const, non-PARAM_EXTERN node");
-  }
-}
 
 #endif /* PG_DIFFIX_UTILS_H */

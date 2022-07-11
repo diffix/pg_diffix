@@ -6,6 +6,7 @@
 
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
+#include "pg_diffix/node_funcs.h"
 
 /*
  * Opaque struct containing references to anonymizing (sub)queries.
