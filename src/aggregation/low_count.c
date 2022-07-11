@@ -18,7 +18,7 @@ static AidResult calculate_aid_result(const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
   result.threshold = generate_lcf_threshold(tracker->aid_seed);
-  result.low_count = aid_tracker_members(tracker) < result.threshold;
+  result.low_count = aid_tracker_naids(tracker) < result.threshold;
 
   return result;
 }

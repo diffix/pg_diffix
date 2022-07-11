@@ -51,7 +51,7 @@ static inline AidTrackerState *aid_tracker_new(MapAidFunc aid_mapper)
 /*
  * Returns the number of AIDs in the tracker.
  */
-static inline uint32 aid_tracker_members(const AidTrackerState *state)
+static inline uint32 aid_tracker_naids(const AidTrackerState *state)
 {
   return state->aid_set->members;
 }

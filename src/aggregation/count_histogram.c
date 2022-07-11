@@ -87,41 +87,43 @@ const int STATE_INDEX = 0;
 const int VALUE_INDEX = 1;
 const int BIN_SIZE_INDEX = 2;
 
+static CountHistogramState *count_histogram_state_new(PG_FUNCTION_ARGS)
+{
+  MemoryContext agg_context;
+  if (!AggCheckCallContext(fcinfo, &agg_context))
+    FAILWITH("count_histogram_transfn called in non-aggregate context.");
+
+  int64 bin_size = 1;
+  if (PG_NARGS() > 2)
+  {
+    if (PG_ARGISNULL(BIN_SIZE_INDEX))
+      FAILWITH("count_histogram bin_size must not be NULL.");
+    bin_size = PG_GETARG_INT64(BIN_SIZE_INDEX);
+    if (bin_size < 1)
+      FAILWITH("Invalid bin_size for count_histogram.");
+  }
+
+  MemoryContext old_context = MemoryContextSwitchTo(agg_context);
+
+  DatumToInt64Data *data = palloc(sizeof(DatumToInt64Data));
+  Oid type_oid = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
+  get_typlenbyval(type_oid, &data->typlen, &data->typbyval);
+
+  CountHistogramState *state = palloc(sizeof(CountHistogramState));
+  state->table = DatumToInt64_create(agg_context, 4, data);
+  state->bin_size = bin_size;
+
+  MemoryContextSwitchTo(old_context);
+  return state;
+}
+
 Datum count_histogram_transfn(PG_FUNCTION_ARGS)
 {
   CountHistogramState *state;
   if (!PG_ARGISNULL(STATE_INDEX))
-  {
     state = (CountHistogramState *)PG_GETARG_POINTER(STATE_INDEX);
-  }
   else
-  {
-    MemoryContext agg_context;
-    if (!AggCheckCallContext(fcinfo, &agg_context))
-      FAILWITH("count_histogram_transfn called in non-aggregate context.");
-
-    int64 bin_size = 1;
-    if (PG_NARGS() > 2)
-    {
-      if (PG_ARGISNULL(BIN_SIZE_INDEX))
-        FAILWITH("count_histogram bin_size must not be NULL.");
-      bin_size = PG_GETARG_INT64(BIN_SIZE_INDEX);
-      if (bin_size < 1)
-        FAILWITH("Invalid bin_size for count_histogram.");
-    }
-
-    MemoryContext old_context = MemoryContextSwitchTo(agg_context);
-
-    DatumToInt64Data *data = palloc(sizeof(DatumToInt64Data));
-    Oid type_oid = get_fn_expr_argtype(fcinfo->flinfo, VALUE_INDEX);
-    get_typlenbyval(type_oid, &data->typlen, &data->typbyval);
-
-    state = palloc(sizeof(CountHistogramState));
-    state->table = DatumToInt64_create(agg_context, 4, data);
-    state->bin_size = bin_size;
-
-    MemoryContextSwitchTo(old_context);
-  }
+    state = count_histogram_state_new(fcinfo);
 
   if (!PG_ARGISNULL(VALUE_INDEX))
   {
@@ -156,7 +158,7 @@ Datum count_histogram_finalfn(PG_FUNCTION_ARGS)
 
   CountHistogramState *state = (CountHistogramState *)PG_GETARG_POINTER(STATE_INDEX);
 
-  /* Do the inverse grouping by count. */
+  /* Group entries by count. */
   Int64ToInt64_hash *histogram = Int64ToInt64_create(CurrentMemoryContext, 4, NULL);
   {
     DatumToInt64Entry *entry;
@@ -303,7 +305,7 @@ static bool count_tracker_is_low_count(CountTracker *count_tracker, int aid_trac
   {
     AidTrackerState *aid_tracker = &count_tracker->aid_trackers[i];
     double threshold = generate_lcf_threshold(aid_tracker->aid_seed);
-    low_count = low_count || (aid_tracker_members(aid_tracker) < threshold);
+    low_count = low_count || (aid_tracker_naids(aid_tracker) < threshold);
   }
   return low_count;
 }
@@ -313,7 +315,7 @@ static void count_tracker_finalize(CountTracker *count_tracker, seed_t bucket_se
   AidTrackerState *aid_tracker = &count_tracker->aid_trackers[counted_aid_index];
   seed_t noise_layers[] = {bucket_seed, aid_tracker->aid_seed};
   double noise = generate_layered_noise(noise_layers, ARRAY_LENGTH(noise_layers), "count_histogram", g_config.noise_layer_sd);
-  int64 noisy_count = (int64)round(aid_tracker_members(aid_tracker) + noise);
+  int64 noisy_count = (int64)round(aid_tracker_naids(aid_tracker) + noise);
   count_tracker->count = Max(noisy_count, g_config.low_count_min_threshold);
 }
 
@@ -358,6 +360,7 @@ static AnonAggState *agg_create_state(MemoryContext memory_context, ArgsDescript
 static void agg_transition(AnonAggState *base_state, int num_args, NullableDatum *args)
 {
   AnonCountHistogramState *state = (AnonCountHistogramState *)base_state;
+  /* Rewriter maps the AID expression to its offset in the AID args. */
   int counted_aid_arg_index = AIDS_OFFSET + state->counted_aid_index;
 
   if (args[counted_aid_arg_index].isnull)
@@ -395,7 +398,7 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
 
   Histogram_hash *histogram = Histogram_create(temp_context, 4, NULL);
 
-  /* Do the inverse grouping by count. */
+  /* Group entries by count. */
   AidCountTrackerEntry *state_entry;
   foreach_entry(state_entry, state->table, AidCountTracker)
   {

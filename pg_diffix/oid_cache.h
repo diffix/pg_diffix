@@ -34,7 +34,7 @@ typedef struct Oids
   Oid anon_count_star;      /* diffix.anon_count_star(aids...) */
   Oid anon_count_value;     /* diffix.anon_count_value(any, aids...) */
   Oid anon_sum;             /* diffix.anon_sum(any, aids...) */
-  Oid anon_count_histogram; /* diffix.anon_count_histogram(bigint, bigint, aids...) */
+  Oid anon_count_histogram; /* diffix.anon_count_histogram(integer, bigint, aids...) */
 
   Oid anon_count_distinct_noise; /* diffix.anon_count_distinct_noise(any, aids...) */
   Oid anon_count_star_noise;     /* diffix.anon_count_star_noise(aids...) */
