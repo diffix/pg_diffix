@@ -9,7 +9,6 @@
 #include "optimizer/cost.h"
 #include "optimizer/tlist.h"
 #include "utils/datum.h"
-#include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
@@ -97,29 +96,6 @@ MemoryContext g_current_bucket_context = NULL;
  * CustomExecMethods
  *-------------------------------------------------------------------------
  */
-
-static ArgsDescriptor *build_args_desc(Aggref *aggref)
-{
-  List *args = aggref->args;
-
-  int num_args = 1 + list_length(args); /* First item is AnonAggState. */
-  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
-  args_desc->num_args = num_args;
-
-  args_desc->args[0].type_oid = g_oid_cache.anon_agg_state;
-  args_desc->args[0].typlen = sizeof(Datum);
-  args_desc->args[0].typbyval = true;
-
-  for (int i = 1; i < num_args; i++)
-  {
-    TargetEntry *arg_tle = list_nth_node(TargetEntry, args, i - 1);
-    ArgDescriptor *arg_desc = &args_desc->args[i];
-    arg_desc->type_oid = exprType((Node *)arg_tle->expr);
-    get_typlenbyval(arg_desc->type_oid, &arg_desc->typlen, &arg_desc->typbyval);
-  }
-
-  return args_desc;
-}
 
 /*
  * Populates `bucket_desc` field with type metadata.

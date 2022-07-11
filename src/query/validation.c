@@ -15,6 +15,7 @@
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/auth.h"
+#include "pg_diffix/node_funcs.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/validation.h"
@@ -124,42 +125,43 @@ static void verify_rtable(Query *query)
   }
 }
 
-static bool is_datetime_to_string_cast(CoerceViaIO *expr)
-{
-  Node *arg = (Node *)expr->arg;
-  return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
-}
-
-Node *unwrap_cast(Node *node)
-{
-  if (IsA(node, FuncExpr))
-  {
-    FuncExpr *func_expr = (FuncExpr *)node;
-    if (is_allowed_cast(func_expr->funcid))
-    {
-      Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
-      return unwrap_cast(linitial(func_expr->args));
-    }
-  }
-  else if (IsA(node, RelabelType))
-  {
-    RelabelType *relabel_expr = (RelabelType *)node;
-    return unwrap_cast((Node *)relabel_expr->arg);
-  }
-  else if (IsA(node, CoerceViaIO))
-  {
-    /* `cast as text`; we treat it as a valid cast for datetime-like types. */
-    CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
-    if (is_datetime_to_string_cast(coerce_expr))
-      return unwrap_cast((Node *)coerce_expr->arg);
-  }
-  return node;
-}
-
 static void verify_non_system_column(Var *var)
 {
   if (var->varattno < 0)
     FAILWITH_LOCATION(var->location, "System columns are not allowed in this context.");
+}
+
+static void verify_count_histogram(Aggref *aggref, Query *query)
+{
+  /* Verify that counted arg is an AID. */
+  Expr *counted_aid_expr = linitial_node(TargetEntry, aggref->args)->expr;
+  if (!IsA(counted_aid_expr, Var))
+    FAILWITH_LOCATION(exprLocation((Node *)counted_aid_expr), "count_histogram argument must be an AID column.");
+
+  Var *counted_aid = (Var *)counted_aid_expr;
+  RangeTblEntry *rte = rt_fetch(counted_aid->varno, query->rtable);
+  if (!is_aid_column(rte->relid, counted_aid->varattno))
+    FAILWITH_LOCATION(exprLocation((Node *)counted_aid_expr), "count_histogram argument must be an AID column.");
+
+  if (aggref->aggfnoid == g_oid_cache.count_histogram_int8)
+  {
+    /* Verify bin size. */
+    Expr *bin_size_expr = lsecond_node(TargetEntry, aggref->args)->expr;
+    int64 bin_size = unwrap_const_int64(bin_size_expr, 1, INT64_MAX); /* Validates bounds implicitly. */
+
+    if (get_session_access_level() == ACCESS_ANONYMIZED_UNTRUSTED &&
+        !is_money_rounded(bin_size))
+    {
+      FAILWITH_LOCATION(
+          exprLocation((Node *)bin_size_expr),
+          "Used generalization expression is not allowed in untrusted access level.");
+    }
+  }
+}
+
+static bool is_count_histogram(Oid aggoid)
+{
+  return aggoid == g_oid_cache.count_histogram || aggoid == g_oid_cache.count_histogram_int8;
 }
 
 static bool verify_aggregator(Node *node, void *context)
@@ -176,6 +178,7 @@ static bool verify_aggregator(Node *node, void *context)
         aggoid != g_oid_cache.count_value &&
         !is_sum_oid(aggoid) &&
         !is_avg_oid(aggoid) &&
+        !is_count_histogram(aggoid) &&
         aggoid != g_oid_cache.count_star_noise &&
         aggoid != g_oid_cache.count_value_noise &&
         aggoid != g_oid_cache.sum_noise &&
@@ -195,10 +198,14 @@ static bool verify_aggregator(Node *node, void *context)
         FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
     }
 
-    if ((is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise ||
-         is_avg_oid(aggoid) || aggoid == g_oid_cache.avg_noise) &&
-        aggref->aggdistinct)
+    if (aggref->aggdistinct &&
+        (is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise ||
+         is_avg_oid(aggoid) || aggoid == g_oid_cache.avg_noise ||
+         is_count_histogram(aggoid)))
       FAILWITH_LOCATION(aggref->location, "Unsupported distinct qualifier at aggregate argument.");
+
+    if (is_count_histogram(aggoid))
+      verify_count_histogram(aggref, (Query *)context);
 
     NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
     NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
@@ -209,7 +216,7 @@ static bool verify_aggregator(Node *node, void *context)
 
 static void verify_aggregators(Query *query)
 {
-  query_tree_walker(query, verify_aggregator, NULL, 0);
+  query_tree_walker(query, verify_aggregator, query, 0);
 }
 
 static void verify_bucket_expression(Node *node)

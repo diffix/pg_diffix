@@ -33,6 +33,8 @@ void oid_cache_init(void)
   g_oid_cache.avg_numeric = lookup_function(NULL, "avg", 1, (Oid[]){NUMERICOID});
   g_oid_cache.avg_float4 = lookup_function(NULL, "avg", 1, (Oid[]){FLOAT4OID});
   g_oid_cache.avg_float8 = lookup_function(NULL, "avg", 1, (Oid[]){FLOAT8OID});
+  g_oid_cache.count_histogram = lookup_function("diffix", "count_histogram", 1, (Oid[]){ANYOID});
+  g_oid_cache.count_histogram_int8 = lookup_function("diffix", "count_histogram", 2, (Oid[]){ANYOID, INT8OID});
 
   g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, (Oid[]){});
   g_oid_cache.count_value_noise = lookup_function("diffix", "count_noise", 1, (Oid[]){ANYOID});
@@ -44,6 +46,8 @@ void oid_cache_init(void)
   g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
   g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
   g_oid_cache.anon_sum = lookup_function("diffix", "anon_sum", -1, (Oid[]){});
+  g_oid_cache.anon_count_histogram = lookup_function("diffix", "anon_count_histogram", -1, (Oid[]){});
+
   g_oid_cache.anon_count_distinct_noise = lookup_function("diffix", "anon_count_distinct_noise", -1, (Oid[]){});
   g_oid_cache.anon_count_star_noise = lookup_function("diffix", "anon_count_star_noise", -1, (Oid[]){});
   g_oid_cache.anon_count_value_noise = lookup_function("diffix", "anon_count_value_noise", -1, (Oid[]){});

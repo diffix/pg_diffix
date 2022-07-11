@@ -48,7 +48,7 @@ static const int AIDS_OFFSET = 2;
 static DistinctTrackerHashEntry *
 get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
-  bool found = false;
+  bool found;
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
   if (!found)
   {
@@ -266,7 +266,7 @@ static inline bool is_marked_as_used(DatumSet_hash *used_values, Datum value)
 
 static inline void mark_as_used(DatumSet_hash *used_values, Datum value)
 {
-  bool found = false;
+  bool found;
   DatumSet_insert(used_values, value, &found);
 }
 

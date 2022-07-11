@@ -380,6 +380,10 @@ SELECT count(least(id, 5)) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
 LINE 1: SELECT count(least(id, 5)) FROM test_validation;
                ^
+SELECT diffix.count_histogram(city) FROM test_validation;
+ERROR:  [PG_DIFFIX] count_histogram argument must be an AID column.
+LINE 1: SELECT diffix.count_histogram(city) FROM test_validation;
+                                      ^
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
@@ -598,6 +602,12 @@ SELECT diffix.floor_by(discount, 50.0) from test_validation;
 ----------
 (0 rows)
 
+SELECT diffix.count_histogram(id, 5) from test_validation;
+ count_histogram 
+-----------------
+ {}
+(1 row)
+
 SELECT count(*) FROM test_validation WHERE discount = 3;
  count 
 -------
@@ -621,6 +631,10 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.floor_by(discount, 5000000000.1) from test_val...
                                          ^
+SELECT diffix.count_histogram(id, 3) from test_validation;
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
+LINE 1: SELECT diffix.count_histogram(id, 3) from test_validation;
+                                          ^
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.

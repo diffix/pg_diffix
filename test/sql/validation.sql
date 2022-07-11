@@ -193,6 +193,7 @@ SELECT count(distinct id + 5) FROM test_validation;
 SELECT count(distinct least(id, 5)) FROM test_validation;
 SELECT count(id + 5) FROM test_validation;
 SELECT count(least(id, 5)) FROM test_validation;
+SELECT diffix.count_histogram(city) FROM test_validation;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
@@ -283,6 +284,7 @@ SELECT diffix.floor_by(discount, 2.0) from test_validation;
 SELECT diffix.floor_by(discount, 0.2) from test_validation;
 SELECT diffix.floor_by(discount, 20.0) from test_validation;
 SELECT diffix.floor_by(discount, 50.0) from test_validation;
+SELECT diffix.count_histogram(id, 5) from test_validation;
 SELECT count(*) FROM test_validation WHERE discount = 3;
 
 -- Get rejected because of invalid generalization parameters
@@ -290,6 +292,7 @@ SELECT substring(city, 2, 2) from test_validation;
 SELECT diffix.floor_by(discount, 3) from test_validation;
 SELECT diffix.floor_by(discount, 3.0) from test_validation;
 SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
+SELECT diffix.count_histogram(id, 3) from test_validation;
 
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;

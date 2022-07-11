@@ -126,7 +126,7 @@ void update_or_add_top_contributor(
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
 #define SH_KEY contributor.aid
 #define SH_KEY_TYPE aid_t
-#define SH_EQUAL(tb, a, b) a == b
+#define SH_EQUAL(tb, a, b) (a == b)
 #define SH_HASH_KEY(tb, key) (uint32) key /* `key` is already a hash */
 #define SH_SCOPE inline
 #define SH_DEFINE

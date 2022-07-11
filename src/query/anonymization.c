@@ -15,6 +15,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/node_funcs.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/anonymization.h"
@@ -148,6 +149,38 @@ static void rewrite_to_anon_aggregator(Aggref *aggref, List *aid_refs, Oid fnoid
    */
   aggref->aggstar = false;
   aggref->aggdistinct = false;
+  append_aid_args(aggref, aid_refs);
+}
+
+static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_count_histogram;
+
+  /* Replace AID expression with its index. */
+  Var *counted_aid_var = (Var *)linitial_node(TargetEntry, aggref->args)->expr;
+
+  int counted_aid_index = -1;
+  ListCell *cell;
+  foreach (cell, aid_refs)
+  {
+    AidRef *aid_ref = (AidRef *)lfirst(cell);
+    if (counted_aid_var->varno == aid_ref->rte_index && counted_aid_var->varattno == aid_ref->aid_attnum)
+      counted_aid_index = foreach_current_index(cell);
+  }
+
+  if (counted_aid_index < 0)
+    FAILWITH_LOCATION(counted_aid_var->location, "Counted AID not found in scope of query.");
+
+  list_nth_cell(aggref->args, 0)->ptr_value = makeTargetEntry(
+      make_const_int32(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
+
+  if (list_length(aggref->args) < 2)
+  {
+    /* Append implicit bin_size=1. */
+    Assert(list_length(aggref->args) == 1);
+    aggref->args = lappend(aggref->args, makeTargetEntry(make_const_int64(1), 2 /* resno */, "bin_size", false));
+  }
+
   append_aid_args(aggref, aid_refs);
 }
 
@@ -309,6 +342,8 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_sum);
     else if (is_avg_oid(aggfnoid))
       return rewrite_to_avg_aggregator(aggref, aid_refs);
+    else if (aggfnoid == g_oid_cache.count_histogram || aggfnoid == g_oid_cache.count_histogram_int8)
+      rewrite_count_histogram(aggref, aid_refs);
     else if (aggfnoid == g_oid_cache.count_star_noise)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_star_noise);
     else if (aggfnoid == g_oid_cache.count_value_noise && aggref->aggdistinct)
@@ -804,10 +839,7 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
       rte->security_barrier = true;
 
       if (rte->subquery->limitCount == NULL)
-        rte->subquery->limitCount = (Node *)makeConst(INT8OID, -1, InvalidOid,
-                                                      sizeof(int64),
-                                                      Int64GetDatum(INT64_MAX), false,
-                                                      FLOAT8PASSBYVAL);
+        rte->subquery->limitCount = (Node *)make_const_int64(INT64_MAX);
     }
 
     /* Prevent double walk. */
@@ -891,7 +923,9 @@ static void unwrap_having_qual(Plan *plan)
     return;
 
   Expr *func_expr = linitial(plan->qual);
-  if (list_length(plan->qual) != 1 || !IsA(func_expr, FuncExpr) || ((FuncExpr *)func_expr)->funcid != g_oid_cache.internal_qual_wrapper)
+  if (list_length(plan->qual) != 1 ||
+      !IsA(func_expr, FuncExpr) ||
+      ((FuncExpr *)func_expr)->funcid != g_oid_cache.internal_qual_wrapper)
     FAILWITH("Unsupported HAVING clause in anonymizing query.");
 
   Expr *having_qual = linitial(((FuncExpr *)func_expr)->args);
