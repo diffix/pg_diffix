@@ -74,3 +74,10 @@ SELECT COUNT(DISTINCT planet) FROM test_customers;
 -- `low_count_min_threshold` for queries with GROUP BY
 SELECT city, COUNT(DISTINCT city) FROM test_customers GROUP BY 1;
 SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+
+----------------------------------------------------------------
+-- Prepared statements
+----------------------------------------------------------------
+
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1), count(*) FROM test_customers GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);

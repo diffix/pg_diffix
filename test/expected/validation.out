@@ -361,6 +361,9 @@ SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
 ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
 LINE 1: SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
                      ^
+PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
+EXECUTE prepared_param_as_label('aaaa');
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id...
@@ -605,3 +608,20 @@ SELECT diffix.ceil_by(discount, 2) from test_validation;
 ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
 LINE 1: SELECT diffix.ceil_by(discount, 2) from test_validation;
                ^
+-- Allow prepared statements with generalization constants as params, and validate them
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);
+ floor_by 
+----------
+(0 rows)
+
+EXECUTE prepared_floor_by(2.1);
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+PREPARE prepared_substring(int, int) AS SELECT substring(city, $1, $2) FROM test_validation GROUP BY 1;
+EXECUTE prepared_substring(1, 2);
+ substring 
+-----------
+(0 rows)
+
+EXECUTE prepared_substring(2, 3);
+ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.

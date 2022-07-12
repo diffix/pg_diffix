@@ -187,6 +187,8 @@ SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_validation GROUP BY city || 'xxx';
 SELECT LENGTH(city) FROM test_validation;
 SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
+PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
+EXECUTE prepared_param_as_label('aaaa');
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(discount AS integer));
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
@@ -287,3 +289,11 @@ SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 SELECT ceil(discount) from test_validation;
 SELECT diffix.ceil_by(discount, 2) from test_validation;
+
+-- Allow prepared statements with generalization constants as params, and validate them
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);
+EXECUTE prepared_floor_by(2.1);
+PREPARE prepared_substring(int, int) AS SELECT substring(city, $1, $2) FROM test_validation GROUP BY 1;
+EXECUTE prepared_substring(1, 2);
+EXECUTE prepared_substring(2, 3);

@@ -47,7 +47,7 @@ static void pg_diffix_post_parse_analyze(ParseState *pstate, Query *query, Jumbl
 }
 #endif
 
-static AnonQueryLinks *prepare_query(Query *query)
+static AnonQueryLinks *prepare_query(Query *query, ParamListInfo bound_params)
 {
   /* Do nothing for sessions with direct access. */
   if (get_session_access_level() == ACCESS_DIRECT)
@@ -70,7 +70,7 @@ static AnonQueryLinks *prepare_query(Query *query)
    */
   config_validate();
 
-  AnonQueryLinks *links = compile_query(query, personal_relations);
+  AnonQueryLinks *links = compile_query(query, personal_relations, bound_params);
 
   DEBUG_LOG("Compiled query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
 
@@ -88,7 +88,7 @@ static PlannedStmt *pg_diffix_planner(
 
   DEBUG_LOG("Statement (Query ID=%lu) (User ID=%u): %s", query->queryId, GetSessionUserId(), query_string);
 
-  AnonQueryLinks *links = prepare_query(query);
+  AnonQueryLinks *links = prepare_query(query, boundParams);
 
   planner_hook_type planner = (prev_planner_hook ? prev_planner_hook : standard_planner);
   PlannedStmt *plan = planner(query, query_string, cursorOptions, boundParams);

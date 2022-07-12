@@ -27,7 +27,7 @@ extern void verify_anonymization_requirements(Query *query);
  * Verifies restrictions on bucket expressions, operates on an anonymizing query.
  * If requirements are not met, an error is reported and execution is halted.
  */
-extern void verify_bucket_expressions(Query *query);
+extern void verify_bucket_expressions(Query *query, ParamListInfo bound_params);
 
 /*
  * Returns `true` if the given list of `RangeTblEntry` from `ExecutorCheckPerms` does not access `pg_catalog`
