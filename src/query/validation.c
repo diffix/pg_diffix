@@ -228,7 +228,7 @@ static void verify_bucket_expression(Node *node)
 
     for (int i = 1; i < list_length(func_expr->args); i++)
     {
-      if (!is_simple_constant(unwrap_cast((Node *)list_nth(func_expr->args, i))))
+      if (!is_stable_expression(unwrap_cast((Node *)list_nth(func_expr->args, i))))
         FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
     }
   }
@@ -237,7 +237,7 @@ static void verify_bucket_expression(Node *node)
     OpExpr *op_expr = (OpExpr *)node;
     FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
   }
-  else if (is_simple_constant(node))
+  else if (is_stable_expression(node))
   {
     FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as bucket expressions.");
   }
@@ -267,11 +267,11 @@ static void verify_bucket_expression(Node *node)
 static void verify_substring(FuncExpr *func_expr, ParamListInfo bound_params)
 {
   Node *node = unwrap_cast(list_nth(func_expr->args, 1));
-  Assert(is_simple_constant(node)); /* Checked by prior validations */
+  Assert(is_stable_expression(node)); /* Checked by prior validations */
   Oid type;
   Datum value;
   bool isnull;
-  get_simple_constant_typed_value(node, bound_params, &type, &value, &isnull);
+  get_stable_expression_value(node, bound_params, &type, &value, &isnull);
 
   if (DatumGetUInt32(value) != 1)
     FAILWITH_LOCATION(exprLocation(node), "Generalization used in the query is not allowed in untrusted access level.");
@@ -294,11 +294,11 @@ static bool is_money_style(double number)
 static void verify_bin_size(Node *range_expr, ParamListInfo bound_params)
 {
   Node *range_node = unwrap_cast(range_expr);
-  Assert(is_simple_constant(range_node)); /* Checked by prior validations */
+  Assert(is_stable_expression(range_node)); /* Checked by prior validations */
   Oid type;
   Datum value;
   bool isnull;
-  get_simple_constant_typed_value(range_node, bound_params, &type, &value, &isnull);
+  get_stable_expression_value(range_node, bound_params, &type, &value, &isnull);
 
   if (!is_supported_numeric_type(type))
     FAILWITH_LOCATION(exprLocation(range_node), "Unsupported constant type used in generalization.");

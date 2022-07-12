@@ -378,12 +378,12 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     append_seed_material(context->material, attribute_name, '.');
   }
 
-  if (is_simple_constant(node))
+  if (is_stable_expression(node))
   {
     Oid type;
     Datum value;
     bool isnull;
-    get_simple_constant_typed_value(node, context->bound_params, &type, &value, &isnull);
+    get_stable_expression_value(node, context->bound_params, &type, &value, &isnull);
 
     if (!is_supported_numeric_type(type))
       FAILWITH_LOCATION(exprLocation(node), "Unsupported constant type used in bucket definition!");

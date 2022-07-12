@@ -11,12 +11,12 @@ static ParamExternData *get_param_data(ParamListInfo bound_params, int one_based
     return &bound_params->params[one_based_paramid - 1];
 }
 
-bool is_simple_constant(Node *node)
+bool is_stable_expression(Node *node)
 {
   return IsA(node, Const) || (IsA(node, Param) && ((Param *)node)->paramkind == PARAM_EXTERN);
 }
 
-void get_simple_constant_typed_value(Node *node, ParamListInfo bound_params, Oid *type, Datum *value, bool *isnull)
+void get_stable_expression_value(Node *node, ParamListInfo bound_params, Oid *type, Datum *value, bool *isnull)
 {
   if (IsA(node, Const))
   {
