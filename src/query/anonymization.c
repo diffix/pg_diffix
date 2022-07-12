@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_aggregate.h"
+#include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
 #include "nodes/makefuncs.h"
@@ -14,6 +15,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/auth.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/anonymization.h"
@@ -270,24 +272,21 @@ static List *gather_aid_refs(Query *query, List *relations)
   return aid_refs;
 }
 
-static void reject_aid_grouping(Query *query, List *aid_refs)
+static void reject_aid_grouping(Query *query)
 {
-  ListCell *cell;
   List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+
+  ListCell *cell;
   foreach (cell, grouping_exprs)
   {
     Node *group_expr = (Node *)lfirst(cell);
     if (IsA(group_expr, Var))
     {
       Var *var = (Var *)group_expr;
+      RangeTblEntry *rte = rt_fetch(var->varno, query->rtable);
 
-      ListCell *aid_ref_cell;
-      foreach (aid_ref_cell, aid_refs)
-      {
-        AidRef *aid_ref = (AidRef *)lfirst(aid_ref_cell);
-        if (aid_ref->aid_attnum == var->varattno)
-          FAILWITH_LOCATION(var->location, "Selecting AID without generalization cannot yield any results - rejecting.");
-      }
+      if (rte->relkind == RELKIND_RELATION && is_aid_column(rte->relid, var->varattno))
+        FAILWITH_LOCATION(var->location, "Selecting or grouping by an AID column will result in a fully censored output.");
     }
   }
 }
@@ -493,8 +492,6 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *personal
     anon_context->expand_buckets = true;
   }
 
-  reject_aid_grouping(query, aid_refs);
-
   query_tree_mutator(
       query,
       aggregate_expression_mutator,
@@ -607,6 +604,8 @@ static void compile_anonymizing_query(Query *query, List *personal_relations, An
   verify_anonymization_requirements(query);
 
   AnonymizationContext *anon_context = make_query_anonymizing(query, personal_relations);
+
+  reject_aid_grouping(query);
 
   verify_bucket_expressions(query);
 

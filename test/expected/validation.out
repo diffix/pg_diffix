@@ -492,15 +492,15 @@ LINE 1: SELECT count(distinct tableoid) FROM test_validation;
                               ^
 -- Get rejected because of selecting AID columns
 SELECT id FROM test_validation;
-ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
 LINE 1: SELECT id FROM test_validation;
                ^
 SELECT 1 FROM test_validation GROUP BY id;
-ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
 LINE 1: SELECT 1 FROM test_validation GROUP BY id;
                                                ^
 SELECT * FROM (SELECT id FROM test_validation) z;
-ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
 LINE 1: SELECT * FROM (SELECT id FROM test_validation) z;
                               ^
 -- Get accepted because of selecting AID with generalization
