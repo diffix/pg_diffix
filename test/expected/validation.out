@@ -179,25 +179,25 @@ FROM (
      0
 (1 row)
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.city)
 FROM (
-  SELECT * FROM test_validation
+  SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation
 ) x;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
 (1 row)
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_validation ) x;
+SELECT COUNT(DISTINCT x.modified_name) FROM ( SELECT name AS modified_name FROM test_validation ) x;
  count 
 -------
      0
 (1 row)
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_name)
 FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_validation ) y
+  SELECT y.city as city, y.name as user_name
+  FROM ( SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation ) y
 ) x;
  count | count | count 
 -------+-------+-------
@@ -490,6 +490,25 @@ SELECT count(distinct tableoid) FROM test_validation;
 ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
 LINE 1: SELECT count(distinct tableoid) FROM test_validation;
                               ^
+-- Get rejected because of selecting AID columns
+SELECT id FROM test_validation;
+ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+LINE 1: SELECT id FROM test_validation;
+               ^
+SELECT 1 FROM test_validation GROUP BY id;
+ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+LINE 1: SELECT 1 FROM test_validation GROUP BY id;
+                                               ^
+SELECT * FROM (SELECT id FROM test_validation) z;
+ERROR:  [PG_DIFFIX] Selecting AID without generalization cannot yield any results - rejecting.
+LINE 1: SELECT * FROM (SELECT id FROM test_validation) z;
+                              ^
+-- Get accepted because of selecting AID with generalization
+SELECT diffix.floor_by(id, 2), count(*) FROM test_validation GROUP BY 1;
+ floor_by | count 
+----------+-------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------

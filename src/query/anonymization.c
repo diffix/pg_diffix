@@ -270,6 +270,28 @@ static List *gather_aid_refs(Query *query, List *relations)
   return aid_refs;
 }
 
+static void reject_aid_grouping(Query *query, List *aid_refs)
+{
+  ListCell *cell;
+  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  foreach (cell, grouping_exprs)
+  {
+    Node *group_expr = (Node *)lfirst(cell);
+    if (IsA(group_expr, Var))
+    {
+      Var *var = (Var *)group_expr;
+
+      ListCell *aid_ref_cell;
+      foreach (aid_ref_cell, aid_refs)
+      {
+        AidRef *aid_ref = (AidRef *)lfirst(aid_ref_cell);
+        if (aid_ref->aid_attnum == var->varattno)
+          FAILWITH_LOCATION(var->location, "Selecting AID without generalization cannot yield any results - rejecting.");
+      }
+    }
+  }
+}
+
 static void append_aid_args(Aggref *aggref, List *aid_refs)
 {
   bool found_any = false;
@@ -470,6 +492,8 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *personal
     add_junk_count_star(query);
     anon_context->expand_buckets = true;
   }
+
+  reject_aid_grouping(query, aid_refs);
 
   query_tree_mutator(
       query,

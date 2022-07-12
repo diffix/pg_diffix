@@ -158,29 +158,6 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 ----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
-SELECT id FROM test_customers;
- id 
-----
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-(18 rows)
-
 SELECT city FROM test_customers;
   city  
 --------
