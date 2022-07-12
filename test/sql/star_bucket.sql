@@ -106,9 +106,6 @@ GROUP BY 1, 2, 3;
 -- Other queries
 ----------------------------------------------------------------
 
-SELECT *
-FROM star_bucket;
-
 SELECT dept, gender, title
 FROM star_bucket;
 

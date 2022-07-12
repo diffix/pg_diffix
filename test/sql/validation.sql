@@ -119,17 +119,17 @@ FROM (
   GROUP BY 1
 ) x;
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.city)
 FROM (
-  SELECT * FROM test_validation
+  SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation
 ) x;
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_validation ) x;
+SELECT COUNT(DISTINCT x.modified_name) FROM ( SELECT name AS modified_name FROM test_validation ) x;
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_name)
 FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_validation ) y
+  SELECT y.city as city, y.name as user_name
+  FROM ( SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation ) y
 ) x;
 
 SELECT * FROM (SELECT name FROM test_validation) x, (SELECT city FROM test_validation) y;
@@ -200,6 +200,8 @@ SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
 SELECT COUNT(*) FROM test_validation GROUP BY city || 'xxx';
 SELECT LENGTH(city) FROM test_validation;
 SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
+PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
+EXECUTE prepared_param_as_label('aaaa');
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(discount AS integer));
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
@@ -264,6 +266,13 @@ SELECT count(tableoid) FROM test_validation;
 SELECT count(distinct ctid) FROM test_validation;
 SELECT count(distinct tableoid) FROM test_validation;
 
+-- Get rejected because of selecting AID columns
+SELECT id FROM test_validation;
+SELECT 1 FROM test_validation GROUP BY id;
+SELECT * FROM (SELECT id FROM test_validation) z;
+
+-- Get accepted because of selecting AID with generalization
+SELECT diffix.floor_by(id, 2), count(*) FROM test_validation GROUP BY 1;
 
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
@@ -303,3 +312,10 @@ SELECT diffix.ceil_by(discount, 2) from test_validation;
 SELECT COUNT(*) FROM test_validation WHERE substring(cast(birthday as text), 4) = '2000';
 -- Marking columns as `filterable` works.
 SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4) = '2000';
+-- Allow prepared statements with generalization constants as params, and validate them
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);
+EXECUTE prepared_floor_by(2.1);
+PREPARE prepared_substring(int, int) AS SELECT substring(city, $1, $2) FROM test_validation GROUP BY 1;
+EXECUTE prepared_substring(1, 2);
+EXECUTE prepared_substring(2, 3);
