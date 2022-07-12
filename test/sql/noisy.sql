@@ -48,8 +48,6 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 -- LCF & Filtering
 ----------------------------------------------------------------
 
-SELECT id FROM test_customers;
-
 SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;

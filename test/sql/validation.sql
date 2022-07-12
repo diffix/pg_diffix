@@ -112,17 +112,17 @@ FROM (
   GROUP BY 1
 ) x;
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.city)
 FROM (
-  SELECT * FROM test_validation
+  SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation
 ) x;
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_validation ) x;
+SELECT COUNT(DISTINCT x.modified_name) FROM ( SELECT name AS modified_name FROM test_validation ) x;
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_name)
 FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_validation ) y
+  SELECT y.city as city, y.name as user_name
+  FROM ( SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation ) y
 ) x;
 
 SELECT * FROM (SELECT name FROM test_validation) x, (SELECT city FROM test_validation) y;
@@ -251,6 +251,13 @@ SELECT count(tableoid) FROM test_validation;
 SELECT count(distinct ctid) FROM test_validation;
 SELECT count(distinct tableoid) FROM test_validation;
 
+-- Get rejected because of selecting AID columns
+SELECT id FROM test_validation;
+SELECT 1 FROM test_validation GROUP BY id;
+SELECT * FROM (SELECT id FROM test_validation) z;
+
+-- Get accepted because of selecting AID with generalization
+SELECT diffix.floor_by(id, 2), count(*) FROM test_validation GROUP BY 1;
 
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
