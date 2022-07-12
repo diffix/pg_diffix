@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_aggregate.h"
+#include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
 #include "nodes/makefuncs.h"
@@ -14,6 +15,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/auth.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/anonymization.h"
@@ -268,6 +270,25 @@ static List *gather_aid_refs(Query *query, List *relations)
   }
 
   return aid_refs;
+}
+
+static void reject_aid_grouping(Query *query)
+{
+  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+
+  ListCell *cell;
+  foreach (cell, grouping_exprs)
+  {
+    Node *group_expr = (Node *)lfirst(cell);
+    if (IsA(group_expr, Var))
+    {
+      Var *var = (Var *)group_expr;
+      RangeTblEntry *rte = rt_fetch(var->varno, query->rtable);
+
+      if (rte->relkind == RELKIND_RELATION && is_aid_column(rte->relid, var->varattno))
+        FAILWITH_LOCATION(var->location, "Selecting or grouping by an AID column will result in a fully censored output.");
+    }
+  }
 }
 
 static void append_aid_args(Aggref *aggref, List *aid_refs)
@@ -583,6 +604,8 @@ static void compile_anonymizing_query(Query *query, List *personal_relations, An
   verify_anonymization_requirements(query);
 
   AnonymizationContext *anon_context = make_query_anonymizing(query, personal_relations);
+
+  reject_aid_grouping(query);
 
   verify_bucket_expressions(query);
 
