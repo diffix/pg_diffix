@@ -6,6 +6,7 @@
 
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/aggregation/noise.h"
+#include "pg_diffix/node_funcs.h"
 
 /*
  * Opaque struct containing references to anonymizing (sub)queries.
@@ -16,7 +17,7 @@ typedef struct AnonQueryLinks AnonQueryLinks;
  * Transforms subqueries accessing personal relations into anonymizing subqueries.
  * Returned data is used during plan rewrite.
  */
-extern AnonQueryLinks *compile_query(Query *query, List *personal_relations);
+extern AnonQueryLinks *compile_query(Query *query, List *personal_relations, ParamListInfo bound_params);
 
 /*
  * Calls `rewrite_plan` for each item in a list of Plan nodes.

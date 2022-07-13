@@ -223,29 +223,6 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 ----------------------------------------------------------------
 -- LCF & Filtering
 ----------------------------------------------------------------
-SELECT id FROM test_customers;
- id 
-----
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-(18 rows)
-
 SELECT city FROM test_customers;
   city  
 --------
@@ -318,4 +295,15 @@ SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
         1 |     6
         2 |     4
 (4 rows)
+
+----------------------------------------------------------------
+-- Prepared statements
+----------------------------------------------------------------
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1), count(*) FROM test_customers GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);
+ floor_by | count 
+----------+-------
+        0 |    13
+        2 |     4
+(2 rows)
 

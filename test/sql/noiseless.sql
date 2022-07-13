@@ -80,8 +80,6 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_patients;
 -- LCF & Filtering
 ----------------------------------------------------------------
 
-SELECT id FROM test_customers;
-
 SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
@@ -104,3 +102,10 @@ SELECT COUNT(DISTINCT planet) FROM test_customers;
 -- `low_count_min_threshold` for queries with GROUP BY
 SELECT city, COUNT(DISTINCT city) FROM test_customers GROUP BY 1;
 SELECT discount, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
+
+----------------------------------------------------------------
+-- Prepared statements
+----------------------------------------------------------------
+
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1), count(*) FROM test_customers GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);

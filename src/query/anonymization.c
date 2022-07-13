@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "catalog/pg_aggregate.h"
+#include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "common/shortest_dec.h"
 #include "nodes/makefuncs.h"
@@ -15,6 +16,7 @@
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
+#include "pg_diffix/auth.h"
 #include "pg_diffix/node_funcs.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
@@ -454,6 +456,25 @@ static List *gather_aid_refs(Query *query, List *relations)
   return aid_refs;
 }
 
+static void reject_aid_grouping(Query *query)
+{
+  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+
+  ListCell *cell;
+  foreach (cell, grouping_exprs)
+  {
+    Node *group_expr = (Node *)lfirst(cell);
+    if (IsA(group_expr, Var))
+    {
+      Var *var = (Var *)group_expr;
+      RangeTblEntry *rte = rt_fetch(var->varno, query->rtable);
+
+      if (rte->relkind == RELKIND_RELATION && is_aid_column(rte->relid, var->varattno))
+        FAILWITH_LOCATION(var->location, "Selecting or grouping by an AID column will result in a fully censored output.");
+    }
+  }
+}
+
 static void append_aid_args(Aggref *aggref, List *aid_refs)
 {
   bool found_any = false;
@@ -500,6 +521,7 @@ static void append_seed_material(
 typedef struct CollectMaterialContext
 {
   Query *query;
+  ParamListInfo bound_params;
   char material[MAX_SEED_MATERIAL_SIZE];
 } CollectMaterialContext;
 
@@ -540,14 +562,17 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     append_seed_material(context->material, attribute_name, '.');
   }
 
-  if (IsA(node, Const))
+  if (is_stable_expression(node))
   {
-    Const *const_expr = (Const *)node;
+    Oid type;
+    Datum value;
+    bool isnull;
+    get_stable_expression_value(node, context->bound_params, &type, &value, &isnull);
 
-    if (!is_supported_numeric_type(const_expr->consttype))
-      FAILWITH_LOCATION(const_expr->location, "Unsupported constant type used in bucket definition!");
+    if (!is_supported_numeric_type(type))
+      FAILWITH_LOCATION(exprLocation(node), "Unsupported constant type used in bucket definition!");
 
-    double const_as_double = numeric_value_to_double(const_expr->consttype, const_expr->constvalue);
+    double const_as_double = numeric_value_to_double(type, value);
     char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(const_as_double, const_as_string);
     append_seed_material(context->material, const_as_string, ',');
@@ -557,7 +582,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   return expression_tree_walker(node, collect_seed_material, context);
 }
 
-static void collect_seed_material_hashes(Query *query, List *exprs, List **seed_material_hash_set)
+static void collect_seed_material_hashes(Query *query, List *exprs, List **seed_material_hash_set, ParamListInfo bound_params)
 {
   ListCell *cell = NULL;
   foreach (cell, exprs)
@@ -565,7 +590,7 @@ static void collect_seed_material_hashes(Query *query, List *exprs, List **seed_
     Node *expr = lfirst(cell);
 
     /* Start from empty string and append material pieces for each non-cast expression. */
-    CollectMaterialContext collect_context = {.query = query, .material = ""};
+    CollectMaterialContext collect_context = {.query = query, .bound_params = bound_params, .material = ""};
     collect_seed_material(expr, &collect_context);
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
@@ -605,15 +630,15 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
  * Extracts base labels from filtering equalities and stores the hashes for later consumption.
  * Grouping clause (if any) must be made explicit before calling this.
  */
-static void prepare_bucket_seeds(Query *query, AnonymizationContext *anon_context)
+static void prepare_bucket_seeds(Query *query, AnonymizationContext *anon_context, ParamListInfo bound_params)
 {
   List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
   List *filtering_exprs = NIL, *filtering_consts = NIL;
   collect_equalities_from_filters(query->jointree->quals, &filtering_exprs, &filtering_consts);
 
   List *seed_material_hash_set = NIL;
-  collect_seed_material_hashes(query, grouping_exprs, &seed_material_hash_set);
-  collect_seed_material_hashes(query, filtering_exprs, &seed_material_hash_set);
+  collect_seed_material_hashes(query, grouping_exprs, &seed_material_hash_set, bound_params);
+  collect_seed_material_hashes(query, filtering_exprs, &seed_material_hash_set, bound_params);
   anon_context->sql_seed = hash_set_to_seed(seed_material_hash_set);
 
   ListCell *cell = NULL;
@@ -780,15 +805,17 @@ static void wrap_having_qual(Query *query)
       COERCE_EXPLICIT_CALL);
 }
 
-static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links)
+static void compile_anonymizing_query(Query *query, List *personal_relations, AnonQueryLinks *anon_links, ParamListInfo bound_params)
 {
   verify_anonymization_requirements(query);
 
   AnonymizationContext *anon_context = make_query_anonymizing(query, personal_relations);
 
-  verify_bucket_expressions(query);
+  reject_aid_grouping(query);
 
-  prepare_bucket_seeds(query, anon_context);
+  verify_bucket_expressions(query, bound_params);
+
+  prepare_bucket_seeds(query, anon_context, bound_params);
 
   link_anon_context(query, anon_links, anon_context);
 
@@ -815,6 +842,7 @@ typedef struct QueryCompileContext
 {
   List *personal_relations;
   AnonQueryLinks *anon_links;
+  ParamListInfo bound_params;
 } QueryCompileContext;
 
 static bool compile_query_walker(Node *node, QueryCompileContext *context)
@@ -850,7 +878,7 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   {
     Query *query = (Query *)node;
     if (is_anonymizing_query(query, context->personal_relations))
-      compile_anonymizing_query(query, context->personal_relations, context->anon_links);
+      compile_anonymizing_query(query, context->personal_relations, context->anon_links, context->bound_params);
     else
       query_tree_walker(query, compile_query_walker, context, QTW_EXAMINE_RTES_AFTER);
   }
@@ -858,11 +886,12 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
   return expression_tree_walker(node, compile_query_walker, context);
 }
 
-AnonQueryLinks *compile_query(Query *query, List *personal_relations)
+AnonQueryLinks *compile_query(Query *query, List *personal_relations, ParamListInfo bound_params)
 {
   QueryCompileContext context = {
       .personal_relations = personal_relations,
       .anon_links = palloc0(sizeof(AnonQueryLinks)),
+      .bound_params = bound_params,
   };
 
   compile_query_walker((Node *)query, &context);

@@ -195,25 +195,25 @@ FROM (
      0
 (1 row)
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.city)
 FROM (
-  SELECT * FROM test_validation
+  SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation
 ) x;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
 (1 row)
 
-SELECT COUNT(DISTINCT x.modified_id) FROM ( SELECT id AS modified_id FROM test_validation ) x;
+SELECT COUNT(DISTINCT x.modified_name) FROM ( SELECT name AS modified_name FROM test_validation ) x;
  count 
 -------
      0
 (1 row)
 
-SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_id)
+SELECT COUNT(*), COUNT(x.city), COUNT(DISTINCT x.user_name)
 FROM (
-  SELECT y.city as city, y.id as user_id
-  FROM ( SELECT * FROM test_validation ) y
+  SELECT y.city as city, y.name as user_name
+  FROM ( SELECT name, city, discount, birthday, lunchtime, last_seen FROM test_validation ) y
 ) x;
  count | count | count 
 -------+-------+-------
@@ -401,6 +401,9 @@ SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
 ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 LINE 1: SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
                      ^
+PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
+EXECUTE prepared_param_as_label('aaaa');
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id...
@@ -411,8 +414,8 @@ LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(dis...
                                                       ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
 ERROR:  [PG_DIFFIX] Non-primary arguments for a generalization function have to be simple constants.
-LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1...
-                                                      ^
+LINE 1: ... COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
+                                                                   ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
 ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa',...
@@ -536,6 +539,25 @@ SELECT count(distinct tableoid) FROM test_validation;
 ERROR:  [PG_DIFFIX] System columns are not allowed in this context.
 LINE 1: SELECT count(distinct tableoid) FROM test_validation;
                               ^
+-- Get rejected because of selecting AID columns
+SELECT id FROM test_validation;
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
+LINE 1: SELECT id FROM test_validation;
+               ^
+SELECT 1 FROM test_validation GROUP BY id;
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
+LINE 1: SELECT 1 FROM test_validation GROUP BY id;
+                                               ^
+SELECT * FROM (SELECT id FROM test_validation) z;
+ERROR:  [PG_DIFFIX] Selecting or grouping by an AID column will result in a fully censored output.
+LINE 1: SELECT * FROM (SELECT id FROM test_validation) z;
+                              ^
+-- Get accepted because of selecting AID with generalization
+SELECT diffix.floor_by(id, 2), count(*) FROM test_validation GROUP BY 1;
+ floor_by | count 
+----------+-------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Untrusted mode query restrictions
 ----------------------------------------------------------------
@@ -660,3 +682,20 @@ SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4)
      0
 (1 row)
 
+-- Allow prepared statements with generalization constants as params, and validate them
+PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
+EXECUTE prepared_floor_by(2.0);
+ floor_by 
+----------
+(0 rows)
+
+EXECUTE prepared_floor_by(2.1);
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
+PREPARE prepared_substring(int, int) AS SELECT substring(city, $1, $2) FROM test_validation GROUP BY 1;
+EXECUTE prepared_substring(1, 2);
+ substring 
+-----------
+(0 rows)
+
+EXECUTE prepared_substring(2, 3);
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.

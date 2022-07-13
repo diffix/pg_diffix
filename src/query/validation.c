@@ -55,6 +55,8 @@ void verify_utility_command(Node *utility_stmt)
     case T_DeallocateStmt:
     case T_FetchStmt:
     case T_ClosePortalStmt:
+    case T_PrepareStmt:
+    case T_ExecuteStmt:
       break;
     default:
       FAILWITH("Statement requires direct access level.");
@@ -240,8 +242,9 @@ static void verify_bucket_expression(Node *node)
 
     for (int i = 1; i < list_length(func_expr->args); i++)
     {
-      if (!IsA(unwrap_cast((Node *)list_nth(func_expr->args, i)), Const))
-        FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a generalization function have to be simple constants.");
+      Node *arg = unwrap_cast((Node *)list_nth(func_expr->args, i));
+      if (!is_stable_expression(arg))
+        FAILWITH_LOCATION(exprLocation(arg), "Non-primary arguments for a generalization function have to be simple constants.");
     }
   }
   else if (IsA(node, OpExpr))
@@ -249,10 +252,9 @@ static void verify_bucket_expression(Node *node)
     OpExpr *op_expr = (OpExpr *)node;
     FAILWITH_LOCATION(op_expr->location, "Use of operators for generalization is not supported.");
   }
-  else if (IsA(node, Const))
+  else if (is_stable_expression(node))
   {
-    Const *const_expr = (Const *)node;
-    FAILWITH_LOCATION(const_expr->location, "Simple constants are not allowed as generalization expressions.");
+    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as generalization expressions.");
   }
   else if (IsA(node, RelabelType))
   {
@@ -277,40 +279,46 @@ static void verify_bucket_expression(Node *node)
   }
 }
 
-static void verify_substring(FuncExpr *func_expr)
+static void verify_substring(FuncExpr *func_expr, ParamListInfo bound_params)
 {
-  Node *node = unwrap_cast(lsecond(func_expr->args));
-  Assert(IsA(node, Const)); /* Checked by prior validations */
-  Const *second_arg = (Const *)node;
+  Node *node = unwrap_cast(list_nth(func_expr->args, 1));
+  Assert(is_stable_expression(node)); /* Checked by prior validations */
+  Oid type;
+  Datum value;
+  bool isnull;
+  get_stable_expression_value(node, bound_params, &type, &value, &isnull);
 
-  if (DatumGetUInt32(second_arg->constvalue) != 1)
-    FAILWITH_LOCATION(second_arg->location, "Used generalization expression is not allowed in untrusted access level.");
+  if (DatumGetUInt32(value) != 1)
+    FAILWITH_LOCATION(exprLocation(node), "Used generalization expression is not allowed in untrusted access level.");
 }
 
 /* Expects the expression being the second argument to `round_by` et al. */
-static void verify_bin_size(Node *range_expr)
+static void verify_bin_size(Node *range_expr, ParamListInfo bound_params)
 {
   Node *range_node = unwrap_cast(range_expr);
-  Assert(IsA(range_node, Const)); /* Checked by prior validations */
-  Const *range_const = (Const *)range_node;
+  Assert(is_stable_expression(range_node)); /* Checked by prior validations */
+  Oid type;
+  Datum value;
+  bool isnull;
+  get_stable_expression_value(range_node, bound_params, &type, &value, &isnull);
 
-  if (!is_supported_numeric_type(range_const->consttype))
-    FAILWITH_LOCATION(range_const->location, "Unsupported constant type used in generalization expression.");
+  if (!is_supported_numeric_type(type))
+    FAILWITH_LOCATION(exprLocation(range_node), "Unsupported constant type used in generalization expression.");
 
-  if (!is_money_rounded(numeric_value_to_double(range_const->consttype, range_const->constvalue)))
-    FAILWITH_LOCATION(range_const->location, "Used generalization expression is not allowed in untrusted access level.");
+  if (!is_money_rounded(numeric_value_to_double(type, value)))
+    FAILWITH_LOCATION(exprLocation(range_node), "Used generalization expression is not allowed in untrusted access level.");
 }
 
-static void verify_untrusted_bucket_expression(Node *node)
+static void verify_untrusted_bucket_expression(Node *node, ParamListInfo bound_params)
 {
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
 
     if (is_substring_builtin(func_expr->funcid))
-      verify_substring(func_expr);
+      verify_substring(func_expr, bound_params);
     else if (is_implicit_range_udf_untrusted(func_expr->funcid))
-      verify_bin_size(lsecond(func_expr->args));
+      verify_bin_size(lsecond(func_expr->args), bound_params);
     else if (is_implicit_range_builtin_untrusted(func_expr->funcid))
       ;
     else
@@ -319,7 +327,7 @@ static void verify_untrusted_bucket_expression(Node *node)
 }
 
 /* Should be run on anonymizing queries only. */
-void verify_bucket_expressions(Query *query)
+void verify_bucket_expressions(Query *query, ParamListInfo bound_params)
 {
   AccessLevel access_level = get_session_access_level();
 
@@ -335,7 +343,7 @@ void verify_bucket_expressions(Query *query)
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
     if (access_level == ACCESS_ANONYMIZED_UNTRUSTED)
-      verify_untrusted_bucket_expression(expr);
+      verify_untrusted_bucket_expression(expr, bound_params);
   }
 }
 
