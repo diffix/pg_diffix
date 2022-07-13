@@ -238,16 +238,16 @@ Default [Postgres function](https://www.postgresql.org/docs/14/functions-string.
 
 ## Type casts
 
-When selecting or generalizing columns of personal tables, the following type conversions are allowed.
+When selecting or generalizing columns of personal tables, the following type conversions are allowed:
 
-All numeric types may be converted to other numeric types.
-Numeric types are: `smallint`, `integer`, `bigint`, `float`, `double`, and `numeric` (`decimal`).
-When converting from a real type to an integer type, implicit rounding occurs (away from zero).
-
-Date/time types may be converted to text.
-Date/time types are: `date`, `time`, `timestamp`, `timetz`, and `timestamptz`.
-The [DateStyle](https://www.postgresql.org/docs/14/runtime-config-client.html#GUC-DATESTYLE)
-configuration parameter determines the output format of the string.
+- All numeric types may be converted to other numeric types.
+  Numeric types are: `smallint`, `integer`, `bigint`, `float`, `double`, and `numeric` (`decimal`).
+  When converting from a real type to an integer type, implicit rounding occurs (away from zero).
+  Such casts count as generalizing expressions and no further generalizations are allowed.
+- Date/time types may be converted to text.
+  Date/time types are: `date`, `time`, `timestamp`, `timetz`, and `timestamptz`.
+  The [DateStyle](https://www.postgresql.org/docs/14/runtime-config-client.html#GUC-DATESTYLE)
+  configuration parameter determines the output format of the string.
 
 **Example:**
 
