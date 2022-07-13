@@ -459,6 +459,10 @@ SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
 ERROR:  [PG_DIFFIX] AID columns can't be referenced by pre-anonymization filters.
 LINE 1: ...UNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0...
                                                              ^
+SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lon', 'don');
+ERROR:  [PG_DIFFIX] Generalization expressions can only be matched against constants or params in pre-anonymization filters.
+LINE 1: SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lo...
+                                                          ^
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
