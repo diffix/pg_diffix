@@ -398,12 +398,12 @@ ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT LENGTH(city) FROM test_validation;
                ^
 SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
-ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 LINE 1: SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
                      ^
 PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
 EXECUTE prepared_param_as_label('aaaa');
-ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id...
@@ -413,7 +413,7 @@ ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a s
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(dis...
                                                       ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
-ERROR:  [PG_DIFFIX] Non-primary arguments for a bucket function have to be simple constants.
+ERROR:  [PG_DIFFIX] Non-primary arguments for a generalization function have to be simple constants.
 LINE 1: ... COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
                                                                    ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);

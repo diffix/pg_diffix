@@ -244,7 +244,7 @@ static void verify_bucket_expression(Node *node)
     {
       Node *arg = unwrap_cast((Node *)list_nth(func_expr->args, i));
       if (!is_stable_expression(arg))
-        FAILWITH_LOCATION(exprLocation(arg), "Non-primary arguments for a bucket function have to be simple constants.");
+        FAILWITH_LOCATION(exprLocation(arg), "Non-primary arguments for a generalization function have to be simple constants.");
     }
   }
   else if (IsA(node, OpExpr))
@@ -254,7 +254,7 @@ static void verify_bucket_expression(Node *node)
   }
   else if (is_stable_expression(node))
   {
-    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as bucket expressions.");
+    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as generalization expressions.");
   }
   else if (IsA(node, RelabelType))
   {
