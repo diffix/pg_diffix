@@ -301,6 +301,13 @@ SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
  column  | public.test_customers.id | aid
 (2 rows)
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+ discount | count 
+----------+-------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------

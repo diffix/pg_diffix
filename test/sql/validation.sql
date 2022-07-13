@@ -152,6 +152,10 @@ SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public'
 SELECT * FROM diffix.show_settings() LIMIT 2;
 SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------

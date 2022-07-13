@@ -455,11 +455,10 @@ static void verify_where(Query *query)
     verify_column_usage_in_filter(access_level, bucket_expression, query->rtable);
 
     Node *target_expression = unwrap_cast(lfirst(target_cell));
-    if (!IsA(target_expression, Const))
+    if (!is_stable_expression(target_expression))
     {
-      Const *const_expr = (Const *)target_expression;
-      FAILWITH_LOCATION(const_expr->location,
-                        "Generalization expressions can only be matched against constants in pre-anonymization filters.");
+      FAILWITH_LOCATION(exprLocation(target_expression),
+                        "Generalization expressions can only be matched against constants or params in pre-anonymization filters.");
     }
   }
 

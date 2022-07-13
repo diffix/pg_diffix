@@ -644,9 +644,12 @@ static void prepare_bucket_seeds(Query *query, AnonymizationContext *anon_contex
   ListCell *cell = NULL;
   foreach (cell, filtering_consts)
   {
-    Const *label = castNode(Const, unwrap_cast(lfirst(cell)));
-    hash_t label_hash = hash_label(label->consttype, label->constvalue, label->constisnull);
-    anon_context->base_labels_hash_set = hash_set_add(anon_context->base_labels_hash_set, label_hash);
+    Oid type;
+    Datum value;
+    bool isnull;
+    get_stable_expression_value(unwrap_cast(lfirst(cell)), bound_params, &type, &value, &isnull);
+
+    anon_context->base_labels_hash_set = hash_set_add(anon_context->base_labels_hash_set, hash_label(type, value, isnull));
   }
 
   list_free(seed_material_hash_set);
