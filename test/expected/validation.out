@@ -301,6 +301,13 @@ SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
  column  | public.test_customers.id | aid
 (2 rows)
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+ discount | count 
+----------+-------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -452,6 +459,10 @@ SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
 ERROR:  [PG_DIFFIX] AID columns can't be referenced by pre-anonymization filters.
 LINE 1: ...UNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0...
                                                              ^
+SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lon', 'don');
+ERROR:  [PG_DIFFIX] Generalization expressions can only be matched against constants or params in pre-anonymization filters.
+LINE 1: SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lo...
+                                                          ^
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.

@@ -152,6 +152,10 @@ SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public'
 SELECT * FROM diffix.show_settings() LIMIT 2;
 SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -231,6 +235,7 @@ SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY
 SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
 SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
 SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
+SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lon', 'don');
 
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
