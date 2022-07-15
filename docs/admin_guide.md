@@ -1,6 +1,6 @@
 # Configuration
 
-This document provides detailed information about the configuration, behavior and recommended usage of `pg_diffix`.
+This reference contains descriptions of all the configuration commands, and detailed information about the configuration, behavior and recommended usage of `pg_diffix`. The [Administration Tutorial](admin_tutorial.md) contains simple step-by-step configuration instructions and is a good starting point.
 
 ## Background reading
 
@@ -12,7 +12,7 @@ Extension behavior is controlled by __security labels__ and __settings__. Securi
 
 Only superusers can assign security labels. To remove a security label from an object, set it to `NULL`.
 
-The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension.
+The command `SELECT * FROM diffix.show_labels();` displays the current security labels assigned to tables and columns by the extension. Note that if this command fails, then probably `pg_diffix` has not been enabled for the database. See the [Administration Tutorial](admin_tutorial.md) for step-by-step instructions.
 
 The command `SELECT diffix.access_level();` displays the current access level of the active session.
 The access level depends on the current role's security label and the `session_access_level`/`default_access_level` settings.
@@ -51,7 +51,7 @@ Tables may have one of two security labels: `public` or `personal`.
 
 * Tables labeled as `personal` are anonymized by the extension for `anonymized_*` access levels.
 * Tables labeled as `public` are not anonymized: all users have direct access to these tables.
-* Unabeled tables are not accessible for `anonymized_*` access levels (unless the value of the configuration
+* Unlabeled tables are not accessible for `anonymized_*` access levels (unless the value of the configuration
 variable `pg_diffix.treat_unmarked_tables_as_public` is set to `true`, in which case they are considered `public`).
 
 The procedure `diffix.mark_public(table_name)` labels a table as `public`.
@@ -89,7 +89,7 @@ Superusers can change these variables at runtime for their own session, while re
 To use different values for all future sessions, they have to be set in the server's configuration file.
 
 Execute `SELECT diffix.show_settings();` to display the current settings of the extension.
-If the result is empty, make sure [`pg_diffix` is loaded](#using-the-extension).
+If the result is empty, make sure `pg_diffix` is loaded.
 
 ### Anonymization salt
 
