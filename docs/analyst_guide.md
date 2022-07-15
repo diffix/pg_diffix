@@ -28,6 +28,7 @@ mechanisms that Diffix Elm uses to protect personal data.
     - [width_bucket(operand, low, high, count)`](#width_bucketoperand-low-high-count)
   - [String generalization functions](#string-generalization-functions)
     - [substring(text_column, start, count)](#substringtext_column-start-count)
+  - [Type casts](#type-casts)
   - [Utility functions](#utility-functions)
     - [diffix.is_suppress_bin(*)](#diffixis_suppress_bin)
 
@@ -234,6 +235,27 @@ bucket number of the column value in an equal-width histogram.
 Default [Postgres function](https://www.postgresql.org/docs/14/functions-string.html).
 
 **Restrictions:** In untrusted mode, only `start = 1` is allowed.
+
+## Type casts
+
+When selecting or generalizing columns of personal tables, the following type conversions are allowed:
+
+- All numeric types may be converted to other numeric types.
+  Numeric types are: `smallint`, `integer`, `bigint`, `float`, `double`, and `numeric` (`decimal`).
+  When converting from a real type to an integer type, implicit rounding occurs (away from zero).
+  Such casts count as generalizing expressions and no further generalizations are allowed.
+- Date/time types may be converted to text.
+  Date/time types are: `date`, `time`, `timestamp`, `timetz`, and `timestamptz`.
+  The [DateStyle](https://www.postgresql.org/docs/14/runtime-config-client.html#GUC-DATESTYLE)
+  configuration parameter determines the output format of the string.
+
+**Example:**
+
+```
+SELECT substring(date_of_birth::text, 1, 4) AS year, count(*)
+FROM customers
+GROUP BY 1
+```
 
 ## Utility functions
 
