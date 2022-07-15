@@ -1,10 +1,8 @@
-# Admin tutorial
+# Admin Tutorial
 
-This document provides an example on how to install and configure `pg_diffix` to expose a simple dataset
-for anonymized querying.
-It assumes that an existing installation of PostgreSQL 14 on a Linux system is available, a database
-named `test_db` was created, and the personal data is in the table `test_table`,
-containing a column named `id`, which uniquely identifies protected entities (the anonymization ID).
+This document contains a simple tutorial on how to install and configure `pg_diffix` to expose a simple dataset for anonymized querying.  It assumes that an existing installation of PostgreSQL 14 on a Linux system is available.
+
+This simple example assumes assumes a database named `test_db` was created, and the personal data is in the table `test_table`, and contains a column named `id` that uniquely identifies protected entities (the anonymization ID).
 
 ## Installation
 
