@@ -134,6 +134,7 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
       att->agg.fn_oid = aggref->aggfnoid;
       att->agg.funcs = agg_funcs;
       att->agg.args_desc = build_args_desc(aggref);
+      att->agg.redirect_to = i; /* Pointing to itself means state is not shared. */
       att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
@@ -289,7 +290,8 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
     {
-      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[i]);
+      int state_source_index = att->agg.redirect_to; /* If shared, points to some other non-NULL state. */
+      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[state_source_index]);
       Assert(agg_state != NULL);
       Assert(agg_state->agg_funcs == att->agg.funcs);
       is_null[i] = false;

@@ -76,6 +76,8 @@
  *-------------------------------------------------------------------------
  */
 
+#define SHARED_AGG_STATE NULL
+
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor
 {
@@ -128,6 +130,7 @@ typedef struct BucketAttribute
     Oid fn_oid;                /* Agg function OID */
     ArgsDescriptor *args_desc; /* Agg arguments descriptor */
     const AnonAggFuncs *funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+    int redirect_to;           /* If shared, points to attribute that owns the state */
   } agg;                       /* Populated if tag!=BUCKET_LABEL */
   int typ_len;                 /* Data type length */
   bool typ_byval;              /* Data type is by value? */

@@ -99,7 +99,14 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
     {
       Assert(!source->is_null[i]);
       Assert(!destination->is_null[i]);
-      att->agg.funcs->merge((AnonAggState *)destination->values[i], (AnonAggState *)source->values[i]);
+      AnonAggState *dst_state = (AnonAggState *)destination->values[i];
+      AnonAggState *src_state = (AnonAggState *)source->values[i];
+      /* Shared states need to be merged only once. */
+      if (dst_state != SHARED_AGG_STATE)
+      {
+        Assert(src_state != SHARED_AGG_STATE);
+        att->agg.funcs->merge(dst_state, src_state);
+      }
     }
   }
 }
@@ -113,10 +120,16 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (AggCheckCallContext(fcinfo, &bucket_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  if (g_current_bucket_context != NULL)
-    bucket_context = g_current_bucket_context;
-
   Aggref *aggref = AggGetAggref(fcinfo);
+
+  if (g_current_bucket_context != NULL)
+  {
+    if (aggref_shares_state(aggref))
+      return SHARED_AGG_STATE;
+
+    bucket_context = g_current_bucket_context;
+  }
+
   const AnonAggFuncs *agg_funcs = find_agg_funcs(aggref->aggfnoid);
 
   if (unlikely(agg_funcs == NULL))
@@ -134,6 +147,7 @@ Datum anon_agg_state_input(PG_FUNCTION_ARGS)
 Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = PG_GET_AGG_STATE(0);
+  Assert(state != SHARED_AGG_STATE); /* Won't happen outside of a BucketScan context. */
   const char *str = state->agg_funcs->explain(state);
   PG_RETURN_CSTRING(str);
 }
@@ -141,13 +155,15 @@ Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
-  state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
+  /* A SHARED_AGG_STATE means the owning aggregator will handle transitions. */
+  if (state != SHARED_AGG_STATE)
+    state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_AGG_STATE(state);
 }
 
 /*
  * This finalfunc is a dummy version which does nothing.
- * It only ensures that state is not null for empty buckets.
+ * It only ensures that state is initialized for empty buckets.
  */
 Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
