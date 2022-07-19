@@ -6,6 +6,8 @@ This reference contains descriptions of all the configuration commands, and deta
 
 The [Open Diffix website](https://www.open-diffix.org) has general information about the Open Diffix project. The [website FAQ](https://www.open-diffix.org/faq) is a good starting point. [This article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) is a high-level overview of the anonymization mechanisms used by Diffix (version Elm). [This paper](https://arxiv.org/abs/2201.04351) is a complete specification and privacy analysis of Diffix Elm.
 
+> This document applies to the Fir version of Diffix, which is currently a work in progress.
+
 ## Configuration objects
 
 Extension behavior is controlled by __security labels__ and __settings__. Security labels specific to this extension are assigned to tables, columns, and roles (users). Settings are general parameters associated with system operation. Settings can be assigned in the configuration file and are instantiated per session.
@@ -27,10 +29,10 @@ For more information about PostgreSQL security labels, see the official [documen
 
 ### Security labels for roles (users)
 
-A user's security label encodes one of three access levels, `direct`, `anonymized_trusted`, and `anonymized_untrusted`. Users with access level `direct` have full access to the data: no anonymization takes place. The other two labels determine whether Diffix Elm treats the user as _trusted_ or _untrusted_ when anonymizing.
+A user's security label encodes one of three access levels, `direct`, `anonymized_trusted`, and `anonymized_untrusted`. Users with access level `direct` have full access to the data: no anonymization takes place. The other two labels determine whether Diffix Fir treats the user as _trusted_ or _untrusted_ when anonymizing.
 
-* For trusted users, Diffix Elm prevents _accidental_ release of personal data. So long as trusted users do not try to bypass Diffix Elm anonymization, answers to queries are anonymous.
-* For untrusted users, Diffix Elm prevents _intentional_ release of personal data. Even for users that are malicious and try to break Diffix Elm anonymization, answer to queries are anonymous.
+* For trusted users, Diffix Fir prevents _accidental_ release of personal data. So long as trusted users do not try to bypass Diffix Fir anonymization, answers to queries are anonymous.
+* For untrusted users, Diffix Fir prevents _intentional_ release of personal data. Even for users that are malicious and try to break Diffix Fir anonymization, answer to queries are anonymous.
 
 Trusted users have fewer SQL restrictions than untrusted users, and therefore have better analytic utility.
 
@@ -93,7 +95,7 @@ If the result is empty, make sure `pg_diffix` is loaded.
 
 ### Anonymization salt
 
-The operation of Diffix Elm requires a per-database secret salt value. The salt can only be viewed or set by superusers, and __must be kept secret__.
+The operation of Diffix Fir requires a per-database secret salt value. The salt can only be viewed or set by superusers, and __must be kept secret__.
 
 `pg_diffix` automatically generates a salt value when the extension is created for a given database.
 
@@ -115,7 +117,7 @@ To change the salt for a database, execute the command: `ALTER DATABASE db_name 
 
 ### Anonymization strength settings
 
-Diffix Elm has a number of constants that determine the "strength" of anonymization. These impact the amount of noise, the number-of-persons threshold below which suppression takes place, and the behavior of flattening (see [this article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) for an overview of these concepts).
+Diffix Fir has a number of constants that determine the "strength" of anonymization. These impact the amount of noise, the number-of-persons threshold below which suppression takes place, and the behavior of flattening (see [this article](https://www.open-diffix.org/blog/diffix-elm-automates-what-statistics-offices-have-been-doing-for-decades) for an overview of these concepts).
 
 All but one of these constants are set to values that provide sufficiently strong anonymity in virtually any realistic scenario. These other constants rarely if ever need to be modified. Doing so only reduces data quality with little meaningful strengthening of anonymity.
 
@@ -166,7 +168,7 @@ Every personal (anonymized) table must have at least one column that identifies 
 
 Although a protected entity does not need to be a person, for readability the following assumes that this is the case.
 
-The AID is used by Diffix Elm primarily for two purposes. The first, and most important, is to properly suppress bins (output aggregates) that contain too few individuals. The other is to add enough noise to hide the contribution of any given individual.
+The AID is used by Diffix Fir primarily for two purposes. The first, and most important, is to properly suppress bins (output aggregates) that contain too few individuals. The other is to add enough noise to hide the contribution of any given individual.
 
 Examples of AID columns include account numbers, credit card numbers, mobile phone identifiers, email addresses, and login names. Note that these examples are often not perfect AIDs. A given individual might have several accounts. A login name may be shared by several individuals.
 
@@ -182,7 +184,7 @@ FROM table
 GROUP BY last_name, religion
 ```
 
-If an individual has several accounts, and their `last_name` is unique in the table, then they may be the only individual in the bin with that last name because Diffix Elm will interpret the bin as having several distinct individuals (due to there being several distinct `account_number` values for this individual).
+If an individual has several accounts, and their `last_name` is unique in the table, then they may be the only individual in the bin with that last name because Diffix Fir will interpret the bin as having several distinct individuals (due to there being several distinct `account_number` values for this individual).
 
 In this example, we refer to `last_name` as the isolating column. Other columns could serve the role as the isolating column, for instance `street_address`.
 
@@ -190,7 +192,7 @@ There are several ways to avoid this.
 
 __Remove the isolating column.__ Without the isolating column, the individual cannot be isolated like this. As a general rule, it is always good practice to remove columns that do not have analytic value.
 
-__Label the isolating column as an additional AID column.__ This solves the privacy problem at the expense of poorer analytic utility. For instance, if `last_name` is labeled as an AID column, then all individuals with the same last name would be treated as a single individual by Diffix Elm. This leads to unnecessary suppression and additional noise. As a general rule, one should avoid labeling columns as AID columns if the column values frequently pertain to multiple individuals.
+__Label the isolating column as an additional AID column.__ This solves the privacy problem at the expense of poorer analytic utility. For instance, if `last_name` is labeled as an AID column, then all individuals with the same last name would be treated as a single individual by Diffix Fir. This leads to unnecessary suppression and additional noise. As a general rule, one should avoid labeling columns as AID columns if the column values frequently pertain to multiple individuals.
 
 __Label some other appropriate column as an additional AID column.__  It might be that there is another column, in addition to `account_number`, that works pretty well as an AID column. For example, `email_address` or `phone_number`. If the individual with multiple accounts used the same `email_address`, then the bin would be suppressed. Of course, it is possible that the individual used a different email for each account, in which case this fix wouldn't help. As a general rule, labeling multiple AID columns for the same protected entity, where each AID column is quite good but not perfect, leads to slightly stronger anonymity and only slightly poorer analytic utility.
 
@@ -218,7 +220,7 @@ Note that analytic utility can be substantially degraded when a protected entity
 
 ## How to set suppression threshold
 
-The purpose of suppression in Diffix Elm is to prevent the release of information pertaining to a single individual. In the GDPR, this is called _singling out_. Narrowly construed, releasing information pertaining to two individuals is not singling out, and so GDPR is not violated. Practically speaking, however, releasing information about two people or even four or five people might be regarded as a privacy violation, especially if the people are closely related (a couple or family).
+The purpose of suppression in Diffix Fir is to prevent the release of information pertaining to a single individual. In the GDPR, this is called _singling out_. Narrowly construed, releasing information pertaining to two individuals is not singling out, and so GDPR is not violated. Practically speaking, however, releasing information about two people or even four or five people might be regarded as a privacy violation, especially if the people are closely related (a couple or family).
 
 When selecting a suppression threshold (`pg_diffix.low_count_min_threshold`), there are four main considerations:
 

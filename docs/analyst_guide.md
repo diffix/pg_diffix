@@ -1,13 +1,11 @@
 # Analyst guide
 
 This document describes features and restrictions of `pg_diffix` for users with anonymized access to a database.
-The [banking notebook](banking.ipynb) provides a walkthough with examples and explanations of various
-mechanisms that Diffix Elm uses to protect personal data.
+The [banking notebook](banking.ipynb) provides a walkthrough with examples and explanations of various
+mechanisms that Diffix uses to protect personal data.
 
 ## Table of Contents
 
-- [Analyst guide](#analyst-guide)
-  - [Table of Contents](#table-of-contents)
 - [Access levels](#access-levels)
 - [Anonymized queries](#anonymized-queries)
   - [Queries with grouping](#queries-with-grouping)
@@ -20,7 +18,7 @@ mechanisms that Diffix Elm uses to protect personal data.
   - [diffix.access_level()](#diffixaccess_level)
 - [Suppress bin](#suppress-bin)
 - [Supported functions](#supported-functions)
-  - [Count](#count)
+  - [Aggregates](#aggregates)
   - [Numeric generalization functions](#numeric-generalization-functions)
     - [diffix.floor_by(col, K)](#diffixfloor_bycol-k)
     - [diffix.round_by(col, K)](#diffixround_bycol-k)
@@ -63,13 +61,13 @@ GROUP BY col1, col2, ...
 Zero or more table columns `col1`, `col2`, ... may be specified.
 [Numeric](#numeric-generalization-functions) and [string](#string-generalization-functions) columns may optionally be generalized.
 
-`count()` is any of the supported [count aggregate](#count) variants.
-Any number of count aggregates may be specified (including none).
+`count(...)` is any of the supported [aggregate](#aggregates) variants.
+Any number of aggregates may be specified (including none).
 
 **Example:**
 
 ```
-SELECT city, year_of_birth, count(*)
+SELECT city, year_of_birth, count(*), diffix.count_noise(*)
 FROM customers
 GROUP BY city, year_of_birth
 ```
@@ -190,15 +188,20 @@ This can be used to identify the suppress bin if `NULL` values are ambiguous for
 
 # Supported functions
 
-## Count
+## Aggregates
 
-The following versions of the count aggregate are supported:
+The following versions of aggregates are supported:
 
 - `count(*)` - count all rows.
 - `count(col)` - counts non-null occurrences of the given column.
 - `count(distinct col)` - counts distinct values of the given column.
+- `sum(col)` - sums values in the given column.
+- `avg(col)` - calculates the average of the given column.
 
 Results of these aggregates are anonymized by applying noise as described in the specification.
+
+Each of the `count(...)`, `sum(...)`, `avg(...)` has an accompanying aggregate, which returns the approximate magnitude of noise added during anonymization (in terms of its standard deviation).
+These are: `diffix.count_noise(...)`, `diffix.sum_noise(...)`, `diffix.avg_noise(...)` respectively.
 
 ## Numeric generalization functions
 
