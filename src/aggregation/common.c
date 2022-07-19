@@ -15,8 +15,9 @@
 #define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_POINTER(index))
 #define PG_RETURN_AGG_STATE(state) PG_RETURN_POINTER(state)
 
-/* Memory context of currently executing BucketScan node (if any). */
-extern MemoryContext g_current_bucket_context;
+/* Functions declared in bucket_scan.c. Depend on global state and should not be public API. */
+extern MemoryContext get_current_bucket_context(void);
+extern bool aggref_shares_state(Aggref *aggref);
 
 PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);
@@ -95,18 +96,16 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
   for (int i = bucket_desc->num_labels; i < num_atts; i++)
   {
     BucketAttribute *att = &bucket_desc->attrs[i];
-    if (att->tag == BUCKET_ANON_AGG)
+    if (att->tag == BUCKET_ANON_AGG &&
+        i == att->agg.redirect_to /* Shared states need to be merged only once. */)
     {
       Assert(!source->is_null[i]);
       Assert(!destination->is_null[i]);
       AnonAggState *dst_state = (AnonAggState *)destination->values[i];
       AnonAggState *src_state = (AnonAggState *)source->values[i];
-      /* Shared states need to be merged only once. */
-      if (dst_state != SHARED_AGG_STATE)
-      {
-        Assert(src_state != SHARED_AGG_STATE);
-        att->agg.funcs->merge(dst_state, src_state);
-      }
+      Assert(dst_state != SHARED_AGG_STATE);
+      Assert(src_state != SHARED_AGG_STATE);
+      att->agg.funcs->merge(dst_state, src_state);
     }
   }
 }
@@ -122,12 +121,12 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
 
   Aggref *aggref = AggGetAggref(fcinfo);
 
-  if (g_current_bucket_context != NULL)
+  if (get_current_bucket_context() != NULL)
   {
     if (aggref_shares_state(aggref))
       return SHARED_AGG_STATE;
 
-    bucket_context = g_current_bucket_context;
+    bucket_context = get_current_bucket_context();
   }
 
   const AnonAggFuncs *agg_funcs = find_agg_funcs(aggref->aggfnoid);
