@@ -79,6 +79,8 @@ CALL diffix.mark_personal('transactions', 'sender_acct', 'receiver_acct');
 ```
 labels the table `transactions` as personal, and labels the `sender_acct` and `receiver_acct` columns as AID columns.
 
+The currently supported types for AID columns are: `integer`, `bigint`, `text` and `varchar`.
+
 The procedure `diffix.unmark_table(table_name)` clears the labels for the table and all its AID columns.
 
 ## Settings

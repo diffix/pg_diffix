@@ -20,6 +20,9 @@ SET pg_diffix.strict = true;
 SET pg_diffix.top_count_max = 3;
 SET pg_diffix.top_count_max = 4;
 
+-- Reject unsupported column types during AID labeling
+SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.discount IS 'aid';
+
 -- Restriction on users with access level below `direct`
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
