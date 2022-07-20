@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 1.0.3
+  - Reject unsupported column types during AID labeling.
+
 ## Version 1.0.2
   - Allow casts between `int4` and `int8`.
   - Allow more metadata discovery queries.
