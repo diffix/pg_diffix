@@ -2,6 +2,7 @@
 
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/pg_type.h"
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "utils/acl.h"
@@ -150,16 +151,30 @@ bool is_not_filterable_column(Oid relation_oid, AttrNumber attnum)
       "Anonymization label `%s` not supported on objects of type `%s`", \
       seclabel, getObjectTypeDescription(object))
 
-static void verify_pg_features(Oid relation_id)
+static void verify_pg_features(Oid relation_oid)
 {
-  if (has_subclass(relation_id) || has_superclass(relation_id))
+  if (has_subclass(relation_oid) || has_superclass(relation_oid))
     FAILWITH("Anonymization over tables using inheritance is not supported.");
+}
+
+static bool is_aid_type_supported(Oid relation_oid, AttrNumber attnum)
+{
+  switch (get_atttype(relation_oid, attnum))
+  {
+  case INT4OID:
+  case INT8OID:
+  case TEXTOID:
+  case VARCHAROID:
+    return true;
+  default:
+    return false;
+  }
 }
 
 static void object_relabel(const ObjectAddress *object, const char *seclabel)
 {
   if (!superuser())
-    FAILWITH_CODE(ERRCODE_INSUFFICIENT_PRIVILEGE, "only a superuser can set anonymization labels");
+    FAILWITH_CODE(ERRCODE_INSUFFICIENT_PRIVILEGE, "Only a superuser can set anonymization labels");
 
   if (seclabel == NULL)
     return;
@@ -167,19 +182,30 @@ static void object_relabel(const ObjectAddress *object, const char *seclabel)
   if (is_personal_label(seclabel) || is_public_label(seclabel))
   {
     if (is_personal_label(seclabel))
-    {
       verify_pg_features(object->objectId);
-    }
 
     if (object->classId == RelationRelationId && object->objectSubId == 0)
       return;
 
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
-  else if (is_aid_label(seclabel) || is_not_filterable_label(seclabel))
+  else if (is_aid_label(seclabel))
+  {
+    if (object->classId == RelationRelationId && object->objectSubId != 0)
+    {
+      if (!is_aid_type_supported(object->objectId, object->objectSubId))
+        FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED,
+                      "AID label can not be set on target column because the type is unsupported");
+      return;
+    }
+
+    FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
+  }
+  else if (is_not_filterable_label(seclabel))
   {
     if (object->classId == RelationRelationId && object->objectSubId != 0)
       return;
+
     FAIL_ON_INVALID_OBJECT_TYPE(seclabel, object);
   }
   else if (is_anonymized_trusted_label(seclabel) || is_anonymized_untrusted_label(seclabel) || is_direct_label(seclabel))
