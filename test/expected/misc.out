@@ -197,6 +197,3 @@ EXPLAIN SELECT city FROM test_customers ORDER BY 1;
                ->  Seq Scan on test_customers
 (6 rows)
 
--- Reject unsupported column types during AID labeling
-SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.discount IS 'aid';
-ERROR:  [PG_DIFFIX] Statement requires direct access level.

@@ -95,6 +95,3 @@ EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test
 
 -- EXPLAIN prints group/sort names
 EXPLAIN SELECT city FROM test_customers ORDER BY 1;
-
--- Reject unsupported column types during AID labeling
-SECURITY LABEL FOR pg_diffix ON COLUMN test_customers.discount IS 'aid';
