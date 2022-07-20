@@ -39,4 +39,9 @@ extern bool is_personal_relation(Oid relation_oid);
  */
 extern bool is_aid_column(Oid relation_oid, AttrNumber attnum);
 
+/*
+ * Returns true if the column has been labeled as not filterable, false otherwise.
+ */
+extern bool is_not_filterable_column(Oid relation_oid, AttrNumber attnum);
+
 #endif /* PG_DIFFIX_AUTH_H */

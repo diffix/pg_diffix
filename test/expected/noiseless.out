@@ -52,6 +52,71 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Berlin |     8
 (3 rows)
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+ count 
+-------
+    17
+(1 row)
+
+----------------------------------------------------------------
+-- Basic queries - sum
+----------------------------------------------------------------
+SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
+ sum | sum_noise 
+-----+-----------
+ 151 |         0
+(1 row)
+
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
+ sum | sum_noise 
+-----+-----------
+  19 |         0
+(1 row)
+
+SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
+  city  | sum | sum_noise 
+--------+-----+-----------
+ *      |     |          
+ Rome   |  59 |         0
+ Berlin |  68 |         0
+(3 rows)
+
+SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+  city  |    sum    | sum_noise 
+--------+-----------+-----------
+ *      |           |          
+ Rome   | 4.8333335 |         0
+ Berlin |         9 |         0
+(3 rows)
+
+-- sum supports numeric type
+SELECT city, SUM(discount::numeric), pg_typeof(SUM(discount::numeric)), diffix.sum_noise(discount::numeric)
+FROM test_customers
+GROUP BY 1;
+  city  |       sum        | pg_typeof | sum_noise 
+--------+------------------+-----------+-----------
+ *      |                  | numeric   |          
+ Rome   | 4.83333333333333 | numeric   |         0
+ Berlin |                9 | numeric   |         0
+(3 rows)
+
+----------------------------------------------------------------
+-- Basic queries - avg
+----------------------------------------------------------------
+SELECT city, AVG(discount), diffix.avg_noise(discount) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(discount) / COUNT(discount), diffix.sum_noise(discount) / COUNT(discount) FROM test_customers GROUP BY 1;
+ city | avg | avg_noise 
+------+-----+-----------
+(0 rows)
+
+SELECT city, AVG(id), diffix.avg_noise(id) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(id)::float8 / COUNT(id), diffix.sum_noise(id) / COUNT(id) FROM test_customers GROUP BY 1;
+ city | avg | avg_noise 
+------+-----+-----------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -188,7 +253,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  Berlin
 (2 rows)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
  count | count | count 
 -------+-------+-------
      0 |     0 |     0

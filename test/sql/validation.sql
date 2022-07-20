@@ -11,6 +11,9 @@ CREATE TABLE test_validation (
 );
 
 CALL diffix.mark_personal('test_validation', 'id');
+CALL diffix.mark_not_filterable('test_validation', 'birthday');
+CALL diffix.mark_not_filterable('test_validation', 'last_seen');
+CALL diffix.mark_filterable('test_validation', 'last_seen');
 
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
@@ -94,6 +97,10 @@ SELECT 2 * length(city) FROM test_validation GROUP BY city;
 -- Allow diffix.is_suppress_bin in non-direct access level.
 SELECT city, count(*), diffix.is_suppress_bin(*) from test_validation GROUP BY 1;
 
+-- Allow simple equality filters in WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city = 'London';
+SELECT COUNT(*) FROM test_validation WHERE substring(city, 1, 1) = 'L' AND discount = 10.0 AND discount = 20.0;
+
 -- Set operations between anonymizing queries.
 SELECT city FROM test_validation EXCEPT SELECT city FROM test_validation;
 SELECT city FROM test_validation UNION SELECT city FROM test_validation;
@@ -145,6 +152,10 @@ SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public'
 SELECT * FROM diffix.show_settings() LIMIT 2;
 SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -172,7 +183,12 @@ SELECT DISTINCT city FROM test_validation;
 SELECT avg(discount) OVER (PARTITION BY city) FROM test_validation;
 
 -- Get rejected because aggregators are unsupported.
-SELECT SUM(id) FROM test_validation;
+SELECT SUM(distinct id) FROM test_validation;
+SELECT SUM(id + 5) FROM test_validation;
+SELECT AVG(distinct id) FROM test_validation;
+SELECT AVG(id + 5) FROM test_validation;
+SELECT diffix.avg_noise(distinct id) FROM test_validation;
+SELECT diffix.avg_noise(id + 5) FROM test_validation;
 SELECT MIN(id) + MAX(id) FROM test_validation;
 SELECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH(city));
 SELECT count(city ORDER BY city) FROM test_validation;
@@ -181,6 +197,7 @@ SELECT count(distinct id + 5) FROM test_validation;
 SELECT count(distinct least(id, 5)) FROM test_validation;
 SELECT count(id + 5) FROM test_validation;
 SELECT count(least(id, 5)) FROM test_validation;
+SELECT diffix.count_histogram(city) FROM test_validation;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
@@ -214,8 +231,11 @@ SELECT city, COUNT(price) FROM test_products, test_validation GROUP BY 1;
 
 SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY 1;
 
--- Get rejected because of WHERE
-SELECT COUNT(*) FROM test_validation WHERE city = 'London';
+-- Get rejected because of invalid WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
+SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
+SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
+SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lon', 'don');
 
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
@@ -278,18 +298,25 @@ SELECT diffix.floor_by(discount, 2.0) from test_validation;
 SELECT diffix.floor_by(discount, 0.2) from test_validation;
 SELECT diffix.floor_by(discount, 20.0) from test_validation;
 SELECT diffix.floor_by(discount, 50.0) from test_validation;
+SELECT diffix.count_histogram(id, 5) from test_validation;
+SELECT count(*) FROM test_validation WHERE discount = 3;
 
 -- Get rejected because of invalid generalization parameters
 SELECT substring(city, 2, 2) from test_validation;
 SELECT diffix.floor_by(discount, 3) from test_validation;
 SELECT diffix.floor_by(discount, 3.0) from test_validation;
 SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
+SELECT diffix.count_histogram(id, 3) from test_validation;
 
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
 SELECT ceil(discount) from test_validation;
 SELECT diffix.ceil_by(discount, 2) from test_validation;
 
+-- Marking columns as `not_filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(birthday as text), 4) = '2000';
+-- Marking columns as `filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4) = '2000';
 -- Allow prepared statements with generalization constants as params, and validate them
 PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
 EXECUTE prepared_floor_by(2.0);

@@ -12,6 +12,15 @@
 /* Calculates the length of an array. */
 #define ARRAY_LENGTH(arr) ((sizeof(arr)) / sizeof(arr[0]))
 
+/* clang-format off */
+
+/* Loops through given hash table entries. */
+#define foreach_entry(entry, table, prefix) \
+  for (prefix##_iterator entry##__iterator = ({ prefix##_start_iterate(table, &entry##__iterator); entry##__iterator; }); \
+       (entry = prefix##_iterate(table, &entry##__iterator)) != NULL;)
+
+/* clang-format on */
+
 /*-------------------------------------------------------------------------
  * Hash utils
  *-------------------------------------------------------------------------
@@ -70,6 +79,22 @@ static inline List *hash_set_union(List *dst_set, const List *src_set)
 {
   return list_concat_unique_ptr(dst_set, src_set);
 }
+
+/*-------------------------------------------------------------------------
+ * Math utils
+ *-------------------------------------------------------------------------
+ */
+
+/*
+ * Rounds x to the nearest money-style number.
+ */
+extern double money_round(double x);
+
+/*
+ * Returns true if x is a money-style number, i.e. 1, 2, or 5 preceeded by or followed by zeros:
+ * ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩.
+ */
+extern bool is_money_rounded(double x);
 
 /*-------------------------------------------------------------------------
  * Compatibility shims

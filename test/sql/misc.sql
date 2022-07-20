@@ -95,3 +95,11 @@ EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test
 
 -- EXPLAIN prints group/sort names
 EXPLAIN SELECT city FROM test_customers ORDER BY 1;
+
+-- Tolerate `diffix.agg_noise` in direct access level
+SET pg_diffix.session_access_level = 'direct';
+SELECT diffix.sum_noise(discount), diffix.count_noise(*) FROM test_customers;
+
+-- Rejects marking an AID column.
+CALL diffix.mark_not_filterable('test_customers', 'id');
+CALL diffix.mark_filterable('test_customers', 'id');

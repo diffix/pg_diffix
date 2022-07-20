@@ -126,7 +126,7 @@ void update_or_add_top_contributor(
 #define SH_ELEMENT_TYPE ContributionTrackerHashEntry
 #define SH_KEY contributor.aid
 #define SH_KEY_TYPE aid_t
-#define SH_EQUAL(tb, a, b) a == b
+#define SH_EQUAL(tb, a, b) (a == b)
 #define SH_HASH_KEY(tb, key) (uint32) key /* `key` is already a hash */
 #define SH_SCOPE inline
 #define SH_DEFINE
@@ -144,7 +144,7 @@ ContributionTrackerState *contribution_tracker_new(
   state->contribution_table = ContributionTracker_create(CurrentMemoryContext, 4, NULL);
   state->aid_seed = 0;
   state->distinct_contributors = 0;
-  state->unaccounted_for = 0;
+  state->unaccounted_for = contribution_descriptor->contribution_initial;
   state->overall_contribution = contribution_descriptor->contribution_initial;
   state->top_contributors.length = 0;
   state->top_contributors.capacity = top_capacity;
@@ -158,8 +158,9 @@ void contribution_tracker_update_contribution(
     contribution_t contribution)
 {
   ContributionDescriptor *descriptor = &state->contribution_descriptor;
+  ContributionCombineFunc combine = descriptor->contribution_combine;
 
-  state->overall_contribution = descriptor->contribution_combine(state->overall_contribution, contribution);
+  state->overall_contribution = combine(state->overall_contribution, contribution);
 
   bool found;
   ContributionTrackerHashEntry *entry = ContributionTracker_insert(state->contribution_table, aid, &found);
@@ -177,7 +178,7 @@ void contribution_tracker_update_contribution(
   else
   {
     /* Aggregate new contribution. */
-    entry->contributor.contribution = descriptor->contribution_combine(entry->contributor.contribution, contribution);
+    entry->contributor.contribution = combine(entry->contributor.contribution, contribution);
     /* We have to check for existence first. If it exists we bump, otherwise we try to insert. */
     update_or_add_top_contributor(
         &state->contribution_descriptor,

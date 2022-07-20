@@ -10,12 +10,14 @@
 #include "optimizer/tlist.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
+#include "utils/fmgroids.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
 #include "pg_diffix/auth.h"
+#include "pg_diffix/node_funcs.h"
 #include "pg_diffix/oid_cache.h"
 #include "pg_diffix/query/allowed_objects.h"
 #include "pg_diffix/query/anonymization.h"
@@ -152,6 +154,172 @@ static void rewrite_to_anon_aggregator(Aggref *aggref, List *aid_refs, Oid fnoid
   append_aid_args(aggref, aid_refs);
 }
 
+static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_count_histogram;
+
+  /* Replace AID expression with its index. */
+  Var *counted_aid_var = (Var *)linitial_node(TargetEntry, aggref->args)->expr;
+
+  int counted_aid_index = -1;
+  ListCell *cell;
+  foreach (cell, aid_refs)
+  {
+    AidRef *aid_ref = (AidRef *)lfirst(cell);
+    if (counted_aid_var->varno == aid_ref->rte_index && counted_aid_var->varattno == aid_ref->aid_attnum)
+      counted_aid_index = foreach_current_index(cell);
+  }
+
+  if (counted_aid_index < 0)
+    FAILWITH_LOCATION(counted_aid_var->location, "Counted AID not found in scope of query.");
+
+  list_nth_cell(aggref->args, 0)->ptr_value = makeTargetEntry(
+      make_const_int32(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
+
+  if (list_length(aggref->args) < 2)
+  {
+    /* Append implicit bin_size=1. */
+    Assert(list_length(aggref->args) == 1);
+    aggref->args = lappend(aggref->args, makeTargetEntry(make_const_int64(1), 2 /* resno */, "bin_size", false));
+  }
+
+  append_aid_args(aggref, aid_refs);
+}
+
+/* Intended for the denominator in the `avg(col)` rewritten to `sum(col) / count(col)`. */
+static Aggref *make_anon_count_value_aggref(const Aggref *source_aggref)
+{
+  Aggref *count_aggref = copyObjectImpl(source_aggref);
+  count_aggref->aggfnoid = g_oid_cache.anon_count_value;
+  count_aggref->aggtype = INT8OID;
+  count_aggref->aggstar = false;
+  count_aggref->aggdistinct = false;
+  return count_aggref;
+}
+
+static FuncExpr *make_i4tod(List *args)
+{
+#if PG_MAJORVERSION_NUM == 13
+  return makeFuncExpr(F_I4TOD, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#elif PG_MAJORVERSION_NUM >= 14
+  return makeFuncExpr(F_FLOAT8_INT4, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#endif
+}
+
+static FuncExpr *make_ftod(List *args)
+{
+#if PG_MAJORVERSION_NUM == 13
+  return makeFuncExpr(F_FTOD, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#elif PG_MAJORVERSION_NUM >= 14
+  return makeFuncExpr(F_FLOAT8_FLOAT4, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#endif
+}
+
+static FuncExpr *make_int4_numeric(List *args)
+{
+#if PG_MAJORVERSION_NUM == 13
+  return makeFuncExpr(F_INT4_NUMERIC, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#elif PG_MAJORVERSION_NUM >= 14
+  return makeFuncExpr(F_NUMERIC_INT4, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#endif
+}
+
+static FuncExpr *make_int8_numeric(List *args)
+{
+#if PG_MAJORVERSION_NUM == 13
+  return makeFuncExpr(F_INT8_NUMERIC, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#elif PG_MAJORVERSION_NUM >= 14
+  return makeFuncExpr(F_NUMERIC_INT8, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CAST);
+#endif
+}
+
+static FuncExpr *make_float8div(List *args)
+{
+  return makeFuncExpr(F_FLOAT8DIV, FLOAT8OID, args, 0, 0, COERCE_EXPLICIT_CALL);
+}
+
+static FuncExpr *make_numeric_div(List *args)
+{
+  return makeFuncExpr(F_NUMERIC_DIV, NUMERICOID, args, 0, 0, COERCE_EXPLICIT_CALL);
+}
+
+/*
+ * The `aggref` expected to be the `avg(col)` is going to be mutated into a `sum(col)`.
+ * A `count(col)` will be instantiated and put together into a `sum(col) / count(col)` expr.
+ */
+static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_sum;
+  aggref->aggstar = false;
+  aggref->aggdistinct = false;
+
+  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
+
+  append_aid_args(aggref, aid_refs);
+  append_aid_args(count_aggref, aid_refs);
+
+  FuncExpr *cast_sum;
+  FuncExpr *cast_count;
+  FuncExpr *division;
+
+  /*
+   * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,
+   * as documented here: https://www.postgresql.org/docs/current/functions-aggregate.html.
+   */
+  switch (linitial_oid(aggref->aggargtypes))
+  {
+  case INT2OID:
+  case INT4OID:
+    aggref->aggtype = INT8OID;
+    cast_sum = make_int8_numeric(list_make1(aggref));
+    cast_count = make_int4_numeric(list_make1(count_aggref));
+    division = make_numeric_div(list_make2(cast_sum, cast_count));
+    break;
+  case INT8OID:
+    aggref->aggtype = NUMERICOID;
+    cast_count = make_int4_numeric(list_make1(count_aggref));
+    division = make_numeric_div(list_make2(aggref, cast_count));
+    break;
+  case FLOAT4OID:
+    aggref->aggtype = FLOAT4OID;
+    cast_sum = make_ftod(list_make1(aggref));
+    cast_count = make_i4tod(list_make1(count_aggref));
+    division = make_float8div(list_make2(cast_sum, cast_count));
+    break;
+  case FLOAT8OID:
+    aggref->aggtype = FLOAT8OID;
+    cast_count = make_i4tod(list_make1(count_aggref));
+    division = make_float8div(list_make2(aggref, cast_count));
+    break;
+  default:
+    FAILWITH_LOCATION(aggref->location, "Unexpected avg(col) aggregator argument type.");
+  }
+
+  return (Node *)division;
+}
+
+/*
+ * The `aggref` expected to be the `avg_noise(col)` is going to be mutated into a `sum_noise(col)`.
+ * A `count(col)` will be instantiated and put together into a `sum_noise(col) / count(col)` expr.
+ */
+static Node *rewrite_to_avg_noise_aggregator(Aggref *aggref, List *aid_refs)
+{
+  aggref->aggfnoid = g_oid_cache.anon_sum_noise;
+  aggref->aggtype = FLOAT8OID;
+  aggref->aggstar = false;
+  aggref->aggdistinct = false;
+
+  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
+
+  append_aid_args(aggref, aid_refs);
+  append_aid_args(count_aggref, aid_refs);
+
+  FuncExpr *cast_count = make_i4tod(list_make1(count_aggref));
+  FuncExpr *division = make_float8div(list_make2(aggref, cast_count));
+
+  return (Node *)division;
+}
+
 static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
 {
   if (node == NULL)
@@ -172,6 +340,22 @@ static Node *aggregate_expression_mutator(Node *node, List *aid_refs)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_distinct);
     else if (aggfnoid == g_oid_cache.count_value)
       rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value);
+    else if (is_sum_oid(aggfnoid))
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_sum);
+    else if (is_avg_oid(aggfnoid))
+      return rewrite_to_avg_aggregator(aggref, aid_refs);
+    else if (aggfnoid == g_oid_cache.count_histogram || aggfnoid == g_oid_cache.count_histogram_int8)
+      rewrite_count_histogram(aggref, aid_refs);
+    else if (aggfnoid == g_oid_cache.count_star_noise)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_star_noise);
+    else if (aggfnoid == g_oid_cache.count_value_noise && aggref->aggdistinct)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_distinct_noise);
+    else if (aggfnoid == g_oid_cache.count_value_noise)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_count_value_noise);
+    else if (aggfnoid == g_oid_cache.sum_noise)
+      rewrite_to_anon_aggregator(aggref, aid_refs, g_oid_cache.anon_sum_noise);
+    else if (aggfnoid == g_oid_cache.avg_noise)
+      return rewrite_to_avg_noise_aggregator(aggref, aid_refs);
     /*
     else
       FAILWITH("Unsupported aggregate in query.");
@@ -398,17 +582,10 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   return expression_tree_walker(node, collect_seed_material, context);
 }
 
-/*
- * Computes the SQL part of the bucket seed by combining the unique grouping expressions' seed material hashes.
- * Grouping clause (if any) must be made explicit before calling this.
- */
-static seed_t prepare_bucket_seeds(Query *query, ParamListInfo bound_params)
+static void collect_seed_material_hashes(Query *query, List *exprs, List **seed_material_hash_set, ParamListInfo bound_params)
 {
-  List *seed_material_hash_set = NULL;
-
-  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
   ListCell *cell = NULL;
-  foreach (cell, grouping_exprs)
+  foreach (cell, exprs)
   {
     Node *expr = lfirst(cell);
 
@@ -418,14 +595,8 @@ static seed_t prepare_bucket_seeds(Query *query, ParamListInfo bound_params)
 
     /* Keep materials with unique hashes to avoid them cancelling each other. */
     hash_t seed_material_hash = hash_string(collect_context.material);
-    seed_material_hash_set = hash_set_add(seed_material_hash_set, seed_material_hash);
+    *seed_material_hash_set = hash_set_add(*seed_material_hash_set, seed_material_hash);
   }
-
-  seed_t sql_seed = hash_set_to_seed(seed_material_hash_set);
-
-  list_free(seed_material_hash_set);
-
-  return sql_seed;
 }
 
 static hash_t hash_label(Oid type, Datum value, bool is_null)
@@ -454,6 +625,39 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
   return hash;
 }
 
+/*
+ * Computes the SQL part of the bucket seed by combining the unique bucket expressions' seed material hashes.
+ * Extracts base labels from filtering equalities and stores the hashes for later consumption.
+ * Grouping clause (if any) must be made explicit before calling this.
+ */
+static void prepare_bucket_seeds(Query *query, AnonymizationContext *anon_context, ParamListInfo bound_params)
+{
+  List *grouping_exprs = get_sortgrouplist_exprs(query->groupClause, query->targetList);
+  List *filtering_exprs = NIL, *filtering_consts = NIL;
+  collect_equalities_from_filters(query->jointree->quals, &filtering_exprs, &filtering_consts);
+
+  List *seed_material_hash_set = NIL;
+  collect_seed_material_hashes(query, grouping_exprs, &seed_material_hash_set, bound_params);
+  collect_seed_material_hashes(query, filtering_exprs, &seed_material_hash_set, bound_params);
+  anon_context->sql_seed = hash_set_to_seed(seed_material_hash_set);
+
+  ListCell *cell = NULL;
+  foreach (cell, filtering_consts)
+  {
+    Oid type;
+    Datum value;
+    bool isnull;
+    get_stable_expression_value(unwrap_cast(lfirst(cell)), bound_params, &type, &value, &isnull);
+
+    anon_context->base_labels_hash_set = hash_set_add(anon_context->base_labels_hash_set, hash_label(type, value, isnull));
+  }
+
+  list_free(seed_material_hash_set);
+  list_free(filtering_consts);
+  list_free(filtering_exprs);
+  list_free(grouping_exprs);
+}
+
 seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_desc)
 {
   List *label_hash_set = NIL;
@@ -462,6 +666,7 @@ seed_t compute_bucket_seed(const Bucket *bucket, const BucketDescriptor *bucket_
     hash_t label_hash = hash_label(bucket_desc->attrs[i].final_type, bucket->values[i], bucket->is_null[i]);
     label_hash_set = hash_set_add(label_hash_set, label_hash);
   }
+  label_hash_set = hash_set_union(label_hash_set, bucket_desc->anon_context->base_labels_hash_set);
 
   seed_t bucket_seed = bucket_desc->anon_context->sql_seed ^ hash_set_to_seed(label_hash_set);
 
@@ -613,7 +818,7 @@ static void compile_anonymizing_query(Query *query, List *personal_relations, An
 
   verify_bucket_expressions(query, bound_params);
 
-  anon_context->sql_seed = prepare_bucket_seeds(query, bound_params);
+  prepare_bucket_seeds(query, anon_context, bound_params);
 
   link_anon_context(query, anon_links, anon_context);
 
@@ -665,10 +870,7 @@ static bool compile_query_walker(Node *node, QueryCompileContext *context)
       rte->security_barrier = true;
 
       if (rte->subquery->limitCount == NULL)
-        rte->subquery->limitCount = (Node *)makeConst(INT8OID, -1, InvalidOid,
-                                                      sizeof(int64),
-                                                      Int64GetDatum(INT64_MAX), false,
-                                                      FLOAT8PASSBYVAL);
+        rte->subquery->limitCount = (Node *)make_const_int64(INT64_MAX);
     }
 
     /* Prevent double walk. */
@@ -753,7 +955,9 @@ static void unwrap_having_qual(Plan *plan)
     return;
 
   Expr *func_expr = linitial(plan->qual);
-  if (list_length(plan->qual) != 1 || !IsA(func_expr, FuncExpr) || ((FuncExpr *)func_expr)->funcid != g_oid_cache.internal_qual_wrapper)
+  if (list_length(plan->qual) != 1 ||
+      !IsA(func_expr, FuncExpr) ||
+      ((FuncExpr *)func_expr)->funcid != g_oid_cache.internal_qual_wrapper)
     FAILWITH("Unsupported HAVING clause in anonymizing query.");
 
   Expr *having_qual = linitial(((FuncExpr *)func_expr)->args);

@@ -45,4 +45,9 @@ extern bool is_supported_numeric_type(Oid type);
  */
 extern double numeric_value_to_double(Oid type, Datum value);
 
+/*
+ * Collects matched expressions from an equalities-only filtering clause.
+ */
+extern void collect_equalities_from_filters(Node *node, List **subjects, List **targets);
+
 #endif /* PG_DIFFIX_VALIDATION_H */

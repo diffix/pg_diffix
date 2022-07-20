@@ -9,6 +9,9 @@ CREATE TABLE test_validation (
   last_seen TIMESTAMP
 );
 CALL diffix.mark_personal('test_validation', 'id');
+CALL diffix.mark_not_filterable('test_validation', 'birthday');
+CALL diffix.mark_not_filterable('test_validation', 'last_seen');
+CALL diffix.mark_filterable('test_validation', 'last_seen');
 CREATE TABLE superclass (x INTEGER);
 CREATE TABLE subclass (x INTEGER, y INTEGER);
 INSERT INTO subclass VALUES (1, 2);
@@ -132,6 +135,19 @@ SELECT city, count(*), diffix.is_suppress_bin(*) from test_validation GROUP BY 1
  city | count | is_suppress_bin 
 ------+-------+-----------------
 (0 rows)
+
+-- Allow simple equality filters in WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city = 'London';
+ count 
+-------
+     0
+(1 row)
+
+SELECT COUNT(*) FROM test_validation WHERE substring(city, 1, 1) = 'L' AND discount = 10.0 AND discount = 20.0;
+ count 
+-------
+     0
+(1 row)
 
 -- Set operations between anonymizing queries.
 SELECT city FROM test_validation EXCEPT SELECT city FROM test_validation;
@@ -285,6 +301,13 @@ SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
  column  | public.test_customers.id | aid
 (2 rows)
 
+-- Allow prepared statements
+PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
+EXECUTE prepared(1.0);
+ discount | count 
+----------+-------
+(0 rows)
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -312,16 +335,36 @@ ERROR:  [PG_DIFFIX] Feature 'DISTINCT' is not currently supported.
 SELECT avg(discount) OVER (PARTITION BY city) FROM test_validation;
 ERROR:  [PG_DIFFIX] Feature 'window functions' is not currently supported.
 -- Get rejected because aggregators are unsupported.
-SELECT SUM(id) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
-LINE 1: SELECT SUM(id) FROM test_validation;
+SELECT SUM(distinct id) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported distinct qualifier at aggregate argument.
+LINE 1: SELECT SUM(distinct id) FROM test_validation;
+               ^
+SELECT SUM(id + 5) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT SUM(id + 5) FROM test_validation;
+               ^
+SELECT AVG(distinct id) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported distinct qualifier at aggregate argument.
+LINE 1: SELECT AVG(distinct id) FROM test_validation;
+               ^
+SELECT AVG(id + 5) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT AVG(id + 5) FROM test_validation;
+               ^
+SELECT diffix.avg_noise(distinct id) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported distinct qualifier at aggregate argument.
+LINE 1: SELECT diffix.avg_noise(distinct id) FROM test_validation;
+               ^
+SELECT diffix.avg_noise(id + 5) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
+LINE 1: SELECT diffix.avg_noise(id + 5) FROM test_validation;
                ^
 SELECT MIN(id) + MAX(id) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
 LINE 1: SELECT MIN(id) + MAX(id) FROM test_validation;
                ^
 SELECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH(city));
-ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
 LINE 1: ...ECT city FROM test_validation GROUP BY 1 ORDER BY AVG(LENGTH...
                                                              ^
 SELECT count(city ORDER BY city) FROM test_validation;
@@ -344,51 +387,55 @@ SELECT count(least(id, 5)) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported expression as aggregate argument.
 LINE 1: SELECT count(least(id, 5)) FROM test_validation;
                ^
+SELECT diffix.count_histogram(city) FROM test_validation;
+ERROR:  [PG_DIFFIX] count_histogram argument must be an AID column.
+LINE 1: SELECT diffix.count_histogram(city) FROM test_validation;
+                                      ^
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
                                                       ^
 SELECT COUNT(*) FROM test_validation GROUP BY city || 'xxx';
-ERROR:  [PG_DIFFIX] Use of operators to define buckets is not supported.
+ERROR:  [PG_DIFFIX] Use of operators for generalization is not supported.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY city || 'xxx';
                                                            ^
 SELECT LENGTH(city) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT LENGTH(city) FROM test_validation;
                ^
 SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
-ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 LINE 1: SELECT city, 'aaaa' FROM test_validation GROUP BY 1, 2;
                      ^
 PREPARE prepared_param_as_label(text) AS SELECT city, $1 FROM test_validation GROUP BY 1, 2;
 EXECUTE prepared_param_as_label('aaaa');
-ERROR:  [PG_DIFFIX] Simple constants are not allowed as bucket expressions.
+ERROR:  [PG_DIFFIX] Simple constants are not allowed as generalization expressions.
 SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
-ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id...
                                                       ^
 SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(discount AS integer));
-ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(dis...
                                                       ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
-ERROR:  [PG_DIFFIX] Non-primary arguments for a bucket function have to be simple constants.
-LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1...
-                                                      ^
+ERROR:  [PG_DIFFIX] Non-primary arguments for a generalization function have to be simple constants.
+LINE 1: ... COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
+                                                                   ^
 SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
-ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa',...
                                                       ^
 -- Get rejected because expression node type is unsupported.
 SELECT COALESCE(discount, 20) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
+ERROR:  [PG_DIFFIX] Unsupported generalization expression.
 SELECT NULLIF(discount, 20) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
+ERROR:  [PG_DIFFIX] Unsupported generalization expression.
 SELECT GREATEST(discount, 20) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
+ERROR:  [PG_DIFFIX] Unsupported generalization expression.
 SELECT LEAST(discount, 20) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported or unrecognized query node type
+ERROR:  [PG_DIFFIX] Unsupported generalization expression.
 -- Get rejected because of JOINs
 SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_validation
   INNER JOIN test_purchases tp ON id = cid;
@@ -403,9 +450,19 @@ SELECT city, COUNT(price) FROM test_products, test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
 SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Feature 'JOINs in anonymizing queries' is not currently supported.
--- Get rejected because of WHERE
-SELECT COUNT(*) FROM test_validation WHERE city = 'London';
-ERROR:  [PG_DIFFIX] Feature 'WHERE clauses in anonymizing queries' is not currently supported.
+-- Get rejected because of invalid WHERE clauses
+SELECT COUNT(*) FROM test_validation WHERE city <> 'London';
+ERROR:  [PG_DIFFIX] Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.
+SELECT COUNT(*) FROM test_validation WHERE city = 'London' OR discount = 10;
+ERROR:  [PG_DIFFIX] Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.
+SELECT COUNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0;
+ERROR:  [PG_DIFFIX] AID columns can't be referenced by pre-anonymization filters.
+LINE 1: ...UNT(*) FROM test_validation WHERE diffix.round_by(id, 5) = 0...
+                                                             ^
+SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lon', 'don');
+ERROR:  [PG_DIFFIX] Generalization expressions can only be matched against constants or params in pre-anonymization filters.
+LINE 1: SELECT COUNT(*) FROM test_validation WHERE city = CONCAT('Lo...
+                                                          ^
 -- Get rejected because of non-datetime cast to text
 SELECT cast(id AS text) FROM test_validation GROUP BY 1;
 ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
@@ -416,40 +473,40 @@ ERROR:  [PG_DIFFIX] Unsupported cast destination type name.
 LINE 1: SELECT cast(id AS varchar) FROM test_validation GROUP BY 1;
                ^
 SELECT substring(cast(id AS text), 1, 1) FROM test_validation GROUP BY 1;
-ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT substring(cast(id AS text), 1, 1) FROM test_validatio...
                ^
 SELECT substring(cast(id AS varchar), 1, 1) FROM test_validation GROUP BY 1;
-ERROR:  [PG_DIFFIX] Primary argument for a bucket function has to be a simple column reference.
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT substring(cast(id AS varchar), 1, 1) FROM test_valida...
                ^
 -- Invalid subqueries are rejected.
 SELECT * FROM (SELECT length(city) FROM test_validation) x;
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT * FROM (SELECT length(city) FROM test_validation) x;
                               ^
 SELECT EXISTS (SELECT length(city) FROM test_validation);
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT EXISTS (SELECT length(city) FROM test_validation);
                               ^
 SELECT 1 WHERE EXISTS (SELECT length(city) FROM test_validation);
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT 1 WHERE EXISTS (SELECT length(city) FROM test_validat...
                                       ^
 SELECT 1 UNION SELECT length(city) FROM test_validation;
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT 1 UNION SELECT length(city) FROM test_validation;
                               ^
 SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM test_validation) t2;
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT * FROM (SELECT 1) t1, (SELECT length(city) FROM test_...
                                              ^
 WITH c AS (SELECT length(city) FROM test_validation) SELECT * FROM c;
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: WITH c AS (SELECT length(city) FROM test_validation) SELECT ...
                           ^
 SELECT (SELECT length(city) FROM test_validation);
-ERROR:  [PG_DIFFIX] Unsupported function used to define buckets.
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
 LINE 1: SELECT (SELECT length(city) FROM test_validation);
                        ^
 -- Get rejected because of accessing pg_catalog tables with sensitive stats
@@ -578,36 +635,64 @@ SELECT diffix.floor_by(discount, 50.0) from test_validation;
 ----------
 (0 rows)
 
+SELECT diffix.count_histogram(id, 5) from test_validation;
+ count_histogram 
+-----------------
+ {}
+(1 row)
+
+SELECT count(*) FROM test_validation WHERE discount = 3;
+ count 
+-------
+     0
+(1 row)
+
 -- Get rejected because of invalid generalization parameters
 SELECT substring(city, 2, 2) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT substring(city, 2, 2) from test_validation;
                                ^
 SELECT diffix.floor_by(discount, 3) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.floor_by(discount, 3) from test_validation;
                                          ^
 SELECT diffix.floor_by(discount, 3.0) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.floor_by(discount, 3.0) from test_validation;
                                          ^
 SELECT diffix.floor_by(discount, 5000000000.1) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.floor_by(discount, 5000000000.1) from test_val...
                                          ^
+SELECT diffix.count_histogram(id, 3) from test_validation;
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
+LINE 1: SELECT diffix.count_histogram(id, 3) from test_validation;
+                                          ^
 -- Get rejected because of invalid generalizing functions
 SELECT width_bucket(discount, 2, 200, 5) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT width_bucket(discount, 2, 200, 5) from test_validatio...
                ^
 SELECT ceil(discount) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT ceil(discount) from test_validation;
                ^
 SELECT diffix.ceil_by(discount, 2) from test_validation;
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 LINE 1: SELECT diffix.ceil_by(discount, 2) from test_validation;
                ^
+-- Marking columns as `not_filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(birthday as text), 4) = '2000';
+ERROR:  [PG_DIFFIX] Column marked `not_filterable` can't be referenced by pre-anonymization filters in untrusted-mode.
+LINE 1: ...OUNT(*) FROM test_validation WHERE substring(cast(birthday a...
+                                                             ^
+-- Marking columns as `filterable` works.
+SELECT COUNT(*) FROM test_validation WHERE substring(cast(last_seen as text), 4) = '2000';
+ count 
+-------
+     0
+(1 row)
+
 -- Allow prepared statements with generalization constants as params, and validate them
 PREPARE prepared_floor_by(numeric) AS SELECT diffix.floor_by(discount, $1) FROM test_validation GROUP BY 1;
 EXECUTE prepared_floor_by(2.0);
@@ -616,7 +701,7 @@ EXECUTE prepared_floor_by(2.0);
 (0 rows)
 
 EXECUTE prepared_floor_by(2.1);
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
 PREPARE prepared_substring(int, int) AS SELECT substring(city, $1, $2) FROM test_validation GROUP BY 1;
 EXECUTE prepared_substring(1, 2);
  substring 
@@ -624,4 +709,4 @@ EXECUTE prepared_substring(1, 2);
 (0 rows)
 
 EXECUTE prepared_substring(2, 3);
-ERROR:  [PG_DIFFIX] Generalization used in the query is not allowed in untrusted access level.
+ERROR:  [PG_DIFFIX] Used generalization expression is not allowed in untrusted access level.
