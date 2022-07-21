@@ -173,14 +173,16 @@ static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
   if (counted_aid_index < 0)
     FAILWITH_LOCATION(counted_aid_var->location, "Counted AID not found in scope of query.");
 
-  list_nth_cell(aggref->args, 0)->ptr_value = makeTargetEntry(
+  list_head(aggref->args)->ptr_value = makeTargetEntry(
       make_const_int32(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
+  list_head(aggref->aggargtypes)->oid_value = INT4OID;
 
   if (list_length(aggref->args) < 2)
   {
     /* Append implicit bin_size=1. */
     Assert(list_length(aggref->args) == 1);
     aggref->args = lappend(aggref->args, makeTargetEntry(make_const_int64(1), 2 /* resno */, "bin_size", false));
+    aggref->aggargtypes = lappend_oid(aggref->aggargtypes, INT8OID);
   }
 
   append_aid_args(aggref, aid_refs);
