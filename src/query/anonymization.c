@@ -175,6 +175,7 @@ static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
 
   list_head(aggref->args)->ptr_value = makeTargetEntry(
       make_const_int32(counted_aid_index), 1 /* resno */, "counted_aid_index", false);
+  list_head(aggref->aggargtypes)->oid_value = INT4OID;
 
   if (list_length(aggref->args) < 2)
   {
