@@ -203,7 +203,7 @@ Datum count_histogram_finalfn(PG_FUNCTION_ARGS)
   Int64ToInt64_destroy(histogram);
 
   PG_RETURN_POINTER(construct_md_array(
-      elems, nulls, 2, dims, lower_bounds, INT8OID, sizeof(int64), true, TYPALIGN_DOUBLE));
+      elems, nulls, 2, dims, lower_bounds, INT8OID, sizeof(int64), FLOAT8PASSBYVAL, TYPALIGN_DOUBLE));
 }
 
 /*-------------------------------------------------------------------------
@@ -470,7 +470,7 @@ static Datum agg_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   MemoryContextSwitchTo(old_context);
 
   ArrayType *array = construct_md_array(
-      elems, nulls, 2, dims, lower_bounds, INT8OID, sizeof(int64), true, TYPALIGN_DOUBLE);
+      elems, nulls, 2, dims, lower_bounds, INT8OID, sizeof(int64), FLOAT8PASSBYVAL, TYPALIGN_DOUBLE);
 
   MemoryContextDelete(temp_context);
   PG_RETURN_POINTER(array);
