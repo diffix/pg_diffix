@@ -49,7 +49,7 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     if (att->tag == BUCKET_ANON_AGG)
       /* Create an empty anon agg state and merge buckets into it. */
       star_bucket->values[i] = PointerGetDatum(i != att->agg.redirect_to
-                                                   ? SHARED_AGG_STATE
+                                                   ? AGG_STATE_REDIRECTED
                                                    : create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
     else if (att->tag == BUCKET_LABEL)
       set_text_label(star_bucket, i, att->final_type, bucket_context);

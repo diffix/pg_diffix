@@ -189,23 +189,18 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
       /* For anonymizing aggregators we describe finalized type. */
       agg_funcs->final_type(att->agg.args_desc, &att->final_type, &att->final_typmod, &att->final_collid);
 
-      /*
-       * Look back to check if there is a compatible agg which we can share state with.
-       * We can't do this for agg at `low_count_index` because we use it directly in hooks.
-       */
-      if (i != plan_data->low_count_index)
+      /* Look back to check if there is a compatible agg which we can share state with. */
+      for (int j = plan_data->num_labels; j < i; j++)
       {
-        for (int j = plan_data->num_labels; j < i; j++)
-        {
-          BucketAttribute *other_att = &bucket_desc->attrs[j];
-          if (other_att->agg.funcs == NULL)
-            continue;
+        BucketAttribute *other_att = &bucket_desc->attrs[j];
+        if (other_att->agg.funcs == NULL)
+          continue;
 
-          if (can_share_agg_state(att, other_att))
-          {
-            att->agg.redirect_to = j;
-            break;
-          }
+        if (can_share_agg_state(att, other_att))
+        {
+          Assert(i != plan_data->low_count_index); /* low_count is always unique. */
+          att->agg.redirect_to = j;
+          break;
         }
       }
     }

@@ -78,7 +78,7 @@
  *-------------------------------------------------------------------------
  */
 
-#define SHARED_AGG_STATE NULL
+#define AGG_STATE_REDIRECTED NULL
 
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor

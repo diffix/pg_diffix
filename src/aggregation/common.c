@@ -103,8 +103,8 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
       Assert(!destination->is_null[i]);
       AnonAggState *dst_state = (AnonAggState *)destination->values[i];
       AnonAggState *src_state = (AnonAggState *)source->values[i];
-      Assert(dst_state != SHARED_AGG_STATE);
-      Assert(src_state != SHARED_AGG_STATE);
+      Assert(dst_state != AGG_STATE_REDIRECTED);
+      Assert(src_state != AGG_STATE_REDIRECTED);
       att->agg.funcs->merge(dst_state, src_state);
     }
   }
@@ -124,7 +124,7 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (get_current_bucket_context() != NULL)
   {
     if (aggref_shares_state(aggref))
-      return SHARED_AGG_STATE;
+      return AGG_STATE_REDIRECTED;
 
     bucket_context = get_current_bucket_context();
   }
@@ -146,7 +146,7 @@ Datum anon_agg_state_input(PG_FUNCTION_ARGS)
 Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = PG_GET_AGG_STATE(0);
-  Assert(state != SHARED_AGG_STATE); /* Won't happen outside of a BucketScan context. */
+  Assert(state != AGG_STATE_REDIRECTED); /* Won't happen outside of a BucketScan context. */
   const char *str = state->agg_funcs->explain(state);
   PG_RETURN_CSTRING(str);
 }
@@ -154,8 +154,8 @@ Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
-  /* A SHARED_AGG_STATE means the owning aggregator will handle transitions. */
-  if (state != SHARED_AGG_STATE)
+  /* AGG_STATE_REDIRECTED means the owning aggregator will handle transitions. */
+  if (state != AGG_STATE_REDIRECTED)
     state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_AGG_STATE(state);
 }
