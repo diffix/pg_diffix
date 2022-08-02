@@ -28,6 +28,8 @@
  * The `finalize` function derives the final value (of type `final_type`) of the aggregator.
  * Temporary and return data should not be allocated in the state's memory context but in
  * the current memory context which is shorter lived. See below for information about memory.
+ * Because state might be borrowed from another aggregator, `finalize` must be idempotent,
+ * meaning multiple executions against the same state have to return the same result.
  *
  * The `explain` function returns a human-readable representation of the aggregator state.
  * As with `finalize`, the current memory context should be used for temporary and return values.
@@ -75,6 +77,8 @@
  *
  *-------------------------------------------------------------------------
  */
+
+#define AGG_STATE_REDIRECTED NULL
 
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor
@@ -125,9 +129,10 @@ typedef struct BucketAttribute
   BucketAttributeTag tag; /* Label or aggregate? */
   struct
   {
-    Oid fn_oid;                /* Agg function OID */
+    Aggref *aggref;            /* Expr of aggregate */
     ArgsDescriptor *args_desc; /* Agg arguments descriptor */
     const AnonAggFuncs *funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+    int redirect_to;           /* If shared, points to attribute that owns the state */
   } agg;                       /* Populated if tag!=BUCKET_LABEL */
   int typ_len;                 /* Data type length */
   bool typ_byval;              /* Data type is by value? */

@@ -15,8 +15,9 @@
 #define PG_GET_AGG_STATE(index) ((AnonAggState *)PG_GETARG_POINTER(index))
 #define PG_RETURN_AGG_STATE(state) PG_RETURN_POINTER(state)
 
-/* Memory context of currently executing BucketScan node (if any). */
-extern MemoryContext g_current_bucket_context;
+/* Functions declared in bucket_scan.c. Depend on global state and should not be public API. */
+extern MemoryContext get_current_bucket_context(void);
+extern bool aggref_shares_state(Aggref *aggref);
 
 PG_FUNCTION_INFO_V1(anon_agg_state_input);
 PG_FUNCTION_INFO_V1(anon_agg_state_output);
@@ -95,11 +96,16 @@ void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_
   for (int i = bucket_desc->num_labels; i < num_atts; i++)
   {
     BucketAttribute *att = &bucket_desc->attrs[i];
-    if (att->tag == BUCKET_ANON_AGG)
+    if (att->tag == BUCKET_ANON_AGG &&
+        i == att->agg.redirect_to /* Shared states need to be merged only once. */)
     {
       Assert(!source->is_null[i]);
       Assert(!destination->is_null[i]);
-      att->agg.funcs->merge((AnonAggState *)destination->values[i], (AnonAggState *)source->values[i]);
+      AnonAggState *dst_state = (AnonAggState *)destination->values[i];
+      AnonAggState *src_state = (AnonAggState *)source->values[i];
+      Assert(dst_state != AGG_STATE_REDIRECTED);
+      Assert(src_state != AGG_STATE_REDIRECTED);
+      att->agg.funcs->merge(dst_state, src_state);
     }
   }
 }
@@ -113,10 +119,16 @@ static AnonAggState *get_agg_state(PG_FUNCTION_ARGS)
   if (AggCheckCallContext(fcinfo, &bucket_context) != AGG_CONTEXT_AGGREGATE)
     FAILWITH("Aggregate called in non-aggregate context");
 
-  if (g_current_bucket_context != NULL)
-    bucket_context = g_current_bucket_context;
-
   Aggref *aggref = AggGetAggref(fcinfo);
+
+  if (get_current_bucket_context() != NULL)
+  {
+    if (aggref_shares_state(aggref))
+      return AGG_STATE_REDIRECTED;
+
+    bucket_context = get_current_bucket_context();
+  }
+
   const AnonAggFuncs *agg_funcs = find_agg_funcs(aggref->aggfnoid);
 
   if (unlikely(agg_funcs == NULL))
@@ -134,6 +146,7 @@ Datum anon_agg_state_input(PG_FUNCTION_ARGS)
 Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = PG_GET_AGG_STATE(0);
+  Assert(state != AGG_STATE_REDIRECTED); /* Won't happen outside of a BucketScan context. */
   const char *str = state->agg_funcs->explain(state);
   PG_RETURN_CSTRING(str);
 }
@@ -141,13 +154,15 @@ Datum anon_agg_state_output(PG_FUNCTION_ARGS)
 Datum anon_agg_state_transfn(PG_FUNCTION_ARGS)
 {
   AnonAggState *state = get_agg_state(fcinfo);
-  state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
+  /* AGG_STATE_REDIRECTED means the owning aggregator will handle transitions. */
+  if (state != AGG_STATE_REDIRECTED)
+    state->agg_funcs->transition(state, PG_NARGS(), fcinfo->args);
   PG_RETURN_AGG_STATE(state);
 }
 
 /*
  * This finalfunc is a dummy version which does nothing.
- * It only ensures that state is not null for empty buckets.
+ * It only ensures that state is initialized for empty buckets.
  */
 Datum anon_agg_state_finalfn(PG_FUNCTION_ARGS)
 {
