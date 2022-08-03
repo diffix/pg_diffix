@@ -60,12 +60,10 @@ static const char *const g_pg_catalog_allowed_rels[] = {
     "pg_publication_rel", "pg_rewrite", "pg_roles", "pg_seclabel", "pg_seclabels", "pg_sequence", "pg_settings", "pg_shadow",
     "pg_shdepend", "pg_shdescription", "pg_shseclabel", "pg_stat_gssapi", "pg_subscription", "pg_subscription_rel", "pg_tablespace",
     "pg_trigger", "pg_ts_config", "pg_ts_dict", "pg_ts_parser", "pg_ts_template", "pg_type", "pg_user", "pg_tables", "pg_matviews",
-    "pg_indexes", "pg_proc" /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
+    "pg_indexes", "pg_class", "pg_proc" /* `pg_proc` contains `procost` and `prorows` but both seem to be fully static data. */
 };
 
 static AllowedCols g_pg_catalog_allowed_cols[] = {
-    /* In `pg_class` there is `reltuples` which must be blocked, causing some less annoying breakage in some clients. */
-    {.rel_name = "pg_class", .col_names = {"tableoid", "oid", "relname", "relnamespace", "relowner", "relkind", "reloftype", "relam", "reltablespace", "reltoastrelid", "relhasindex", "relpersistence", "relchecks", "relhasrules", "relhastriggers", "relrowsecurity", "relforcerowsecurity", "relreplident", "relispartition", "relpartbound", "reloptions", "xmin", "reltoastrelid", "relispopulated", "relacl"}},
     {.rel_name = "pg_statistic_ext", .col_names = {"tableoid", "oid", "stxrelid", "stxname", "stxnamespace", "stxstattarget", "stxkeys", "stxkind"}},
     {.rel_name = "pg_stat_activity", .col_names = {"datname", "pid", "usename", "application_name", "client_addr", "backend_start", "xact_start", "query_start", "state_change", "wait_event_type", "wait_event", "state", "query", "backend_type", "client_hostname", "client_port", "backend_start", "backend_xid", "backend_xmin"}},
     /*

@@ -1,4 +1,5 @@
 # Changelog
+  - Allow all discovery queries over `pg_class`.
 
 ## Version 1.0.3
   - Reject unsupported column types during AID labeling.

@@ -518,7 +518,7 @@ SELECT * FROM pg_stat_user_functions LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
 SELECT * FROM pg_stat_user_indexes LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
-SELECT * FROM pg_class LIMIT 10;
+SELECT * FROM pg_stat_activity LIMIT 10;
 ERROR:  permission denied for schema pg_catalog
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
