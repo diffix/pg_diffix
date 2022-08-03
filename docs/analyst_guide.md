@@ -19,6 +19,7 @@ mechanisms that Diffix uses to protect personal data.
 - [Suppress bin](#suppress-bin)
 - [Supported functions](#supported-functions)
   - [Aggregates](#aggregates)
+    - [diffix.count_histogram(aid, bin_size)](#diffixcount_histogramaid-bin_size)
   - [Numeric generalization functions](#numeric-generalization-functions)
     - [diffix.floor_by(col, K)](#diffixfloor_bycol-k)
     - [diffix.round_by(col, K)](#diffixround_bycol-k)
@@ -29,6 +30,7 @@ mechanisms that Diffix uses to protect personal data.
   - [Type casts](#type-casts)
   - [Utility functions](#utility-functions)
     - [diffix.is_suppress_bin(*)](#diffixis_suppress_bin)
+    - [diffix.unnest_histogram(histogram)](#diffixunnest_histogramhistogram)
 
 # Access levels
 
@@ -197,11 +199,48 @@ The following versions of aggregates are supported:
 - `count(distinct col)` - counts distinct values of the given column.
 - `sum(col)` - sums values in the given column.
 - `avg(col)` - calculates the average of the given column.
+- `diffix.count_histogram(aid, bin_size=1)` - computes a histogram that describes the distribution of rows among entities.
+  See [below](#diffixcount_histogramaid-bin_size) for details.
 
 Results of these aggregates are anonymized by applying noise as described in the specification.
 
-Each of the `count(...)`, `sum(...)`, `avg(...)` has an accompanying aggregate, which returns the approximate magnitude of noise added during anonymization (in terms of its standard deviation).
-These are: `diffix.count_noise(...)`, `diffix.sum_noise(...)`, `diffix.avg_noise(...)` respectively.
+Each of the `count(...)`, `sum(...)`, `avg(...)` has an accompanying aggregate,
+which returns the approximate magnitude of noise added during anonymization (in terms of its standard deviation).
+These are: `diffix.count_noise(...)`, `diffix.sum_noise(...)`, `diffix.avg_noise(...)`, respectively.
+
+### diffix.count_histogram(aid, bin_size)
+
+Returns a 2-dimensional array of shape `bigint[][2]`, where each entry is a pair of `[row_count, num_entities]`.
+The `row_count` represents the number of rows contributed by `num_entities` distinct protected entities.
+
+**Example:**
+
+```
+SELECT diffix.count_histogram(account)
+FROM transactions;
+
+        count_histogram
+--------------------------------
+ {{NULL,7},{1,15},{2,13},{4,6}}
+(1 row)
+```
+
+The result of the above query can be interpreted as:
+15 accounts have made a single transaction (1 row in result bucket), 13 accounts have made 2 transactions (2 rows),
+6 accounts have made 4 transactions, and 7 accounts have made some other number of transactions (identified by the `NULL` count).
+
+The reported `num_entities` is a noisy value, but not the `row_count` itself. Bins with insufficient `num_entities` are merged to
+a suppress bin of shape `{NULL, num_entities}` where `num_entities` is also noisy. The suppress bin may itself be suppressed.
+
+The optional `bin_size` parameter allows generalizing the bins' `row_count` to minimize suppression.
+It acts identically to the `diffix.floor_by()` function.
+
+The histogram array can be unwrapped to a set of pairs by using [diffix.unnest_histogram()](#diffixunnest_histogramhistogram).
+
+**Restrictions:** The `aid` parameter must be a reference to a column tagged as an AID (identifier of a protected entity).
+
+In untrusted mode, `bin_size` is restricted to a money style number:
+1, 2, or 5 preceeded by or followed by zeros ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩.
 
 ## Numeric generalization functions
 
@@ -265,3 +304,22 @@ GROUP BY 1
 ### diffix.is_suppress_bin(*)
 
 Aggregate that returns `true` only for the suppress bin, `false` otherwise.
+
+### diffix.unnest_histogram(histogram)
+
+Unnests a 2-dimensional array into a result set of 1-dimensional arrays.
+
+**Example:**
+
+```
+SELECT diffix.unnest_histogram(diffix.count_histogram(account)) AS bins
+FROM transactions;
+
+   bins
+----------
+ {NULL,7}
+ {1,15}
+ {2,13}
+ {4,6}
+(4 rows)
+```
