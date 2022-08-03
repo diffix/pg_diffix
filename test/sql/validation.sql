@@ -237,7 +237,7 @@ SELECT * FROM pg_stats LIMIT 10;
 SELECT * FROM pg_statistic LIMIT 10;
 SELECT * FROM pg_stat_user_functions LIMIT 10;
 SELECT * FROM pg_stat_user_indexes LIMIT 10;
-SELECT * FROM pg_class LIMIT 10;
+SELECT * FROM pg_stat_activity LIMIT 10;
 
 -- Get rejected because of inheritance
 SELECT x, y FROM subclass;
