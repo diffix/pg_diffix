@@ -96,6 +96,11 @@ EXPLAIN (ANALYZE, SUMMARY false, TIMING false, COSTS true) SELECT name FROM test
 -- EXPLAIN prints group/sort names
 EXPLAIN SELECT city FROM test_customers ORDER BY 1;
 
+-- Allow queries that exclude all rows
+SELECT FROM test_customers WHERE FALSE;
+SELECT TRUE AS "_" FROM test_customers WHERE 1 <> 1 LIMIT 0;
+SELECT id FROM test_customers WHERE NULL = NULL;
+
 -- Tolerate `diffix.agg_noise` in direct access level
 SET pg_diffix.session_access_level = 'direct';
 SELECT diffix.sum_noise(discount), diffix.count_noise(*) FROM test_customers;
