@@ -620,16 +620,27 @@ static void compile_anonymizing_query(Query *query, List *personal_relations, An
   wrap_having_qual(query);
 }
 
+static bool are_qualifiers_always_false(Node *quals)
+{
+  if (quals == NULL)
+    return false;
+
+  if (!IsA(quals, Const))
+  {
+    quals = eval_const_expressions(NULL, quals);
+    if (!IsA(quals, Const))
+      return false;
+  }
+
+  Const *result = (Const *)quals;
+  Assert(result->consttype == BOOLOID);
+  return result->constisnull || DatumGetBool(result->constvalue) == false;
+}
+
 static bool is_anonymizing_query(Query *query, List *personal_relations)
 {
-  if (query->limitCount != NULL)
-  {
-    Node *limit = unwrap_cast(query->limitCount);
-    if (IsA(limit, Const) &&
-        ((Const *)limit)->consttype == INT4OID &&
-        DatumGetInt32(((Const *)limit)->constvalue) == 0)
-      return false; /* No need for anonymization if no rows are requested. */
-  }
+  if (are_qualifiers_always_false(query->jointree->quals))
+    return false; /* No need for anonymization if no rows will be processed. */
 
   ListCell *cell;
   foreach (cell, query->rtable)

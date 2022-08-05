@@ -45,10 +45,4 @@ extern bool is_supported_numeric_type(Oid type);
  */
 extern double numeric_value_to_double(Oid type, Datum value);
 
-/*
- * If argument is a `cast` expression, returns the casted subject node.
- * Otherwise, returns the given argument as is.
- */
-extern Node *unwrap_cast(Node *node);
-
 #endif /* PG_DIFFIX_VALIDATION_H */

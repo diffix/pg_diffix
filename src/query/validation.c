@@ -138,7 +138,7 @@ static bool is_datetime_to_string_cast(CoerceViaIO *expr)
   return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
 }
 
-Node *unwrap_cast(Node *node)
+static Node *unwrap_cast(Node *node)
 {
   if (IsA(node, FuncExpr))
   {
