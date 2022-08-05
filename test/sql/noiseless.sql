@@ -30,6 +30,34 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+
+----------------------------------------------------------------
+-- Basic queries - sum
+----------------------------------------------------------------
+
+SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
+SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
+SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+
+-- sum supports numeric type
+SELECT city, SUM(discount::numeric), pg_typeof(SUM(discount::numeric)), diffix.sum_noise(discount::numeric)
+FROM test_customers
+GROUP BY 1;
+
+----------------------------------------------------------------
+-- Basic queries - avg
+----------------------------------------------------------------
+
+SELECT city, AVG(discount), diffix.avg_noise(discount) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(discount) / COUNT(discount), diffix.sum_noise(discount) / COUNT(discount) FROM test_customers GROUP BY 1;
+
+SELECT city, AVG(id), diffix.avg_noise(id) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(id)::float8 / COUNT(id), diffix.sum_noise(id) / COUNT(id) FROM test_customers GROUP BY 1;
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -56,7 +84,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
 
 ----------------------------------------------------------------
 -- Empty tables

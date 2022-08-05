@@ -21,4 +21,9 @@ extern Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_contex
  */
 extern bool is_bucket_scan(Plan *plan);
 
+/*
+ * Returns true if another aggregate in the bucket does identical transitions as the given Aggref.
+ */
+extern bool aggref_shares_state(Aggref *aggref);
+
 #endif /* PG_DIFFIX_BUCKET_SCAN_H */

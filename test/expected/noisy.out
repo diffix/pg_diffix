@@ -47,6 +47,67 @@ SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
  Rome |     8
 (2 rows)
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+ count 
+-------
+    17
+(1 row)
+
+----------------------------------------------------------------
+-- Basic queries - sum
+----------------------------------------------------------------
+SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
+ sum | sum_noise 
+-----+-----------
+  34 |        58
+(1 row)
+
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
+    sum    | sum_noise 
+-----------+-----------
+ 7.8854094 |         8
+(1 row)
+
+SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
+ city | sum | sum_noise 
+------+-----+-----------
+ *    | 122 |        54
+ Rome |  64 |        60
+(2 rows)
+
+SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+ city |    sum    | sum_noise 
+------+-----------+-----------
+ *    | 12.012415 |       9.5
+ Rome |  4.601863 |       4.4
+(2 rows)
+
+----------------------------------------------------------------
+-- Basic queries - avg
+----------------------------------------------------------------
+SELECT city, AVG(discount), diffix.avg_noise(discount) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(discount) / COUNT(discount), diffix.sum_noise(discount) / COUNT(discount) FROM test_customers GROUP BY 1;
+ city | avg | avg_noise 
+------+-----+-----------
+(0 rows)
+
+SELECT city, AVG(id), diffix.avg_noise(id) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(id)::float8 / COUNT(id), diffix.sum_noise(id) / COUNT(id) FROM test_customers GROUP BY 1;
+ city | avg | avg_noise 
+------+-----+-----------
+(0 rows)
+
+----------------------------------------------------------------
+-- Reporting noise
+----------------------------------------------------------------
+SELECT diffix.count_noise(*), diffix.count_noise(city), diffix.count_noise(DISTINCT city) FROM test_customers;
+ count_noise |    count_noise    | count_noise 
+-------------+-------------------+-------------
+           7 | 6.800000000000001 |           0
+(1 row)
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -185,7 +246,7 @@ SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
  *
 (1 row)
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
@@ -211,5 +272,34 @@ SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
  count | count | count 
 -------+-------+-------
      0 |     0 |     0
+(1 row)
+
+----------------------------------------------------------------
+-- WHERE clauses
+----------------------------------------------------------------
+-- Filtering and grouping produce identical results
+(SELECT count(*) FROM test_customers GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin');
+ count 
+-------
+    17
+(1 row)
+
+(SELECT count(*) FROM test_customers GROUP BY city, diffix.round_by(discount, 2)
+  HAVING city = 'Berlin' AND diffix.round_by(discount, 2) = 0)
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+ count 
+-------
+     7
+(1 row)
+
+(SELECT count(*) FROM test_customers WHERE diffix.round_by(discount, 2) = 0 GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+ count 
+-------
+     7
 (1 row)
 

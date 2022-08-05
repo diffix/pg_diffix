@@ -48,10 +48,12 @@ Bucket *star_bucket_hook(List *buckets, BucketDescriptor *bucket_desc)
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
       /* Create an empty anon agg state and merge buckets into it. */
-      star_bucket->values[i] = PointerGetDatum(create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
+      star_bucket->values[i] = PointerGetDatum(i != att->agg.redirect_to
+                                                   ? AGG_STATE_REDIRECTED
+                                                   : create_anon_agg_state(att->agg.funcs, bucket_context, att->agg.args_desc));
     else if (att->tag == BUCKET_LABEL)
       set_text_label(star_bucket, i, att->final_type, bucket_context);
-    else if (att->agg.fn_oid == g_oid_cache.is_suppress_bin)
+    else if (att->agg.aggref->aggfnoid == g_oid_cache.is_suppress_bin)
       star_bucket->values[i] = BoolGetDatum(true);
     else
       star_bucket->is_null[i] = true;

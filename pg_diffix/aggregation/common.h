@@ -3,6 +3,7 @@
 
 #include "access/attnum.h"
 #include "nodes/pg_list.h"
+#include "nodes/primnodes.h"
 
 #include "pg_diffix/aggregation/noise.h"
 
@@ -27,6 +28,8 @@
  * The `finalize` function derives the final value (of type `final_type`) of the aggregator.
  * Temporary and return data should not be allocated in the state's memory context but in
  * the current memory context which is shorter lived. See below for information about memory.
+ * Because state might be borrowed from another aggregator, `finalize` must be idempotent,
+ * meaning multiple executions against the same state have to return the same result.
  *
  * The `explain` function returns a human-readable representation of the aggregator state.
  * As with `finalize`, the current memory context should be used for temporary and return values.
@@ -75,9 +78,12 @@
  *-------------------------------------------------------------------------
  */
 
+#define AGG_STATE_REDIRECTED NULL
+
 /* Describes a single function call argument. */
 typedef struct ArgDescriptor
 {
+  Expr *expr;    /* Expression of argument or NULL if unknown */
   Oid type_oid;  /* Type OID of argument */
   int16 typlen;  /* Length of argument type */
   bool typbyval; /* Whether argument type is by val */
@@ -90,14 +96,25 @@ typedef struct ArgsDescriptor
   ArgDescriptor args[FLEXIBLE_ARRAY_MEMBER]; /* Descriptors of individual arguments */
 } ArgsDescriptor;
 
+/*
+ * Describes the transfn arguments of an anonymizing aggregator.
+ */
+extern ArgsDescriptor *build_args_desc(Aggref *aggref);
+
 typedef struct AnonAggFuncs AnonAggFuncs;
 typedef struct AnonAggState AnonAggState;
 
 /* Known anonymizing aggregators. */
 extern const AnonAggFuncs g_count_star_funcs;
 extern const AnonAggFuncs g_count_value_funcs;
+extern const AnonAggFuncs g_sum_funcs;
+extern const AnonAggFuncs g_count_distinct_noise_funcs;
+extern const AnonAggFuncs g_count_star_noise_funcs;
+extern const AnonAggFuncs g_count_value_noise_funcs;
+extern const AnonAggFuncs g_sum_noise_funcs;
 extern const AnonAggFuncs g_count_distinct_funcs;
 extern const AnonAggFuncs g_low_count_funcs;
+extern const AnonAggFuncs g_count_histogram_funcs;
 
 typedef enum BucketAttributeTag
 {
@@ -112,9 +129,10 @@ typedef struct BucketAttribute
   BucketAttributeTag tag; /* Label or aggregate? */
   struct
   {
-    Oid fn_oid;                /* Agg function OID */
+    Aggref *aggref;            /* Expr of aggregate */
     ArgsDescriptor *args_desc; /* Agg arguments descriptor */
     const AnonAggFuncs *funcs; /* Agg funcs if tag=BUCKET_ANON_AGG */
+    int redirect_to;           /* If shared, points to attribute that owns the state */
   } agg;                       /* Populated if tag!=BUCKET_LABEL */
   int typ_len;                 /* Data type length */
   bool typ_byval;              /* Data type is by value? */
@@ -126,10 +144,11 @@ typedef struct BucketAttribute
 
 typedef struct AnonymizationContext
 {
-  seed_t sql_seed;           /* Static part of bucket seed */
-  AttrNumber *grouping_cols; /* Array of indices into the target list for the grouping columns */
-  int grouping_cols_count;   /* Count of grouping columns */
-  bool expand_buckets;       /* True if buckets have to be expanded for this query */
+  seed_t sql_seed;            /* Static part of bucket seed */
+  List *base_labels_hash_set; /* Hashed labels that apply to all buckets (from filters) */
+  AttrNumber *grouping_cols;  /* Array of indices into the target list for the grouping columns */
+  int grouping_cols_count;    /* Count of grouping columns */
+  bool expand_buckets;        /* True if buckets have to be expanded for this query */
 } AnonymizationContext;
 
 typedef struct BucketDescriptor
@@ -161,7 +180,7 @@ typedef struct Bucket
 struct AnonAggFuncs
 {
   /* Get type information of final value. */
-  void (*final_type)(Oid *type, int32 *typmod, Oid *collid);
+  void (*final_type)(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid);
 
   /*
    * Create an empty state in the given memory context. The implementation is
@@ -231,5 +250,15 @@ extern bool eval_low_count(Bucket *bucket, BucketDescriptor *bucket_desc);
  * Merges all anonymizing aggregator states from source bucket to destination bucket.
  */
 extern void merge_bucket(Bucket *destination, Bucket *source, BucketDescriptor *bucket_desc);
+
+/*
+ * Returns true if all AID instances in the given range are NULL.
+ */
+extern bool all_aids_null(NullableDatum *args, int aids_offset, int aids_count);
+
+/*
+ * Rounds the noise std. dev. to obtain a reported noise value.
+ */
+extern double round_reported_noise_sd(double noise_sd);
 
 #endif /* PG_DIFFIX_COMMON_H */

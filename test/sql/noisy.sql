@@ -26,6 +26,35 @@ SELECT COUNT(DISTINCT cid) FROM test_purchases;
 
 SELECT city, COUNT(DISTINCT id) FROM test_customers GROUP BY 1;
 
+SELECT COUNT(*) FROM test_customers WHERE planet = 'Earth';
+
+----------------------------------------------------------------
+-- Basic queries - sum
+----------------------------------------------------------------
+
+SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
+SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
+SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+
+----------------------------------------------------------------
+-- Basic queries - avg
+----------------------------------------------------------------
+
+SELECT city, AVG(discount), diffix.avg_noise(discount) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(discount) / COUNT(discount), diffix.sum_noise(discount) / COUNT(discount) FROM test_customers GROUP BY 1;
+
+SELECT city, AVG(id), diffix.avg_noise(id) FROM test_customers GROUP BY 1
+EXCEPT
+SELECT city, SUM(id)::float8 / COUNT(id), diffix.sum_noise(id) / COUNT(id) FROM test_customers GROUP BY 1;
+
+----------------------------------------------------------------
+-- Reporting noise
+----------------------------------------------------------------
+
+SELECT diffix.count_noise(*), diffix.count_noise(city), diffix.count_noise(DISTINCT city) FROM test_customers;
+
 ----------------------------------------------------------------
 -- Basic queries - expanding constants in target expressions
 ----------------------------------------------------------------
@@ -52,7 +81,7 @@ SELECT city FROM test_customers;
 
 SELECT city FROM test_customers GROUP BY 1 HAVING length(city) <> 4;
 
-SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM london_customers;
+SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM test_customers WHERE city = 'London';
 
 -- LCF doesn't depend on the bucket seed, both queries should have same noisy threshold.
 SELECT diffix.floor_by(age, 30), COUNT(*) FROM test_patients GROUP BY 1;
@@ -63,3 +92,21 @@ SELECT diffix.floor_by(age, 30), diffix.floor_by(age, 106), COUNT(*) FROM test_p
 ----------------------------------------------------------------
 
 SELECT COUNT(*), COUNT(city), COUNT(DISTINCT city) FROM empty_test_customers;
+
+----------------------------------------------------------------
+-- WHERE clauses
+----------------------------------------------------------------
+
+-- Filtering and grouping produce identical results
+(SELECT count(*) FROM test_customers GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin');
+
+(SELECT count(*) FROM test_customers GROUP BY city, diffix.round_by(discount, 2)
+  HAVING city = 'Berlin' AND diffix.round_by(discount, 2) = 0)
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+
+(SELECT count(*) FROM test_customers WHERE diffix.round_by(discount, 2) = 0 GROUP BY city HAVING city = 'Berlin')
+UNION
+(SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);

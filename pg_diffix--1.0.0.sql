@@ -12,6 +12,29 @@ DO $$ BEGIN
 END $$ LANGUAGE plpgsql;
 
 /* ----------------------------------------------------------------
+ * Internal functions
+ * ----------------------------------------------------------------
+ */
+
+CREATE FUNCTION placeholder_func(anyelement)
+RETURNS anyelement
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION placeholder_func(anyelement, "any")
+RETURNS anyelement
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION internal_qual_wrapper(boolean)
+RETURNS boolean
+AS 'MODULE_PATHNAME'
+LANGUAGE C VOLATILE
+SECURITY INVOKER SET search_path = '';
+
+/* ----------------------------------------------------------------
  * Utilities
  * ----------------------------------------------------------------
  */
@@ -45,6 +68,19 @@ AS $$
     objname;
 $$
 SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION unnest_histogram(a ANYARRAY, OUT a_1d ANYARRAY)
+RETURNS SETOF ANYARRAY
+LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE STRICT AS
+$$
+BEGIN
+  IF array_length(a, 1) > 0 THEN
+    FOREACH a_1d SLICE 1 IN ARRAY a LOOP
+      RETURN NEXT;
+    END LOOP;
+  END IF;
+END
+$$;
 
 CREATE PROCEDURE mark_personal(table_name text, variadic aid_columns text[])
 AS $$
@@ -90,6 +126,47 @@ CREATE PROCEDURE unmark_role(role_name text)
 AS $$
   BEGIN
     EXECUTE 'SECURITY LABEL FOR pg_diffix ON ROLE ' || quote_ident(role_name) || ' IS NULL';
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE assert_column_is_not_aid(table_name text, column_name text)
+AS $$
+  DECLARE
+    column_subid integer;
+    table_id integer;
+    is_aid_column boolean;
+  BEGIN
+    table_id := table_name::regclass::oid;
+
+    EXECUTE 'SELECT attnum FROM pg_catalog.pg_attribute
+        WHERE attrelid = ' || table_id || ' AND
+          NOT attisdropped AND
+          attname = ' || quote_literal(column_name) INTO STRICT column_subid;
+
+    EXECUTE 'SELECT EXISTS (SELECT FROM pg_catalog.pg_seclabel
+      WHERE provider = ''pg_diffix'' AND
+        objoid = ' || table_id || ' AND
+        objsubid = ' || column_subid || ' AND
+        label = ''aid'')' INTO is_aid_column;
+    IF is_aid_column THEN
+      RAISE EXCEPTION 'Column `%` is already marked as an AID.', column_name;
+    END IF;
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE mark_not_filterable(table_name text, column_name text)
+AS $$
+  BEGIN
+    CALL diffix.assert_column_is_not_aid(table_name, column_name);
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_name || '.' || column_name || ' IS ''not_filterable''';
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE PROCEDURE mark_filterable(table_name text, column_name text)
+AS $$
+  BEGIN
+    CALL diffix.assert_column_is_not_aid(table_name, column_name);
+    EXECUTE 'SECURITY LABEL FOR pg_diffix ON COLUMN ' || table_name || '.' || column_name || ' IS NULL';
   END;
 $$ LANGUAGE plpgsql;
 
@@ -147,6 +224,12 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
 
+CREATE FUNCTION anon_agg_state_transfn(AnonAggState, arg1 "any", arg2 "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
 CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, variadic aids "any")
 RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
@@ -158,6 +241,75 @@ RETURNS AnonAggState
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE
 SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION anon_agg_state_finalfn(AnonAggState, arg1 "any", arg2 "any", variadic aids "any")
+RETURNS AnonAggState
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+/* ----------------------------------------------------------------
+ * Non-anonymizing aggregators
+ * ----------------------------------------------------------------
+ */
+
+CREATE AGGREGATE count_noise(*) (
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
+);
+
+CREATE AGGREGATE count_noise(value "any") (
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
+);
+
+CREATE AGGREGATE sum_noise(value "any") (
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
+);
+
+CREATE AGGREGATE avg_noise(value "any") (
+  sfunc = placeholder_func,
+  stype = float8,
+  initcond = 0.0
+);
+
+/*
+ * count_histogram
+ */
+
+CREATE FUNCTION count_histogram_transfn(internal, value "any")
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION count_histogram_transfn(internal, value "any", bin_size bigint)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE FUNCTION count_histogram_finalfn(internal)
+RETURNS bigint[][]
+AS 'MODULE_PATHNAME'
+LANGUAGE C STABLE
+SECURITY INVOKER SET search_path = '';
+
+CREATE AGGREGATE count_histogram(value "any") (
+  sfunc = count_histogram_transfn,
+  stype = internal,
+  finalfunc = count_histogram_finalfn
+);
+
+CREATE AGGREGATE count_histogram(value "any", bin_size bigint) (
+  sfunc = count_histogram_transfn,
+  stype = internal,
+  finalfunc = count_histogram_finalfn
+);
 
 /* ----------------------------------------------------------------
  * Anonymizing aggregators
@@ -202,28 +354,64 @@ CREATE AGGREGATE anon_count_value(value "any", variadic aids "any") (
   finalfunc_modify = read_write
 );
 
+CREATE AGGREGATE anon_sum(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_histogram(aid_index integer, bin_size bigint, variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_distinct_noise(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_star_noise(variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_count_value_noise(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
+CREATE AGGREGATE anon_sum_noise(value "any", variadic aids "any") (
+  sfunc = anon_agg_state_transfn,
+  stype = AnonAggState,
+  finalfunc = anon_agg_state_finalfn,
+  finalfunc_extra = true,
+  finalfunc_modify = read_write
+);
+
 /* ----------------------------------------------------------------
  * Bucket-specific aggregates
  * ----------------------------------------------------------------
  */
-
-CREATE FUNCTION placeholder_func(anyelement)
-RETURNS anyelement
-AS 'MODULE_PATHNAME'
-LANGUAGE C IMMUTABLE STRICT
-SECURITY INVOKER SET search_path = '';
 
 CREATE AGGREGATE is_suppress_bin(*) (
   sfunc = placeholder_func,
   stype = boolean,
   initcond = false
 );
-
-CREATE FUNCTION internal_qual_wrapper(boolean)
-RETURNS boolean
-AS 'MODULE_PATHNAME'
-LANGUAGE C VOLATILE
-SECURITY INVOKER SET search_path = '';
 
 /* ----------------------------------------------------------------
  * Scalar functions

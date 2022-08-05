@@ -5,6 +5,7 @@
 #include "utils/typcache.h"
 
 #include "pg_diffix/aggregation/count.h"
+#include "pg_diffix/aggregation/summable.h"
 #include "pg_diffix/config.h"
 #include "pg_diffix/query/anonymization.h"
 
@@ -47,7 +48,7 @@ static const int AIDS_OFFSET = 2;
 static DistinctTrackerHashEntry *
 get_distinct_tracker_entry(DistinctTracker_hash *tracker, Datum value, int aids_count)
 {
-  bool found = false;
+  bool found;
   DistinctTrackerHashEntry *entry = DistinctTracker_insert(tracker, value, &found);
   if (!found)
   {
@@ -108,10 +109,8 @@ static List *filter_lc_entries(DistinctTracker_hash *tracker)
 {
   List *lc_entries = NIL;
 
-  DistinctTracker_iterator it;
-  DistinctTracker_start_iterate(tracker, &it);
-  DistinctTrackerHashEntry *entry = NULL;
-  while ((entry = DistinctTracker_iterate(tracker, &it)) != NULL)
+  DistinctTrackerHashEntry *entry;
+  foreach_entry(entry, tracker, DistinctTracker)
   {
     if (!aid_sets_are_high_count(entry->aid_values_sets))
       lc_entries = lappend(lc_entries, entry);
@@ -156,7 +155,7 @@ static List *associate_value_with_aid(List *per_aid_values, aid_t aid, Datum val
   while (start <= end)
   {
     int middle = start + (end - start) / 2;
-    PerAidValuesEntry *entry = (PerAidValuesEntry *)lfirst(list_nth_cell(per_aid_values, middle));
+    PerAidValuesEntry *entry = (PerAidValuesEntry *)list_nth(per_aid_values, middle);
     if (entry->aid < aid)
     {
       start = middle + 1;
@@ -267,7 +266,7 @@ static inline bool is_marked_as_used(DatumSet_hash *used_values, Datum value)
 
 static inline void mark_as_used(DatumSet_hash *used_values, Datum value)
 {
-  bool found = false;
+  bool found;
   DatumSet_insert(used_values, value, &found);
 }
 
@@ -319,7 +318,7 @@ static void process_lc_values_contributions(List *per_aid_values,
     {
       *aid_seed ^= entry->aid;
       Contributor contributor = {.aid = entry->aid, .contribution = {.integer = entry->contributions}};
-      add_top_contributor(&count_descriptor, top_contributors, contributor);
+      add_top_contributor(&integer_descriptor, top_contributors, contributor);
       (*contributors_count)++;
     }
   }
@@ -337,14 +336,20 @@ typedef struct CountDistinctResult
   int64 hc_values_count;
   int64 lc_values_count;
   int64 noisy_count;
+  double noise_sd;
+  bool not_enough_aid_values;
 } CountDistinctResult;
 
 /*
  * The number of high count values is safe to be shown directly, without any extra noise.
  * The number of low count values has to be anonymized.
  */
-static CountDistinctResult count_distinct_calculate_final(CountDistinctState *state, seed_t bucket_seed, int64 min_count)
+static CountDistinctResult count_distinct_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
+  CountDistinctState *state = (CountDistinctState *)base_state;
+
+  seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
+
   int aids_count = state->args_desc->num_args - AIDS_OFFSET;
   set_value_sorting_globals(state->args_desc->args[VALUE_INDEX].type_oid);
 
@@ -360,8 +365,7 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
 
   uint32 top_contributors_capacity = g_config.outlier_count_max + g_config.top_count_max;
 
-  bool insufficient_data = false;
-  CountResultAccumulator result_accumulator = {0};
+  SummableResultAccumulator lc_result_accumulator = {0};
 
   for (int aid_index = 0; aid_index < aids_count; aid_index++)
   {
@@ -380,29 +384,27 @@ static CountDistinctResult count_distinct_calculate_final(CountDistinctState *st
         &aid_seed, &contributors_count,
         top_contributors);
 
-    uint64 unaccounted_for = 0;
-    CountResult inner_count_result = aggregate_count_contributions(
-        bucket_seed, aid_seed, lc_values_true_count,
-        contributors_count, unaccounted_for, top_contributors);
+    contribution_t unaccounted_for = {.integer = 0};
+    contribution_t true_count = {.integer = (int64)lc_values_true_count};
+    SummableResult inner_count_result = aggregate_contributions(
+        bucket_seed, aid_seed, true_count,
+        contributors_count, unaccounted_for, integer_descriptor.contribution_to_double, top_contributors);
 
     list_free_deep(per_aid_values);
     pfree(top_contributors);
 
-    if (inner_count_result.not_enough_aid_values)
-    {
-      insufficient_data = true;
+    accumulate_result(&lc_result_accumulator, &inner_count_result);
+    if (lc_result_accumulator.not_enough_aid_values)
       break;
-    }
-    accumulate_count_result(&result_accumulator, &inner_count_result);
   }
 
-  if (!insufficient_data)
+  if (!lc_result_accumulator.not_enough_aid_values)
   {
-    result.noisy_count += finalize_count_result(&result_accumulator);
+    result.noisy_count += finalize_count_result(&lc_result_accumulator);
+    result.noise_sd = finalize_noise_result(&lc_result_accumulator);
   }
 
-  result.noisy_count = Max(result.noisy_count, min_count);
-
+  result.not_enough_aid_values = lc_result_accumulator.not_enough_aid_values && result.hc_values_count == 0;
   return result;
 }
 
@@ -419,7 +421,7 @@ static ArgsDescriptor *copy_args_desc(const ArgsDescriptor *source)
  *-------------------------------------------------------------------------
  */
 
-static void count_distinct_final_type(Oid *type, int32 *typmod, Oid *collid)
+static void count_distinct_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = INT8OID;
   *typmod = -1;
@@ -445,13 +447,10 @@ static AnonAggState *count_distinct_create_state(MemoryContext memory_context, A
 
 static Datum count_distinct_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  CountDistinctState *state = (CountDistinctState *)base_state;
-
-  seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
   bool is_global = bucket_desc->num_labels == 0;
   int64 min_count = is_global ? 0 : g_config.low_count_min_threshold;
-  CountDistinctResult result = count_distinct_calculate_final(state, bucket_seed, min_count);
-  return Int64GetDatum(result.noisy_count);
+  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc);
+  return Int64GetDatum(Max(result.noisy_count, min_count));
 }
 
 static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggState *src_base_state)
@@ -469,10 +468,8 @@ static void count_distinct_merge(AnonAggState *dst_base_state, const AnonAggStat
   int aids_count = dst_state->args_desc->num_args - AIDS_OFFSET;
   MemoryContext old_context = MemoryContextSwitchTo(dst_base_state->memory_context);
 
-  DistinctTracker_iterator src_iterator;
-  DistinctTracker_start_iterate(src_state->tracker, &src_iterator);
-  DistinctTrackerHashEntry *src_entry = NULL;
-  while ((src_entry = DistinctTracker_iterate(src_state->tracker, &src_iterator)) != NULL)
+  DistinctTrackerHashEntry *src_entry;
+  foreach_entry(src_entry, src_state->tracker, DistinctTracker)
   {
     DistinctTrackerHashEntry *dst_entry =
         get_distinct_tracker_entry(dst_state->tracker, src_entry->value, aids_count);
@@ -538,4 +535,39 @@ const AnonAggFuncs g_count_distinct_funcs = {
     .finalize = count_distinct_finalize,
     .merge = count_distinct_merge,
     .explain = count_distinct_explain,
+};
+
+static void count_distinct_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
+{
+  *type = FLOAT8OID;
+  *typmod = -1;
+  *collid = 0;
+}
+
+static Datum count_distinct_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
+{
+  CountDistinctResult result = count_distinct_calculate_final(base_state, bucket, bucket_desc);
+  if (result.not_enough_aid_values)
+  {
+    *is_null = true;
+    return Float8GetDatum(0.0);
+  }
+  else
+  {
+    return Float8GetDatum(result.noise_sd);
+  }
+}
+
+static const char *count_distinct_noise_explain(const AnonAggState *base_state)
+{
+  return "diffix.anon_count_distinct_noise";
+}
+
+const AnonAggFuncs g_count_distinct_noise_funcs = {
+    .final_type = count_distinct_noise_final_type,
+    .create_state = count_distinct_create_state,
+    .transition = count_distinct_transition,
+    .finalize = count_distinct_noise_finalize,
+    .merge = count_distinct_merge,
+    .explain = count_distinct_noise_explain,
 };

@@ -18,7 +18,7 @@ static AidResult calculate_aid_result(const AidTrackerState *tracker)
 {
   AidResult result = {.aid_seed = tracker->aid_seed};
   result.threshold = generate_lcf_threshold(tracker->aid_seed);
-  result.low_count = tracker->aid_set->members < result.threshold;
+  result.low_count = aid_tracker_naids(tracker) < result.threshold;
 
   return result;
 }
@@ -30,7 +30,7 @@ static AidResult calculate_aid_result(const AidTrackerState *tracker)
 
 static const int AIDS_OFFSET = 1;
 
-static void agg_final_type(Oid *type, int32 *typmod, Oid *collid)
+static void agg_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
 {
   *type = BOOLOID;
   *typmod = -1;
@@ -102,14 +102,7 @@ static void agg_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
   {
     AidTrackerState *dst_tracker = dst_state->trackers[i];
     const AidTrackerState *src_tracker = src_state->trackers[i];
-
-    AidTracker_iterator iterator;
-    AidTracker_start_iterate(src_tracker->aid_set, &iterator);
-    AidTrackerHashEntry *entry = NULL;
-    while ((entry = AidTracker_iterate(src_tracker->aid_set, &iterator)) != NULL)
-    {
-      aid_tracker_update(dst_tracker, entry->aid);
-    }
+    aid_tracker_merge(dst_tracker, src_tracker);
   }
 }
 

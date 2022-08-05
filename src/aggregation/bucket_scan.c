@@ -9,7 +9,6 @@
 #include "optimizer/cost.h"
 #include "optimizer/tlist.h"
 #include "utils/datum.h"
-#include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
 #include "pg_diffix/aggregation/common.h"
@@ -37,9 +36,9 @@
  *   Aggregates can be found in tlist and qual. We need to export both in Agg's tlist because we
  *   move the actual projection and qual to BucketScan. TLEs n+1..n+m will be the aggregates.
  *   When rewriting expressions for proj/qual, we do a simple equality-based deduplication to
- *   minimize aggregates in tlist. It is not very important to be smart about optimizing at this
- *   stage because ExecInitAgg will take care of sharing aggregation state during execution.
- *   Arguments to aggregates are untouched because they do not leave the node.
+ *   minimize aggregates in tlist. During execution, anonymizing aggregators will reuse state
+ *   if conditions in `can_share_agg_state` are met. Arguments to aggregates are untouched
+ *   because they do not leave the node.
  *
  *   Projection/filtering:
  *
@@ -90,35 +89,58 @@ static inline bool has_star_bucket(BucketScanState *bucket_state)
   return linitial(bucket_state->buckets) != NULL;
 }
 
-/* Memory context of currently executing BucketScan node. */
-MemoryContext g_current_bucket_context = NULL;
+/* State of currently executing bucket scan. */
+static BucketScanState *g_current_bucket_scan = NULL;
+
+MemoryContext get_current_bucket_context(void);
+bool aggref_shares_state(Aggref *aggref);
+
+/* Used by common.c to locate the bucket memory context. */
+MemoryContext get_current_bucket_context(void)
+{
+  return g_current_bucket_scan != NULL
+             ? g_current_bucket_scan->bucket_context
+             : NULL;
+}
+
+/* Used by common.c to check if an agg has redirected state. */
+bool aggref_shares_state(Aggref *aggref)
+{
+  if (g_current_bucket_scan == NULL)
+    return false;
+
+  BucketDescriptor *bucket_desc = g_current_bucket_scan->bucket_desc;
+  int num_atts = bucket_num_atts(bucket_desc);
+  for (int i = bucket_desc->num_labels; i < num_atts; i++)
+  {
+    BucketAttribute *att = &bucket_desc->attrs[i];
+    /* We use reference comparison to pinpoint exact position of aggregate. */
+    if (att->agg.aggref == aggref)
+      return i != att->agg.redirect_to;
+  }
+
+  /* This should not happen, but we can't guarantee that the Aggref was not copied somewhere. */
+  return false;
+}
 
 /*-------------------------------------------------------------------------
  * CustomExecMethods
  *-------------------------------------------------------------------------
  */
 
-static ArgsDescriptor *build_args_desc(Aggref *aggref)
+/*
+ * Returns true if aggregates can share the same agg state.
+ * This is possible when args, initial state, transition, and merge functions are identical.
+ */
+static bool can_share_agg_state(BucketAttribute *agg1, BucketAttribute *agg2)
 {
-  List *args = aggref->args;
+  const AnonAggFuncs *funcs1 = agg1->agg.funcs;
+  const AnonAggFuncs *funcs2 = agg2->agg.funcs;
 
-  int num_args = 1 + list_length(args); /* First item is AnonAggState. */
-  ArgsDescriptor *args_desc = palloc0(sizeof(ArgsDescriptor) + num_args * sizeof(ArgDescriptor));
-  args_desc->num_args = num_args;
-
-  args_desc->args[0].type_oid = g_oid_cache.anon_agg_state;
-  args_desc->args[0].typlen = sizeof(Datum);
-  args_desc->args[0].typbyval = true;
-
-  for (int i = 1; i < num_args; i++)
-  {
-    TargetEntry *arg_tle = list_nth_node(TargetEntry, args, i - 1);
-    ArgDescriptor *arg_desc = &args_desc->args[i];
-    arg_desc->type_oid = exprType((Node *)arg_tle->expr);
-    get_typlenbyval(arg_desc->type_oid, &arg_desc->typlen, &arg_desc->typbyval);
-  }
-
-  return args_desc;
+  return funcs1->create_state == funcs2->create_state &&
+         funcs1->transition == funcs2->transition &&
+         funcs1->merge == funcs2->merge &&
+         equal(agg1->agg.aggref->args, agg2->agg.aggref->args);
 }
 
 /*
@@ -155,16 +177,32 @@ static void init_bucket_descriptor(BucketScanState *bucket_state)
     {
       Aggref *aggref = castNode(Aggref, tle->expr);
       agg_funcs = find_agg_funcs(aggref->aggfnoid);
-      att->agg.fn_oid = aggref->aggfnoid;
+      att->agg.aggref = aggref;
       att->agg.funcs = agg_funcs;
       att->agg.args_desc = build_args_desc(aggref);
+      att->agg.redirect_to = i; /* Pointing to itself means state is not shared. */
       att->tag = agg_funcs != NULL ? BUCKET_ANON_AGG : BUCKET_REGULAR_AGG;
     }
 
     if (agg_funcs != NULL)
     {
       /* For anonymizing aggregators we describe finalized type. */
-      agg_funcs->final_type(&att->final_type, &att->final_typmod, &att->final_collid);
+      agg_funcs->final_type(att->agg.args_desc, &att->final_type, &att->final_typmod, &att->final_collid);
+
+      /* Look back to check if there is a compatible agg which we can share state with. */
+      for (int j = plan_data->num_labels; j < i; j++)
+      {
+        BucketAttribute *other_att = &bucket_desc->attrs[j];
+        if (other_att->agg.funcs == NULL)
+          continue;
+
+        if (can_share_agg_state(att, other_att))
+        {
+          Assert(i != plan_data->low_count_index); /* low_count is always unique. */
+          att->agg.redirect_to = j;
+          break;
+        }
+      }
     }
     else
     {
@@ -206,13 +244,13 @@ static void bucket_begin_scan(CustomScanState *css, EState *estate, int eflags)
 
 static void fill_bucket_list(BucketScanState *bucket_state)
 {
-  MemoryContext old_bucket_context = g_current_bucket_context;
-  MemoryContext bucket_context = bucket_state->bucket_context;
+  BucketScanState *old_bucket_scan = g_current_bucket_scan;
 
   ExprContext *econtext = bucket_state->css.ss.ps.ps_ExprContext;
   MemoryContext per_tuple_memory = econtext->ecxt_per_tuple_memory;
   PlanState *outer_plan_state = outerPlanState(bucket_state);
 
+  MemoryContext bucket_context = bucket_state->bucket_context;
   BucketDescriptor *bucket_desc = bucket_state->bucket_desc;
   int num_atts = bucket_num_atts(bucket_desc);
   int low_count_index = bucket_desc->low_count_index;
@@ -225,7 +263,7 @@ static void fill_bucket_list(BucketScanState *bucket_state)
   {
     CHECK_FOR_INTERRUPTS();
 
-    g_current_bucket_context = bucket_context;
+    g_current_bucket_scan = bucket_state;
     TupleTableSlot *outer_slot = ExecProcNode(outer_plan_state);
 
     if (TupIsNull(outer_slot))
@@ -271,8 +309,8 @@ static void fill_bucket_list(BucketScanState *bucket_state)
   bucket_state->buckets = buckets;
   bucket_state->input_done = true;
 
-  /* Restore previous bucket context. */
-  g_current_bucket_context = old_bucket_context;
+  /* Restore previous bucket scan context. */
+  g_current_bucket_scan = old_bucket_scan;
 }
 
 static void run_hooks(BucketScanState *bucket_state)
@@ -313,9 +351,9 @@ static void finalize_bucket(Bucket *bucket, BucketDescriptor *bucket_desc, ExprC
     BucketAttribute *att = &bucket_desc->attrs[i];
     if (att->tag == BUCKET_ANON_AGG)
     {
-      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[i]);
+      int state_source_index = att->agg.redirect_to; /* If shared, points to some other non-NULL state. */
+      AnonAggState *agg_state = (AnonAggState *)DatumGetPointer(bucket->values[state_source_index]);
       Assert(agg_state != NULL);
-      Assert(agg_state->agg_funcs == att->agg.funcs);
       is_null[i] = false;
       values[i] = att->agg.funcs->finalize(agg_state, bucket, bucket_desc, &is_null[i]);
     }
@@ -609,7 +647,11 @@ static Node *rewrite_projection_mutator(Node *node, RewriteProjectionContext *co
     Oid final_type;
     int32 final_typmod;
     Oid final_collid;
-    agg_funcs->final_type(&final_type, &final_typmod, &final_collid);
+
+    ArgsDescriptor *args_desc = build_args_desc(aggref);
+    agg_funcs->final_type(args_desc, &final_type, &final_typmod, &final_collid);
+    pfree(args_desc);
+
     return (Node *)makeVar(INDEX_VAR, agg_tle->resno, final_type, final_typmod, final_collid, 0);
   }
 
@@ -702,7 +744,10 @@ static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
       if (agg_funcs != NULL)
       {
         /* In index slot's entry we store final type. */
-        agg_funcs->final_type(&var->vartype, &var->vartypmod, &var->varcollid);
+        ArgsDescriptor *args_desc = build_args_desc(aggref);
+        agg_funcs->final_type(args_desc, &var->vartype, &var->vartypmod, &var->varcollid);
+        pfree(args_desc);
+
         /* In Agg's entry we hold the intermediate AnonAggState. */
         aggref->aggtype = g_oid_cache.anon_agg_state;
         aggref->aggcollid = 0;

@@ -9,7 +9,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "parser/parse_coerce.h"
-#include "regex/regex.h"
+#include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/fmgrprotos.h"
 #include "utils/lsyscache.h"
@@ -109,11 +109,6 @@ void verify_anonymization_requirements(Query *query)
   verify_rtable(query);
 }
 
-static void verify_where(Query *query)
-{
-  NOT_SUPPORTED(query->jointree->quals, "WHERE clauses in anonymizing queries");
-}
-
 static void verify_rtable(Query *query)
 {
   NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
@@ -132,42 +127,43 @@ static void verify_rtable(Query *query)
   }
 }
 
-static bool is_datetime_to_string_cast(CoerceViaIO *expr)
-{
-  Node *arg = (Node *)expr->arg;
-  return TypeCategory(exprType(arg)) == TYPCATEGORY_DATETIME && TypeCategory(expr->resulttype) == TYPCATEGORY_STRING;
-}
-
-static Node *unwrap_cast(Node *node)
-{
-  if (IsA(node, FuncExpr))
-  {
-    FuncExpr *func_expr = (FuncExpr *)node;
-    if (is_allowed_cast(func_expr->funcid))
-    {
-      Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
-      return unwrap_cast(linitial(func_expr->args));
-    }
-  }
-  else if (IsA(node, RelabelType))
-  {
-    RelabelType *relabel_expr = (RelabelType *)node;
-    return unwrap_cast((Node *)relabel_expr->arg);
-  }
-  else if (IsA(node, CoerceViaIO))
-  {
-    /* `cast as text`; we treat it as a valid cast for datetime-like types. */
-    CoerceViaIO *coerce_expr = (CoerceViaIO *)node;
-    if (is_datetime_to_string_cast(coerce_expr))
-      return unwrap_cast((Node *)coerce_expr->arg);
-  }
-  return node;
-}
-
 static void verify_non_system_column(Var *var)
 {
   if (var->varattno < 0)
     FAILWITH_LOCATION(var->location, "System columns are not allowed in this context.");
+}
+
+static void verify_count_histogram(Aggref *aggref, Query *query)
+{
+  /* Verify that counted arg is an AID. */
+  Expr *counted_aid_expr = linitial_node(TargetEntry, aggref->args)->expr;
+  if (!IsA(counted_aid_expr, Var))
+    FAILWITH_LOCATION(exprLocation((Node *)counted_aid_expr), "count_histogram argument must be an AID column.");
+
+  Var *counted_aid = (Var *)counted_aid_expr;
+  RangeTblEntry *rte = rt_fetch(counted_aid->varno, query->rtable);
+  if (!is_aid_column(rte->relid, counted_aid->varattno))
+    FAILWITH_LOCATION(exprLocation((Node *)counted_aid_expr), "count_histogram argument must be an AID column.");
+
+  if (aggref->aggfnoid == g_oid_cache.count_histogram_int8)
+  {
+    /* Verify bin size. */
+    Expr *bin_size_expr = lsecond_node(TargetEntry, aggref->args)->expr;
+    int64 bin_size = unwrap_const_int64(bin_size_expr, 1, INT64_MAX); /* Validates bounds implicitly. */
+
+    if (get_session_access_level() == ACCESS_ANONYMIZED_UNTRUSTED &&
+        !is_money_rounded(bin_size))
+    {
+      FAILWITH_LOCATION(
+          exprLocation((Node *)bin_size_expr),
+          "Used generalization expression is not allowed in untrusted access level.");
+    }
+  }
+}
+
+static bool is_count_histogram(Oid aggoid)
+{
+  return aggoid == g_oid_cache.count_histogram || aggoid == g_oid_cache.count_histogram_int8;
 }
 
 static bool verify_aggregator(Node *node, void *context)
@@ -182,10 +178,19 @@ static bool verify_aggregator(Node *node, void *context)
 
     if (aggoid != g_oid_cache.count_star &&
         aggoid != g_oid_cache.count_value &&
+        !is_sum_oid(aggoid) &&
+        !is_avg_oid(aggoid) &&
+        !is_count_histogram(aggoid) &&
+        aggoid != g_oid_cache.count_star_noise &&
+        aggoid != g_oid_cache.count_value_noise &&
+        aggoid != g_oid_cache.sum_noise &&
+        aggoid != g_oid_cache.avg_noise &&
         aggoid != g_oid_cache.is_suppress_bin)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
-    if (aggoid == g_oid_cache.count_value)
+    if (aggoid == g_oid_cache.count_value || aggoid == g_oid_cache.count_value_noise ||
+        is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise ||
+        is_avg_oid(aggoid) || aggoid == g_oid_cache.avg_noise)
     {
       TargetEntry *tle = (TargetEntry *)unwrap_cast(linitial(aggref->args));
       Node *tle_arg = unwrap_cast((Node *)tle->expr);
@@ -194,6 +199,15 @@ static bool verify_aggregator(Node *node, void *context)
       else
         FAILWITH_LOCATION(aggref->location, "Unsupported expression as aggregate argument.");
     }
+
+    if (aggref->aggdistinct &&
+        (is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise ||
+         is_avg_oid(aggoid) || aggoid == g_oid_cache.avg_noise ||
+         is_count_histogram(aggoid)))
+      FAILWITH_LOCATION(aggref->location, "Unsupported distinct qualifier at aggregate argument.");
+
+    if (is_count_histogram(aggoid))
+      verify_count_histogram(aggref, (Query *)context);
 
     NOT_SUPPORTED(aggref->aggfilter, "FILTER clauses in aggregate expressions");
     NOT_SUPPORTED(aggref->aggorder, "ORDER BY clauses in aggregate expressions");
@@ -204,7 +218,7 @@ static bool verify_aggregator(Node *node, void *context)
 
 static void verify_aggregators(Query *query)
 {
-  query_tree_walker(query, verify_aggregator, NULL, 0);
+  query_tree_walker(query, verify_aggregator, query, 0);
 }
 
 static void verify_bucket_expression(Node *node)
@@ -219,27 +233,28 @@ static void verify_bucket_expression(Node *node)
     }
 
     if (!is_allowed_function(func_expr->funcid))
-      FAILWITH_LOCATION(func_expr->location, "Unsupported function used to define buckets.");
+      FAILWITH_LOCATION(func_expr->location, "Unsupported function used for generalization.");
 
     Assert(list_length(func_expr->args) > 0); /* All allowed functions require at least one argument. */
 
     if (!IsA(unwrap_cast(linitial(func_expr->args)), Var))
-      FAILWITH_LOCATION(func_expr->location, "Primary argument for a bucket function has to be a simple column reference.");
+      FAILWITH_LOCATION(func_expr->location, "Primary argument for a generalization function has to be a simple column reference.");
 
     for (int i = 1; i < list_length(func_expr->args); i++)
     {
-      if (!is_stable_expression(unwrap_cast((Node *)list_nth(func_expr->args, i))))
-        FAILWITH_LOCATION(func_expr->location, "Non-primary arguments for a bucket function have to be simple constants.");
+      Node *arg = unwrap_cast((Node *)list_nth(func_expr->args, i));
+      if (!is_stable_expression(arg))
+        FAILWITH_LOCATION(exprLocation(arg), "Non-primary arguments for a generalization function have to be simple constants.");
     }
   }
   else if (IsA(node, OpExpr))
   {
     OpExpr *op_expr = (OpExpr *)node;
-    FAILWITH_LOCATION(op_expr->location, "Use of operators to define buckets is not supported.");
+    FAILWITH_LOCATION(op_expr->location, "Use of operators for generalization is not supported.");
   }
   else if (is_stable_expression(node))
   {
-    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as bucket expressions.");
+    FAILWITH_LOCATION(exprLocation(node), "Simple constants are not allowed as generalization expressions.");
   }
   else if (IsA(node, RelabelType))
   {
@@ -260,7 +275,7 @@ static void verify_bucket_expression(Node *node)
   }
   else
   {
-    FAILWITH("Unsupported or unrecognized query node type");
+    FAILWITH("Unsupported generalization expression.");
   }
 }
 
@@ -274,20 +289,7 @@ static void verify_substring(FuncExpr *func_expr, ParamListInfo bound_params)
   get_stable_expression_value(node, bound_params, &type, &value, &isnull);
 
   if (DatumGetUInt32(value) != 1)
-    FAILWITH_LOCATION(exprLocation(node), "Generalization used in the query is not allowed in untrusted access level.");
-}
-
-/* money-style numbers, i.e. 1, 2, or 5 preceeded by or followed by zeros: ⟨... 0.1, 0.2, 0.5, 1, 2, 5, 10, ...⟩ */
-static bool is_money_style(double number)
-{
-  char number_as_string[30];
-  sprintf(number_as_string, "%.15e", number);
-  text *money_pattern = cstring_to_text("^[125]\\.0+e[-+][0-9]+$");
-  bool matches_money_pattern = RE_compile_and_execute(money_pattern,
-                                                      number_as_string, strlen(number_as_string),
-                                                      REG_EXTENDED | REG_NOSUB, C_COLLATION_OID, 0, NULL);
-  pfree(money_pattern);
-  return matches_money_pattern;
+    FAILWITH_LOCATION(exprLocation(node), "Used generalization expression is not allowed in untrusted access level.");
 }
 
 /* Expects the expression being the second argument to `round_by` et al. */
@@ -301,13 +303,13 @@ static void verify_bin_size(Node *range_expr, ParamListInfo bound_params)
   get_stable_expression_value(range_node, bound_params, &type, &value, &isnull);
 
   if (!is_supported_numeric_type(type))
-    FAILWITH_LOCATION(exprLocation(range_node), "Unsupported constant type used in generalization.");
+    FAILWITH_LOCATION(exprLocation(range_node), "Unsupported constant type used in generalization expression.");
 
-  if (!is_money_style(numeric_value_to_double(type, value)))
-    FAILWITH_LOCATION(exprLocation(range_node), "Generalization used in the query is not allowed in untrusted access level.");
+  if (!is_money_rounded(numeric_value_to_double(type, value)))
+    FAILWITH_LOCATION(exprLocation(range_node), "Used generalization expression is not allowed in untrusted access level.");
 }
 
-static void verify_generalization(Node *node, ParamListInfo bound_params)
+static void verify_untrusted_bucket_expression(Node *node, ParamListInfo bound_params)
 {
   if (IsA(node, FuncExpr))
   {
@@ -316,11 +318,11 @@ static void verify_generalization(Node *node, ParamListInfo bound_params)
     if (is_substring_builtin(func_expr->funcid))
       verify_substring(func_expr, bound_params);
     else if (is_implicit_range_udf_untrusted(func_expr->funcid))
-      verify_bin_size((Node *)list_nth(func_expr->args, 1), bound_params);
+      verify_bin_size(lsecond(func_expr->args), bound_params);
     else if (is_implicit_range_builtin_untrusted(func_expr->funcid))
       ;
     else
-      FAILWITH_LOCATION(func_expr->location, "Generalization used in the query is not allowed in untrusted access level.");
+      FAILWITH_LOCATION(func_expr->location, "Used generalization expression is not allowed in untrusted access level.");
   }
 }
 
@@ -341,7 +343,7 @@ void verify_bucket_expressions(Query *query, ParamListInfo bound_params)
     Node *expr = (Node *)lfirst(cell);
     verify_bucket_expression(expr);
     if (access_level == ACCESS_ANONYMIZED_UNTRUSTED)
-      verify_generalization(expr, bound_params);
+      verify_untrusted_bucket_expression(expr, bound_params);
   }
 }
 
@@ -375,4 +377,91 @@ double numeric_value_to_double(Oid type, Datum value)
 static bool option_matches(DefElem *option, char *name, bool value)
 {
   return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
+}
+
+static bool is_equality_op(Oid opno)
+{
+  char *opname = get_opname(opno);
+  if (opname == NULL)
+    return false;
+  bool result = strcmp(opname, "=") == 0;
+  pfree(opname);
+  return result;
+}
+
+void collect_equalities_from_filters(Node *node, List **subjects, List **targets)
+{
+  if (node == NULL)
+    return;
+
+  if (is_andclause(node))
+  {
+    ListCell *cell = NULL;
+    foreach (cell, ((BoolExpr *)node)->args)
+      collect_equalities_from_filters(lfirst(cell), subjects, targets);
+    return;
+  }
+
+  if (is_opclause(node))
+  {
+    OpExpr *op_expr = (OpExpr *)node;
+    if (is_equality_op(op_expr->opno))
+    {
+      Assert(list_length(op_expr->args) == 2);
+      *subjects = lappend(*subjects, linitial(op_expr->args));
+      *targets = lappend(*targets, lsecond(op_expr->args));
+      return;
+    }
+  }
+
+  FAILWITH("Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.");
+}
+
+static Var *get_bucket_expression_column_ref(Node *bucket_expression)
+{
+  bucket_expression = unwrap_cast(bucket_expression);
+  if (IsA(bucket_expression, Var))
+    return (Var *)bucket_expression;
+  /* If the bucket expression is not a direct column reference, it means it is a simple function call. */
+  FuncExpr *func_expr = castNode(FuncExpr, bucket_expression);
+  return castNode(Var, unwrap_cast(linitial(func_expr->args)));
+}
+
+static void verify_column_usage_in_filter(AccessLevel access_level, Node *bucket_expression, List *range_tables)
+{
+  Var *var_expr = get_bucket_expression_column_ref(bucket_expression);
+  RangeTblEntry *rte = rt_fetch(var_expr->varno, range_tables);
+
+  if (is_aid_column(rte->relid, var_expr->varattno))
+    FAILWITH_LOCATION(var_expr->location, "AID columns can't be referenced by pre-anonymization filters.");
+
+  if (access_level == ACCESS_ANONYMIZED_UNTRUSTED && is_not_filterable_column(rte->relid, var_expr->varattno))
+    FAILWITH_LOCATION(var_expr->location,
+                      "Column marked `not_filterable` can't be referenced by pre-anonymization filters in untrusted-mode.");
+}
+
+static void verify_where(Query *query)
+{
+  AccessLevel access_level = get_session_access_level();
+
+  List *subjects = NIL, *targets = NIL;
+  collect_equalities_from_filters(query->jointree->quals, &subjects, &targets);
+
+  ListCell *subject_cell = NULL, *target_cell = NULL;
+  forboth(subject_cell, subjects, target_cell, targets)
+  {
+    Node *bucket_expression = lfirst(subject_cell);
+    verify_bucket_expression(bucket_expression);
+    verify_column_usage_in_filter(access_level, bucket_expression, query->rtable);
+
+    Node *target_expression = unwrap_cast(lfirst(target_cell));
+    if (!is_stable_expression(target_expression))
+    {
+      FAILWITH_LOCATION(exprLocation(target_expression),
+                        "Generalization expressions can only be matched against constants or params in pre-anonymization filters.");
+    }
+  }
+
+  list_free(subjects);
+  list_free(targets);
 }
