@@ -20,12 +20,15 @@ static double finalize_sum_result(const SummableResultAccumulator *accumulator)
  *-------------------------------------------------------------------------
  */
 
+typedef ContributionTrackerState *SumLeg;
+
 typedef struct SumState
 {
   AnonAggState base;
   int trackers_count;
   Oid summand_type;
-  ContributionTrackerState *trackers[FLEXIBLE_ARRAY_MEMBER];
+  SumLeg *positive;
+  SumLeg *negative;
 } SumState;
 
 static void sum_final_type(const ArgsDescriptor *args_desc, Oid *type, int32 *typmod, Oid *collid)
@@ -63,9 +66,11 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   MemoryContext old_context = MemoryContextSwitchTo(memory_context);
 
   int trackers_count = args_desc->num_args - SUM_AIDS_OFFSET;
-  SumState *state = palloc0(sizeof(SumState) + trackers_count * sizeof(ContributionTrackerState *));
+  SumState *state = palloc0(sizeof(SumState));
   state->trackers_count = trackers_count;
   state->summand_type = args_desc->args[SUM_VALUE_INDEX].type_oid;
+  state->positive = palloc0(trackers_count * sizeof(ContributionTrackerState *));
+  state->negative = palloc0(trackers_count * sizeof(ContributionTrackerState *));
   ContributionDescriptor typed_sum_descriptor = {0};
   switch (state->summand_type)
   {
@@ -87,36 +92,54 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   for (int i = 0; i < trackers_count; i++)
   {
     Oid aid_type = args_desc->args[i + SUM_AIDS_OFFSET].type_oid;
-    state->trackers[i] = contribution_tracker_new(get_aid_mapper(aid_type), &typed_sum_descriptor);
+    state->positive[i] = contribution_tracker_new(get_aid_mapper(aid_type), &typed_sum_descriptor);
+    state->negative[i] = contribution_tracker_new(get_aid_mapper(aid_type), &typed_sum_descriptor);
   }
 
   MemoryContextSwitchTo(old_context);
   return &state->base;
 }
 
-static SummableResultAccumulator sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
+typedef struct SumResultAccumulators
+{
+  bool not_enough_aid_values;
+  SummableResultAccumulator positive;
+  SummableResultAccumulator negative;
+} SumResultAccumulators;
+
+static SumResultAccumulators sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   SumState *state = (SumState *)base_state;
-  SummableResultAccumulator result_accumulator = {0};
+  SummableResultAccumulator positive_result_accumulator = {0};
+  SummableResultAccumulator negative_result_accumulator = {0};
   seed_t bucket_seed = compute_bucket_seed(bucket, bucket_desc);
 
   for (int i = 0; i < state->trackers_count; i++)
   {
-    SummableResult result = calculate_result(bucket_seed, state->trackers[i]);
+    SummableResult positive_result = calculate_result(bucket_seed, state->positive[i]);
+    SummableResult negative_result = calculate_result(bucket_seed, state->negative[i]);
 
-    accumulate_result(&result_accumulator, &result);
-    if (result_accumulator.not_enough_aid_values)
-      break;
+    if (positive_result.not_enough_aid_values && negative_result.not_enough_aid_values)
+    {
+      return (SumResultAccumulators){.not_enough_aid_values = true};
+    }
+    else
+    {
+      /* Unless both legs had `not_enough_aid_values` for given AID instance, we proceed. */
+      accumulate_result(&positive_result_accumulator, &positive_result);
+      accumulate_result(&negative_result_accumulator, &negative_result);
+    }
   }
-  return result_accumulator;
+  return (SumResultAccumulators){.positive = positive_result_accumulator, .negative = negative_result_accumulator};
 }
 
 static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
   SumState *state = (SumState *)base_state;
-  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc);
+  SumResultAccumulators results = sum_calculate_final(base_state, bucket, bucket_desc);
 
-  if (result_accumulator.not_enough_aid_values)
+  /* We deliberately ignore the `not_enough_aid_values` fields in the `results.positive` and `negative`. */
+  if (results.not_enough_aid_values)
   {
     *is_null = true;
     switch (state->summand_type)
@@ -138,21 +161,22 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   }
   else
   {
+    double combined_result = finalize_sum_result(&results.positive) - finalize_sum_result(&results.negative);
     switch (state->summand_type)
     {
     case INT2OID:
     case INT4OID:
-      return Int64GetDatum((int64)round(finalize_sum_result(&result_accumulator)));
+      return Int64GetDatum((int64)round(combined_result));
     case INT8OID:
     case NUMERICOID:
-      return DirectFunctionCall1(float8_numeric, Float8GetDatum(finalize_sum_result(&result_accumulator)));
+      return DirectFunctionCall1(float8_numeric, Float8GetDatum(combined_result));
     case FLOAT4OID:
-      return Float4GetDatum((float4)finalize_sum_result(&result_accumulator));
+      return Float4GetDatum((float4)combined_result);
     case FLOAT8OID:
-      return Float8GetDatum(finalize_sum_result(&result_accumulator));
+      return Float8GetDatum(combined_result);
     default:
       Assert(false);
-      return Float8GetDatum(finalize_sum_result(&result_accumulator));
+      return Float8GetDatum(combined_result);
     }
   }
 }
@@ -163,7 +187,8 @@ static void sum_merge(AnonAggState *dst_base_state, const AnonAggState *src_base
   const SumState *src_state = (const SumState *)src_base_state;
 
   Assert(dst_state->summand_type == src_state->summand_type);
-  merge_trackers(dst_state->trackers_count, src_state->trackers_count, dst_state->trackers, src_state->trackers);
+  merge_trackers(dst_state->trackers_count, src_state->trackers_count, dst_state->positive, src_state->positive);
+  merge_trackers(dst_state->trackers_count, src_state->trackers_count, dst_state->negative, src_state->negative);
 }
 
 static contribution_t summand_to_contribution(Datum arg, Oid summand_type)
@@ -202,16 +227,26 @@ static void sum_transition(AnonAggState *base_state, int num_args, NullableDatum
     for (int i = 0; i < state->trackers_count; i++)
     {
       int aid_index = i + SUM_AIDS_OFFSET;
+      ContributionDescriptor descriptor = state->positive[i]->contribution_descriptor;
+      contribution_t abs_contribution = descriptor.contribution_abs(value_contribution);
+      ContributionCombineFunc combine = descriptor.contribution_combine;
+      ContributionGreaterFunc gt = descriptor.contribution_greater;
+      ContributionEqualFunc eq = descriptor.contribution_equal;
 
       if (!args[aid_index].isnull)
       {
-        aid_t aid = state->trackers[i]->aid_mapper(args[aid_index].value);
-        contribution_tracker_update_contribution(state->trackers[i], aid, value_contribution);
+        aid_t aid = state->positive[i]->aid_mapper(args[aid_index].value);
+        if (gt(value_contribution, descriptor.contribution_initial) || eq(value_contribution, descriptor.contribution_initial))
+          contribution_tracker_update_contribution(state->positive[i], aid, abs_contribution);
+        if (gt(descriptor.contribution_initial, value_contribution) || eq(value_contribution, descriptor.contribution_initial))
+          contribution_tracker_update_contribution(state->negative[i], aid, abs_contribution);
       }
       else
       {
-        ContributionCombineFunc combine = state->trackers[i]->contribution_descriptor.contribution_combine;
-        state->trackers[i]->unaccounted_for = combine(state->trackers[i]->unaccounted_for, value_contribution);
+        if (gt(value_contribution, descriptor.contribution_initial))
+          state->positive[i]->unaccounted_for = combine(state->positive[i]->unaccounted_for, abs_contribution);
+        if (gt(descriptor.contribution_initial, value_contribution))
+          state->negative[i]->unaccounted_for = combine(state->negative[i]->unaccounted_for, abs_contribution);
       }
     }
   }
@@ -240,15 +275,17 @@ static void sum_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int
 
 static Datum sum_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  SummableResultAccumulator result_accumulator = sum_calculate_final(base_state, bucket, bucket_desc);
-  if (result_accumulator.not_enough_aid_values)
+  SumResultAccumulators results = sum_calculate_final(base_state, bucket, bucket_desc);
+
+  /* We deliberately ignore the `not_enough_aid_values` fields in the `results.positive` and `negative`. */
+  if (results.not_enough_aid_values)
   {
     *is_null = true;
     return Float8GetDatum(0.0);
   }
   else
   {
-    return Float8GetDatum(finalize_noise_result(&result_accumulator));
+    return Float8GetDatum(sqrt(pow(finalize_noise_result(&results.positive), 2) + pow(finalize_noise_result(&results.negative), 2)));
   }
 }
 

@@ -25,12 +25,16 @@ typedef contribution_t (*ContributionCombineFunc)(contribution_t x, contribution
 /* Casts x to double. */
 typedef double (*ContributionToDoubleFunc)(contribution_t x);
 
+/* Computes absolute value. */
+typedef contribution_t (*ContributionAbsFunc)(contribution_t x);
+
 typedef struct ContributionDescriptor
 {
   ContributionGreaterFunc contribution_greater;
   ContributionEqualFunc contribution_equal;
   ContributionCombineFunc contribution_combine;
   ContributionToDoubleFunc contribution_to_double;
+  ContributionAbsFunc contribution_abs;
   contribution_t contribution_initial; /* Initial or "zero" value for a contribution */
 } ContributionDescriptor;
 

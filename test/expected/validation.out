@@ -294,11 +294,11 @@ SELECT * FROM diffix.show_settings() LIMIT 2;
  pg_diffix.default_access_level | direct  | Access level for unlabeled users.
 (2 rows)
 
-SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
- objtype |         objname          |  label   
----------+--------------------------+----------
- table   | public.test_customers    | personal
- column  | public.test_customers.id | aid
+SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.empty_test_customers%';
+ objtype |            objname             |  label   
+---------+--------------------------------+----------
+ table   | public.empty_test_customers    | personal
+ column  | public.empty_test_customers.id | aid
 (2 rows)
 
 -- Allow prepared statements

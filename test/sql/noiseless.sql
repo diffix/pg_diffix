@@ -8,6 +8,12 @@ SET pg_diffix.outlier_count_max = 1;
 SET pg_diffix.top_count_min = 3;
 SET pg_diffix.top_count_max = 3;
 
+-- Additional tables for SUM testing
+CREATE TABLE test_customers_negative AS SELECT id, city, -discount as discount, planet FROM test_customers;
+CREATE TABLE test_customers_mixed AS SELECT id, city, discount - 1.0 as discount, planet FROM test_customers;
+CALL diffix.mark_personal('public.test_customers_negative', 'id');
+CALL diffix.mark_personal('public.test_customers_mixed', 'id');
+
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 
@@ -40,6 +46,9 @@ SELECT SUM(id), diffix.sum_noise(id) FROM test_customers;
 SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers;
 SELECT city, SUM(id), diffix.sum_noise(id) FROM test_customers GROUP BY 1;
 SELECT city, SUM(discount), diffix.sum_noise(discount) FROM test_customers GROUP BY 1;
+
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers_negative;
+SELECT SUM(discount), diffix.sum_noise(discount) FROM test_customers_mixed;
 
 -- sum supports numeric type
 SELECT city, SUM(discount::numeric), pg_typeof(SUM(discount::numeric)), diffix.sum_noise(discount::numeric)
