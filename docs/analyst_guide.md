@@ -7,9 +7,10 @@ mechanisms that Diffix uses to protect personal data.
 ## Table of Contents
 
 - [Access levels](#access-levels)
-- [Anonymized queries](#anonymized-queries)
-  - [Queries with grouping](#queries-with-grouping)
-  - [Queries with implicit grouping](#queries-with-implicit-grouping)
+- [Anonymizing queries](#anonymizing-queries)
+  - [Explicit grouping](#explicit-grouping)
+  - [Implicit grouping](#implicit-grouping)
+  - [Input filtering](#input-filtering)
 - [Unrestricted queries](#unrestricted-queries)
 - [Post processing](#post-processing)
 - [Utility statements](#utility-statements)
@@ -42,15 +43,15 @@ Users can have one of the following access levels to a database:
 
 Use `SELECT diffix.access_level()` to see the current access level.
 
-# Anonymized queries
+# Anonymizing queries
 
 In anonymized access level, queries targeting personal tables are restricted to a limited subset of SQL.
 A personal table is a relation that contains data of individuals or other protected entities.
 Administrators identify and mark such tables during configuration.
 
-When selecting data from personal tables, the following queries are allowed.
+When selecting data from personal tables, the following SQL features are allowed:
 
-## Queries with grouping
+## Explicit grouping
 
 Grouping queries have the following form:
 
@@ -81,7 +82,7 @@ SELECT count(*), count(DISTINCT city)
 FROM customers
 ```
 
-## Queries with implicit grouping
+## Implicit grouping
 
 The `GROUP BY` clause may be omitted:
 
@@ -110,6 +111,31 @@ FROM (
 ```
 SELECT city, year_of_birth
 FROM customers
+```
+
+## Input filtering
+
+The `WHERE` clause may specify one or more simple equality conditions which all have to match simultaneously for a row to be included in the analysis.
+
+A simple equality condition consists of an equality between a raw or generalized column, on the left side, and a constant value, on the right side.
+
+Combining conditions using `OR` or specifying oher types of conditions is not permitted.
+
+**Example:**
+
+```
+SELECT count(*)
+FROM customers
+WHERE city = 'Berlin' AND gender = 'F'
+```
+
+**Example:**
+
+```
+SELECT city, count(*)
+FROM customers
+WHERE substring(date_of_birth, 1, 4) = 2000
+GROUP BY city
 ```
 
 # Unrestricted queries
