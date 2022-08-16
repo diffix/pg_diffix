@@ -85,6 +85,12 @@ The currently supported types for AID columns are: `integer`, `bigint`, `text` a
 
 The procedure `diffix.unmark_table(table_name)` clears the labels for the table and all its AID columns.
 
+Non-AID columns from personal tables can be marked as `not_filterable` in order to prevent untrusted users from using data filtering conditions over them in their anonymizing queries.
+
+This can be accomplished by calling the procedure `diffix.mark_not_filterable('table_name', 'column_name')`. The procedure `diffix.mark_filterable` clears the previously set label for a column.
+
+Columns in which a single value dominates the rest are good candidates for being restricted in such a way.
+
 ## Settings
 
 The extension exposes a number of custom variables under the `pg_diffix` prefix.
