@@ -89,7 +89,7 @@ Non-AID columns from personal tables can be marked as `not_filterable` in order 
 
 This can be accomplished by calling the procedure `diffix.mark_not_filterable('table_name', 'column_name')`. The procedure `diffix.mark_filterable` clears the previously set label for a column.
 
-There are rare but possible cases where, under certain data conditions and analyst knowledge, an inference about a single user may be possible. The data conditions occur when a column is dominated by a single value (e.g. the same value is present in more than 50% of the rows). Columns for which this condition holds are good candidates for this restriction.
+There are rare but possible cases where, under certain data conditions and analyst knowledge, an inference about a single protected entity may be possible. The data conditions occur when a column is dominated by a single value (e.g. the same value is present in more than 50% of the rows). Columns for which this condition holds are good candidates for this restriction.
 
 ## Settings
 
