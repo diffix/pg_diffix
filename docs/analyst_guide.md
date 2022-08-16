@@ -138,6 +138,9 @@ WHERE substring(date_of_birth, 1, 4) = 2000
 GROUP BY city
 ```
 
+AID columns are not allowed in filtering conditions.
+Administrators can additionally restrict the usage of certain columns for data filtering by untrusted users.
+
 # Unrestricted queries
 
 Queries against personal tables are limited to the SQL subset described in the [anonymized queries](#anonymized-queries) section.
