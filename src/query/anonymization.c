@@ -188,15 +188,30 @@ static void rewrite_count_histogram(Aggref *aggref, List *aid_refs)
   append_aid_args(aggref, aid_refs);
 }
 
-/* Intended for the denominator in the `avg(col)` rewritten to `sum(col) / count(col)`. */
-static Aggref *make_anon_count_value_aggref(const Aggref *source_aggref)
+/*
+ * Intended for the denominator in the `avg(col)` rewritten to `sum(col) / nullif(count(col), 0)`.
+ * `nullif` is necessary to handle cases where large negative noise brings `count` down to 0
+ * during global aggregation.
+ */
+static Expr *make_safe_anon_count_value(const Aggref *source_aggref)
 {
   Aggref *count_aggref = copyObjectImpl(source_aggref);
   count_aggref->aggfnoid = g_oid_cache.anon_count_value;
   count_aggref->aggtype = INT8OID;
   count_aggref->aggstar = false;
   count_aggref->aggdistinct = false;
-  return count_aggref;
+
+  NullIfExpr *nullif = makeNode(NullIfExpr);
+  nullif->opno = 410; /* = for int8eq. */
+  nullif->opfuncid = F_INT8EQ;
+  nullif->opresulttype = count_aggref->aggtype;
+  nullif->opretset = false;
+  nullif->opcollid = 0;
+  nullif->inputcollid = 0;
+  nullif->args = list_make2(count_aggref, make_const_int64(0L));
+  nullif->location = count_aggref->location;
+
+  return (Expr *)nullif;
 }
 
 static FuncExpr *make_i4tod(List *args)
@@ -254,11 +269,9 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
   aggref->aggfnoid = g_oid_cache.anon_sum;
   aggref->aggstar = false;
   aggref->aggdistinct = false;
-
-  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
-
   append_aid_args(aggref, aid_refs);
-  append_aid_args(count_aggref, aid_refs);
+
+  Expr *count_aggref = make_safe_anon_count_value(aggref);
 
   FuncExpr *cast_sum;
   FuncExpr *cast_count;
@@ -310,11 +323,9 @@ static Node *rewrite_to_avg_noise_aggregator(Aggref *aggref, List *aid_refs)
   aggref->aggtype = FLOAT8OID;
   aggref->aggstar = false;
   aggref->aggdistinct = false;
-
-  Aggref *count_aggref = make_anon_count_value_aggref(aggref);
-
   append_aid_args(aggref, aid_refs);
-  append_aid_args(count_aggref, aid_refs);
+
+  Expr *count_aggref = make_safe_anon_count_value(aggref);
 
   FuncExpr *cast_count = make_i4tod(list_make1(count_aggref));
   FuncExpr *division = make_float8div(list_make2(aggref, cast_count));
