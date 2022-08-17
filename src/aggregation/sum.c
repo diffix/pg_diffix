@@ -69,8 +69,8 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   SumState *state = palloc0(sizeof(SumState));
   state->trackers_count = trackers_count;
   state->summand_type = args_desc->args[SUM_VALUE_INDEX].type_oid;
-  state->positive = palloc0(trackers_count * sizeof(ContributionTrackerState *));
-  state->negative = palloc0(trackers_count * sizeof(ContributionTrackerState *));
+  state->positive = palloc0(trackers_count * sizeof(SumLeg));
+  state->negative = palloc0(trackers_count * sizeof(SumLeg));
   ContributionDescriptor typed_sum_descriptor = {0};
   switch (state->summand_type)
   {
@@ -100,14 +100,14 @@ static AnonAggState *sum_create_state(MemoryContext memory_context, ArgsDescript
   return &state->base;
 }
 
-typedef struct SumResultAccumulators
+typedef struct SumResult
 {
   bool not_enough_aid_values;
   SummableResultAccumulator positive;
   SummableResultAccumulator negative;
-} SumResultAccumulators;
+} SumResult;
 
-static SumResultAccumulators sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
+static SumResult sum_calculate_final(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc)
 {
   SumState *state = (SumState *)base_state;
   SummableResultAccumulator positive_result_accumulator = {0};
@@ -121,7 +121,7 @@ static SumResultAccumulators sum_calculate_final(AnonAggState *base_state, Bucke
 
     if (positive_result.not_enough_aid_values && negative_result.not_enough_aid_values)
     {
-      return (SumResultAccumulators){.not_enough_aid_values = true};
+      return (SumResult){.not_enough_aid_values = true};
     }
     else
     {
@@ -130,16 +130,16 @@ static SumResultAccumulators sum_calculate_final(AnonAggState *base_state, Bucke
       accumulate_result(&negative_result_accumulator, &negative_result);
     }
   }
-  return (SumResultAccumulators){.positive = positive_result_accumulator, .negative = negative_result_accumulator};
+  return (SumResult){.positive = positive_result_accumulator, .negative = negative_result_accumulator};
 }
 
 static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
   SumState *state = (SumState *)base_state;
-  SumResultAccumulators results = sum_calculate_final(base_state, bucket, bucket_desc);
+  SumResult result = sum_calculate_final(base_state, bucket, bucket_desc);
 
-  /* We deliberately ignore the `not_enough_aid_values` fields in the `results.positive` and `negative`. */
-  if (results.not_enough_aid_values)
+  /* We deliberately ignore the `not_enough_aid_values` fields in the `result.positive` and `negative`. */
+  if (result.not_enough_aid_values)
   {
     *is_null = true;
     switch (state->summand_type)
@@ -161,7 +161,7 @@ static Datum sum_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescri
   }
   else
   {
-    double combined_result = finalize_sum_result(&results.positive) - finalize_sum_result(&results.negative);
+    double combined_result = finalize_sum_result(&result.positive) - finalize_sum_result(&result.negative);
     switch (state->summand_type)
     {
     case INT2OID:
@@ -275,17 +275,17 @@ static void sum_noise_final_type(const ArgsDescriptor *args_desc, Oid *type, int
 
 static Datum sum_noise_finalize(AnonAggState *base_state, Bucket *bucket, BucketDescriptor *bucket_desc, bool *is_null)
 {
-  SumResultAccumulators results = sum_calculate_final(base_state, bucket, bucket_desc);
+  SumResult result = sum_calculate_final(base_state, bucket, bucket_desc);
 
-  /* We deliberately ignore the `not_enough_aid_values` fields in the `results.positive` and `negative`. */
-  if (results.not_enough_aid_values)
+  /* We deliberately ignore the `not_enough_aid_values` fields in the `result.positive` and `negative`. */
+  if (result.not_enough_aid_values)
   {
     *is_null = true;
     return Float8GetDatum(0.0);
   }
   else
   {
-    return Float8GetDatum(sqrt(pow(finalize_noise_result(&results.positive), 2) + pow(finalize_noise_result(&results.negative), 2)));
+    return Float8GetDatum(sqrt(pow(finalize_noise_result(&result.positive), 2) + pow(finalize_noise_result(&result.negative), 2)));
   }
 }
 
