@@ -150,7 +150,7 @@ SELECT EXISTS (SELECT FROM Information_Schema.tables WHERE table_schema='public'
 
 -- Settings and labels UDFs work
 SELECT * FROM diffix.show_settings() LIMIT 2;
-SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.test_customers%';
+SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.empty_test_customers%';
 
 -- Allow prepared statements
 PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;

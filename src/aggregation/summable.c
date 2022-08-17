@@ -27,11 +27,17 @@ static double integer_contribution_to_double(contribution_t x)
   return (double)x.integer;
 }
 
+static contribution_t integer_contribution_abs(contribution_t x)
+{
+  return (contribution_t){.integer = labs(x.integer)};
+}
+
 const ContributionDescriptor integer_descriptor = {
     .contribution_greater = integer_contribution_greater,
     .contribution_equal = integer_contribution_equal,
     .contribution_combine = integer_contribution_combine,
     .contribution_to_double = integer_contribution_to_double,
+    .contribution_abs = integer_contribution_abs,
     .contribution_initial = {.integer = 0},
 };
 static bool real_contribution_greater(contribution_t x, contribution_t y)
@@ -54,11 +60,17 @@ static double real_contribution_to_double(contribution_t x)
   return (double)x.real;
 }
 
+static contribution_t real_contribution_abs(contribution_t x)
+{
+  return (contribution_t){.real = fabs(x.real)};
+}
+
 const ContributionDescriptor real_descriptor = {
     .contribution_greater = real_contribution_greater,
     .contribution_equal = real_contribution_equal,
     .contribution_combine = real_contribution_combine,
     .contribution_to_double = real_contribution_to_double,
+    .contribution_abs = real_contribution_abs,
     .contribution_initial = {.real = 0.0},
 };
 
