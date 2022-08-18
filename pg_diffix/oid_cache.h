@@ -56,6 +56,8 @@ typedef struct Oids
 
   /* Internal functions */
   Oid internal_qual_wrapper; /* diffix.internal_qual_wrapper(boolean) */
+
+  Oid op_int8eq;
 } Oids;
 
 /*

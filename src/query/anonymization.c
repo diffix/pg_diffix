@@ -202,7 +202,7 @@ static Expr *make_safe_anon_count_value(const Aggref *source_aggref)
   count_aggref->aggdistinct = false;
 
   NullIfExpr *nullif = makeNode(NullIfExpr);
-  nullif->opno = 410; /* = for int8eq. */
+  nullif->opno = g_oid_cache.op_int8eq;
   nullif->opfuncid = F_INT8EQ;
   nullif->opresulttype = count_aggref->aggtype;
   nullif->opretset = false;

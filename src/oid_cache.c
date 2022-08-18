@@ -3,6 +3,7 @@
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
 #include "parser/parse_func.h"
+#include "parser/parse_oper.h"
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/oid_cache.h"
@@ -65,6 +66,10 @@ void oid_cache_init(void)
   g_oid_cache.floor_by_dd = lookup_function("diffix", "floor_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});
 
   g_oid_cache.internal_qual_wrapper = lookup_function("diffix", "internal_qual_wrapper", 1, (Oid[]){BOOLOID});
+
+  List *eq_op_name = list_make1(makeString("="));
+  g_oid_cache.op_int8eq = LookupOperName(NULL, eq_op_name, INT8OID, INT8OID, false, -1);
+  list_free_deep(eq_op_name);
 
   g_loaded = true;
 }
