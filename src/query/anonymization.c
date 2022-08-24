@@ -8,9 +8,12 @@
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+#include "parser/parse_coerce.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
+#include "utils/datetime.h"
 #include "utils/fmgrprotos.h"
+#include "utils/json.h"
 #include "utils/lsyscache.h"
 
 #include "pg_diffix/aggregation/bucket_scan.h"
@@ -428,6 +431,22 @@ static seed_t prepare_bucket_seeds(Query *query, ParamListInfo bound_params)
   return sql_seed;
 }
 
+static bool is_datetime_type(Oid type)
+{
+  switch (type)
+  {
+  case DATEOID:
+  case TIMEOID:
+  case TIMETZOID:
+  case TIMESTAMPOID:
+  case TIMESTAMPTZOID:
+    return true;
+  default:
+    /* Slower to evaluate, safety net in case new types get added. */
+    return TypeCategory(type) == TYPCATEGORY_DATETIME;
+  }
+}
+
 static hash_t hash_label(Oid type, Datum value, bool is_null)
 {
   if (is_null)
@@ -439,6 +458,14 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
     double value_as_double = numeric_value_to_double(type, value);
     char value_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
     double_to_shortest_decimal_buf(value_as_double, value_as_string);
+    return hash_string(value_as_string);
+  }
+
+  if (is_datetime_type(type))
+  {
+    char value_as_string[MAXDATELEN + 1];
+    /* Leveraging `json.h` as a way to get style-stable encoding of various datetime types. */
+    JsonEncodeDateTime(value_as_string, value, type, NULL);
     return hash_string(value_as_string);
   }
 
