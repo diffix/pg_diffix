@@ -431,22 +431,6 @@ static seed_t prepare_bucket_seeds(Query *query, ParamListInfo bound_params)
   return sql_seed;
 }
 
-static bool is_datetime_type(Oid type)
-{
-  switch (type)
-  {
-  case DATEOID:
-  case TIMEOID:
-  case TIMETZOID:
-  case TIMESTAMPOID:
-  case TIMESTAMPTZOID:
-    return true;
-  default:
-    /* Slower to evaluate, safety net in case new types get added. */
-    return TypeCategory(type) == TYPCATEGORY_DATETIME;
-  }
-}
-
 static hash_t hash_label(Oid type, Datum value, bool is_null)
 {
   if (is_null)
@@ -461,7 +445,7 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
     return hash_string(value_as_string);
   }
 
-  if (is_datetime_type(type))
+  if (TypeCategory(type) == TYPCATEGORY_DATETIME)
   {
     char value_as_string[MAXDATELEN + 1];
     /* Leveraging `json.h` as a way to get style-stable encoding of various datetime types. */
