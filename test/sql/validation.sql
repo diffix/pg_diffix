@@ -7,7 +7,8 @@ CREATE TABLE test_validation (
   discount REAL,
   birthday DATE,
   lunchtime TIME,
-  last_seen TIMESTAMP
+  last_seen TIMESTAMP,
+  last_seen_tz TIMESTAMP WITH TIME ZONE
 );
 
 CALL diffix.mark_personal('test_validation', 'id');
@@ -86,8 +87,16 @@ GROUP BY 1, 2;
 
 SELECT
   substring(cast(last_seen AS text), 1, 3),
+  substring(cast(last_seen_tz AS text), 1, 3),
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
+FROM test_validation
+GROUP BY 1, 2, 3, 4;
+
+SELECT
+  date_trunc('year', last_seen),
+  date_trunc('year', last_seen_tz),
+  date_trunc('year', birthday)
 FROM test_validation
 GROUP BY 1, 2, 3;
 
@@ -210,6 +219,12 @@ SELECT COUNT(*) FROM test_validation GROUP BY round(floor(id));
 SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(discount AS integer));
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
 SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
+
+-- Get rejected because of lack of interval support
+SELECT date_trunc('year', lunchtime) FROM test_validation GROUP BY 1;
+
+-- Get rejected because of averaging opportunity
+SELECT  date_trunc('year', last_seen_tz, 'EST') FROM test_validation GROUP BY 1;
 
 -- Get rejected because expression node type is unsupported.
 SELECT COALESCE(discount, 20) FROM test_validation;
