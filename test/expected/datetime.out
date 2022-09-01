@@ -45,3 +45,17 @@ SELECT ts, count(*) FROM test_datetime GROUP BY 1;
  2012-05-14 00:00:00 |     9
 (1 row)
 
+SET TIMEZONE TO 'UTC';
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
+           tz           | count 
+------------------------+-------
+ 2012-05-14 07:00:00+00 |    11
+(1 row)
+
+SET TIMEZONE TO DEFAULT;
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
+           tz           | count 
+------------------------+-------
+ 2012-05-14 00:00:00-07 |    11
+(1 row)
+

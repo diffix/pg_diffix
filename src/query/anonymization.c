@@ -632,8 +632,9 @@ static hash_t hash_label(Oid type, Datum value, bool is_null)
   if (TypeCategory(type) == TYPCATEGORY_DATETIME)
   {
     char value_as_string[MAXDATELEN + 1];
-    /* Leveraging `json.h` as a way to get style-stable encoding of various datetime types. */
-    JsonEncodeDateTime(value_as_string, value, type, NULL);
+    /* Leveraging `json.h` with UTC to get style-stable encoding of various datetime types. */
+    const int tzp = 0;
+    JsonEncodeDateTime(value_as_string, value, type, &tzp);
     return hash_string(value_as_string);
   }
 
