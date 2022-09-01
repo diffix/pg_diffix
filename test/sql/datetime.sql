@@ -38,3 +38,8 @@ SET datestyle = 'SQL';
 SELECT ts, count(*) FROM test_datetime GROUP BY 1;
 SET datestyle = 'ISO';
 SELECT ts, count(*) FROM test_datetime GROUP BY 1;
+
+SET TIMEZONE TO 'UTC';
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
+SET TIMEZONE TO DEFAULT;
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
