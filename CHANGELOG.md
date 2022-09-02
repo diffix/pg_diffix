@@ -1,5 +1,10 @@
-# Changelog
+## Version 1.1.0
+  - Added support for simple pre-anonymization `WHERE` clauses.
+  - Added `sum` and `avg` aggregrators.
+  - Added `*_noise` variants of aggregrators.
+  - Added `count_histogram` aggregrator.
   - Allow more metadata discovery queries.
+  - Various tweaks and fixes.
 
 ## Version 1.0.3
   - Reject unsupported column types during AID labeling.
