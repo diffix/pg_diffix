@@ -201,6 +201,7 @@ int primary_arg_index(Oid funcoid)
     if (g_allowed_builtins_extra[i].funcid == funcoid)
       return g_allowed_builtins_extra[i].primary_arg;
   }
+
   FAILWITH("Cannot identify the primary argument position for funcid %u.", funcoid);
 }
 
