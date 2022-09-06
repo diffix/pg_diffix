@@ -237,11 +237,14 @@ static void verify_bucket_expression(Node *node)
 
     Assert(list_length(func_expr->args) > 0); /* All allowed functions require at least one argument. */
 
-    if (!IsA(unwrap_cast(linitial(func_expr->args)), Var))
+    int primary_arg = primary_arg_index(func_expr->funcid);
+    if (!IsA(unwrap_cast(list_nth(func_expr->args, primary_arg)), Var))
       FAILWITH_LOCATION(func_expr->location, "Primary argument for a generalization function has to be a simple column reference.");
 
-    for (int i = 1; i < list_length(func_expr->args); i++)
+    for (int i = 0; i < list_length(func_expr->args); i++)
     {
+      if (i == primary_arg)
+        continue;
       Node *arg = unwrap_cast((Node *)list_nth(func_expr->args, i));
       if (!is_stable_expression(arg))
         FAILWITH_LOCATION(exprLocation(arg), "Non-primary arguments for a generalization function have to be simple constants.");

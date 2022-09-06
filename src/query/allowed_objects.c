@@ -14,18 +14,49 @@ static const char *const g_allowed_casts[] = {
     "ftod", "dtof",
     "int4_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
+    "date_timestamptz",
     /**/
 };
 
-static const char *const g_allowed_builtins[] = {
+typedef struct FunctionByName
+{
+  const char *name;
+  int primary_arg;
+} FunctionByName;
+
+typedef struct FunctionByOid
+{
+  Oid funcid;
+  int primary_arg;
+} FunctionByOid;
+
+static const FunctionByName g_allowed_builtins[] = {
     /* rounding casts */
-    "ftoi2", "ftoi4", "ftoi8", "dtoi2", "dtoi4", "dtoi8", "numeric_int4",
+    (FunctionByName){.name = "ftoi2", .primary_arg = 0},
+    (FunctionByName){.name = "ftoi4", .primary_arg = 0},
+    (FunctionByName){.name = "ftoi8", .primary_arg = 0},
+    (FunctionByName){.name = "dtoi2", .primary_arg = 0},
+    (FunctionByName){.name = "dtoi4", .primary_arg = 0},
+    (FunctionByName){.name = "dtoi8", .primary_arg = 0},
+    (FunctionByName){.name = "numeric_int4", .primary_arg = 0},
     /* substring */
-    "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len",
+    (FunctionByName){.name = "text_substr", .primary_arg = 0},
+    (FunctionByName){.name = "text_substr_no_len", .primary_arg = 0},
+    (FunctionByName){.name = "bytea_substr", .primary_arg = 0},
+    (FunctionByName){.name = "bytea_substr_no_len", .primary_arg = 0},
     /* numeric generalization */
-    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
+    (FunctionByName){.name = "dround", .primary_arg = 0},
+    (FunctionByName){.name = "numeric_round", .primary_arg = 0},
+    (FunctionByName){.name = "dceil", .primary_arg = 0},
+    (FunctionByName){.name = "numeric_ceil", .primary_arg = 0},
+    (FunctionByName){.name = "dfloor", .primary_arg = 0},
+    (FunctionByName){.name = "numeric_floor", .primary_arg = 0},
     /* width_bucket */
-    "width_bucket_float8", "width_bucket_numeric",
+    (FunctionByName){.name = "width_bucket_float8", .primary_arg = 0},
+    (FunctionByName){.name = "width_bucket_numeric", .primary_arg = 0},
+    /* date_trunc */
+    (FunctionByName){.name = "timestamptz_trunc", .primary_arg = 1},
+    (FunctionByName){.name = "timestamp_trunc", .primary_arg = 1},
     /**/
 };
 
@@ -42,7 +73,7 @@ static const char *const g_implicit_range_builtins_untrusted[] = {
 
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
-static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
+static const FunctionByOid g_allowed_builtins_extra[] = {(FunctionByOid){.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0}};
 
 typedef struct AllowedCols
 {
@@ -116,6 +147,21 @@ static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
   return &fmgr_builtins[index];
 }
 
+static bool is_func_member_of(Oid funcoid, const FunctionByName func_array[], int length)
+{
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < length; i++)
+    {
+      if (strcmp(func_array[i].name, fmgr_builtin->funcName) == 0)
+        return true;
+    }
+  }
+
+  return false;
+}
+
 static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], int length)
 {
   const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
@@ -129,6 +175,34 @@ static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], i
   }
 
   return false;
+}
+
+int primary_arg_index(Oid funcoid)
+{
+  for (int i = 0; i < ARRAY_LENGTH(g_implicit_range_udfs); i++)
+  {
+    /* We ensured that our UDFs have the primary arg first. */
+    if (*g_implicit_range_udfs[i] == funcoid)
+      return 0;
+  }
+
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins); i++)
+    {
+      if (strcmp(g_allowed_builtins[i].name, fmgr_builtin->funcName) == 0)
+        return g_allowed_builtins[i].primary_arg;
+    }
+  }
+
+  for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins_extra); i++)
+  {
+    if (g_allowed_builtins_extra[i].funcid == funcoid)
+      return g_allowed_builtins_extra[i].primary_arg;
+  }
+
+  FAILWITH("Cannot identify the primary argument position for funcid %u.", funcoid);
 }
 
 bool is_allowed_cast(Oid funcoid)
@@ -154,12 +228,12 @@ bool is_allowed_function(Oid funcoid)
       return true;
   }
 
-  if (is_funcname_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
+  if (is_func_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
     return true;
 
   for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins_extra); i++)
   {
-    if (g_allowed_builtins_extra[i] == funcoid)
+    if (g_allowed_builtins_extra[i].funcid == funcoid)
       return true;
   }
 

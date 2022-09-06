@@ -9,6 +9,12 @@
 extern bool is_allowed_function(Oid funcoid);
 
 /*
+ * Returns index of the primary argument of an allowed function, i.e. the one intended to
+ * be the column reference.
+ */
+extern int primary_arg_index(Oid funcoid);
+
+/*
  * Returns whether the OID points to a cast allowed in defining buckets.
  */
 extern bool is_allowed_cast(Oid funcoid);

@@ -6,7 +6,8 @@ CREATE TABLE test_validation (
   discount REAL,
   birthday DATE,
   lunchtime TIME,
-  last_seen TIMESTAMP
+  last_seen TIMESTAMP,
+  last_seen_tz TIMESTAMP WITH TIME ZONE
 );
 CALL diffix.mark_personal('test_validation', 'id');
 CALL diffix.mark_not_filterable('test_validation', 'birthday');
@@ -116,12 +117,23 @@ GROUP BY 1, 2;
 
 SELECT
   substring(cast(last_seen AS text), 1, 3),
+  substring(cast(last_seen_tz AS text), 1, 3),
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
 FROM test_validation
+GROUP BY 1, 2, 3, 4;
+ substring | substring | substring | substring 
+-----------+-----------+-----------+-----------
+(0 rows)
+
+SELECT
+  date_trunc('year', last_seen),
+  date_trunc('year', last_seen_tz),
+  date_trunc('year', birthday)
+FROM test_validation
 GROUP BY 1, 2, 3;
- substring | substring | substring 
------------+-----------+-----------
+ date_trunc | date_trunc | date_trunc 
+------------+------------+------------
 (0 rows)
 
 -- Allow all functions post-anonymization.
@@ -427,6 +439,16 @@ SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
 ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
 LINE 1: SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa',...
                                                       ^
+-- Get rejected because of lack of interval support
+SELECT date_trunc('year', lunchtime) FROM test_validation GROUP BY 1;
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
+LINE 1: SELECT date_trunc('year', lunchtime) FROM test_validation GR...
+               ^
+-- Get rejected because of averaging opportunity
+SELECT  date_trunc('year', last_seen_tz, 'EST') FROM test_validation GROUP BY 1;
+ERROR:  [PG_DIFFIX] Unsupported function used for generalization.
+LINE 1: SELECT  date_trunc('year', last_seen_tz, 'EST') FROM test_va...
+                ^
 -- Get rejected because expression node type is unsupported.
 SELECT COALESCE(discount, 20) FROM test_validation;
 ERROR:  [PG_DIFFIX] Unsupported generalization expression.

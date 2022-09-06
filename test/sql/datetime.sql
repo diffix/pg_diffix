@@ -20,6 +20,7 @@ INSERT INTO test_datetime VALUES
 
 CALL diffix.mark_personal('test_datetime', 'id');
 
+GRANT ALL PRIVILEGES ON TABLE test_datetime TO diffix_test; 
 SET ROLE diffix_test;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 
@@ -33,13 +34,22 @@ SELECT diffix.access_level();
 -- Seeding
 ----------------------------------------------------------------
 
--- Datetime values are seeded the same regardless of global `datestyle` setting
+-- Datetime values are seeded in UTC the same regardless of global `datestyle` setting
 SET datestyle = 'SQL';
 SELECT ts, count(*) FROM test_datetime GROUP BY 1;
 SET datestyle = 'ISO';
 SELECT ts, count(*) FROM test_datetime GROUP BY 1;
 
+SET TIMEZONE TO 'EST';
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
 SET TIMEZONE TO 'UTC';
 SELECT tz, count(*) FROM test_datetime GROUP BY 1;
-SET TIMEZONE TO DEFAULT;
+
+SET pg_diffix.session_access_level = 'direct';
+UPDATE test_datetime SET tz = '2012-05-14T07:00+00:00' WHERE true;
+SET pg_diffix.session_access_level = 'anonymized_trusted';
+SELECT tz, count(*) FROM test_datetime GROUP BY 1;
+SET pg_diffix.session_access_level = 'direct';
+UPDATE test_datetime SET tz = '2012-05-14T08:00+01:00' WHERE true;
+SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT tz, count(*) FROM test_datetime GROUP BY 1;
