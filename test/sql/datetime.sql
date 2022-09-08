@@ -53,3 +53,6 @@ SET pg_diffix.session_access_level = 'direct';
 UPDATE test_datetime SET tz = '2012-05-14T08:00+01:00' WHERE true;
 SET pg_diffix.session_access_level = 'anonymized_trusted';
 SELECT tz, count(*) FROM test_datetime GROUP BY 1;
+
+-- Datetime filtering
+SELECT count(*) FROM test_datetime WHERE date_trunc('year', ts) = '2012-01-01'::timestamp;
