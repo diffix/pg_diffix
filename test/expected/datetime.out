@@ -85,3 +85,15 @@ SELECT count(*) FROM test_datetime WHERE date_trunc('year', ts) = '2012-01-01'::
     11
 (1 row)
 
+SELECT count(*) FROM test_datetime WHERE extract(century from ts) = 21;
+ count 
+-------
+     9
+(1 row)
+
+SELECT count(*) FROM test_datetime WHERE date_part('century', ts) = 21;
+ count 
+-------
+     9
+(1 row)
+

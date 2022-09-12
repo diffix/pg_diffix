@@ -1,6 +1,7 @@
 #include "postgres.h"
 
 #include "access/sysattr.h"
+#include "utils/fmgroids.h"
 #include "utils/fmgrtab.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -57,6 +58,12 @@ static const FunctionByName g_allowed_builtins[] = {
     /* date_trunc */
     (FunctionByName){.name = "timestamptz_trunc", .primary_arg = 1},
     (FunctionByName){.name = "timestamp_trunc", .primary_arg = 1},
+    /* extract & date_part*/
+    (FunctionByName){.name = "extract_date", .primary_arg = 1},
+    (FunctionByName){.name = "extract_timestamp", .primary_arg = 1},
+    (FunctionByName){.name = "extract_timestamptz", .primary_arg = 1},
+    (FunctionByName){.name = "timestamp_part", .primary_arg = 1},
+    (FunctionByName){.name = "timestamptz_part", .primary_arg = 1},
     /**/
 };
 
@@ -73,7 +80,19 @@ static const char *const g_implicit_range_builtins_untrusted[] = {
 
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
-static const FunctionByOid g_allowed_builtins_extra[] = {(FunctionByOid){.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0}};
+/*
+ * `date_part` for `date` is a SQL builtin and doesn't show up in `fmgr_isbuiltin`.
+ *  PG 14 has the define, but PG 13 doesn't.
+ */
+#if PG_MAJORVERSION_NUM < 14
+#define F_DATE_PART_TEXT_DATE 1384
+#endif
+
+static const FunctionByOid g_allowed_builtins_extra[] = {
+    (FunctionByOid){.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0},
+    (FunctionByOid){.funcid = F_DATE_PART_TEXT_DATE, .primary_arg = 1},
+    /**/
+};
 
 typedef struct AllowedCols
 {

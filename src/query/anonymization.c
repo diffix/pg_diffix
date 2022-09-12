@@ -574,6 +574,15 @@ typedef struct CollectMaterialContext
   char material[MAX_SEED_MATERIAL_SIZE];
 } CollectMaterialContext;
 
+static void normalize_function_name(char *func_name)
+{
+  if (strcmp(func_name, "date_part") == 0)
+  {
+    // Not reallocing the `func_name`, because the normalized string is shorter.
+    strcpy(func_name, "extract");
+  }
+}
+
 static bool collect_seed_material(Node *node, CollectMaterialContext *context)
 {
   if (node == NULL)
@@ -587,7 +596,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
       char *func_name = get_func_name(func_expr->funcid);
       if (func_name)
       {
-        /* TODO: Normalize function names. */
+        normalize_function_name(func_name);
         append_seed_material(context->material, func_name, ',');
         pfree(func_name);
       }
