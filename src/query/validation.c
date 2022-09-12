@@ -427,7 +427,9 @@ static Var *get_bucket_expression_column_ref(Node *bucket_expression)
     return (Var *)bucket_expression;
   /* If the bucket expression is not a direct column reference, it means it is a simple function call. */
   FuncExpr *func_expr = castNode(FuncExpr, bucket_expression);
-  return castNode(Var, unwrap_cast(linitial(func_expr->args)));
+
+  int primary_arg = primary_arg_index(func_expr->funcid);
+  return castNode(Var, unwrap_cast(list_nth(func_expr->args, primary_arg)));
 }
 
 static void verify_column_usage_in_filter(AccessLevel access_level, Node *bucket_expression, List *range_tables)

@@ -78,3 +78,10 @@ SELECT tz, count(*) FROM test_datetime GROUP BY 1;
  2012-05-14 07:00:00+00 |    11
 (1 row)
 
+-- Datetime filtering
+SELECT count(*) FROM test_datetime WHERE date_trunc('year', ts) = '2012-01-01'::timestamp;
+ count 
+-------
+    11
+(1 row)
+
