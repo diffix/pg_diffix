@@ -403,6 +403,14 @@ SELECT diffix.count_histogram(city) FROM test_validation;
 ERROR:  [PG_DIFFIX] count_histogram argument must be an AID column.
 LINE 1: SELECT diffix.count_histogram(city) FROM test_validation;
                                       ^
+SELECT diffix.sum_noise(last_seen) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT diffix.sum_noise(last_seen) FROM test_validation;
+               ^
+SELECT diffix.avg_noise(last_seen::date) FROM test_validation;
+ERROR:  [PG_DIFFIX] Unsupported aggregate in query.
+LINE 1: SELECT diffix.avg_noise(last_seen::date) FROM test_validatio...
+               ^
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
 ERROR:  [PG_DIFFIX] Unsupported function used for generalization.

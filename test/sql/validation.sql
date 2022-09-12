@@ -207,6 +207,8 @@ SELECT count(distinct least(id, 5)) FROM test_validation;
 SELECT count(id + 5) FROM test_validation;
 SELECT count(least(id, 5)) FROM test_validation;
 SELECT diffix.count_histogram(city) FROM test_validation;
+SELECT diffix.sum_noise(last_seen) FROM test_validation;
+SELECT diffix.avg_noise(last_seen::date) FROM test_validation;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
