@@ -56,3 +56,5 @@ SELECT tz, count(*) FROM test_datetime GROUP BY 1;
 
 -- Datetime filtering
 SELECT count(*) FROM test_datetime WHERE date_trunc('year', ts) = '2012-01-01'::timestamp;
+SELECT count(*) FROM test_datetime WHERE extract(century from ts) = 21;
+SELECT count(*) FROM test_datetime WHERE date_part('century', ts) = 21;

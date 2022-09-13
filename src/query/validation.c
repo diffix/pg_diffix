@@ -188,6 +188,11 @@ static bool verify_aggregator(Node *node, void *context)
         aggoid != g_oid_cache.is_suppress_bin)
       FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
 
+    if ((aggoid == g_oid_cache.sum_noise ||
+         aggoid == g_oid_cache.avg_noise) &&
+        TypeCategory(linitial_oid(aggref->aggargtypes)) == TYPCATEGORY_DATETIME)
+      FAILWITH_LOCATION(aggref->location, "Unsupported aggregate in query.");
+
     if (aggoid == g_oid_cache.count_value || aggoid == g_oid_cache.count_value_noise ||
         is_sum_oid(aggoid) || aggoid == g_oid_cache.sum_noise ||
         is_avg_oid(aggoid) || aggoid == g_oid_cache.avg_noise)

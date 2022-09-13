@@ -93,12 +93,19 @@ SELECT
 FROM test_validation
 GROUP BY 1, 2, 3, 4;
 
+-- `as extract` ensures that the column is aliased consistently in PG 13 and 14.
 SELECT
   date_trunc('year', last_seen),
   date_trunc('year', last_seen_tz),
-  date_trunc('year', birthday)
+  date_trunc('year', birthday),
+  extract(month from last_seen) as extract,
+  extract(month from last_seen_tz) as extract,
+  extract(month from birthday) as extract,
+  date_part('month', last_seen) as date_part,
+  date_part('month', last_seen_tz) as date_part,
+  date_part('month', birthday) as date_part
 FROM test_validation
-GROUP BY 1, 2, 3;
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
 
 -- Allow all functions post-anonymization.
 SELECT 2 * length(city) FROM test_validation GROUP BY city;
@@ -207,6 +214,8 @@ SELECT count(distinct least(id, 5)) FROM test_validation;
 SELECT count(id + 5) FROM test_validation;
 SELECT count(least(id, 5)) FROM test_validation;
 SELECT diffix.count_histogram(city) FROM test_validation;
+SELECT diffix.sum_noise(last_seen) FROM test_validation;
+SELECT diffix.avg_noise(last_seen::date) FROM test_validation;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
@@ -222,6 +231,7 @@ SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
 
 -- Get rejected because of lack of interval support
 SELECT date_trunc('year', lunchtime) FROM test_validation GROUP BY 1;
+SELECT extract(hour from lunchtime) FROM test_validation GROUP BY 1;
 
 -- Get rejected because of averaging opportunity
 SELECT  date_trunc('year', last_seen_tz, 'EST') FROM test_validation GROUP BY 1;
