@@ -591,7 +591,7 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
-    if (!is_allowed_cast(func_expr->funcid))
+    if (!is_allowed_cast(func_expr))
     {
       char *func_name = get_func_name(func_expr->funcid);
       if (func_name)

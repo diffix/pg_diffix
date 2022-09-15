@@ -97,3 +97,32 @@ SELECT count(*) FROM test_datetime WHERE date_part('century', ts) = 21;
      9
 (1 row)
 
+-- Datetime cast normalization
+-- Allowed because the cast is a noop
+SELECT cast(extract(minute from ts) as integer) as extract FROM test_datetime GROUP BY 1;
+ extract 
+---------
+       0
+(1 row)
+
+-- Disallowed because the cast is rounding
+SELECT cast(extract(epoch from ts) as integer) FROM test_datetime GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
+LINE 1: SELECT cast(extract(epoch from ts) as integer) FROM test_dat...
+               ^
+SELECT cast(extract(second from ts) as integer) FROM test_datetime GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
+LINE 1: SELECT cast(extract(second from ts) as integer) FROM test_da...
+               ^
+SELECT cast(extract(millisecond from ts) as integer) FROM test_datetime GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
+LINE 1: SELECT cast(extract(millisecond from ts) as integer) FROM te...
+               ^
+SELECT cast(extract(microsecond from ts) as integer) FROM test_datetime GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
+LINE 1: SELECT cast(extract(microsecond from ts) as integer) FROM te...
+               ^
+SELECT cast(extract(julian from ts) as integer) FROM test_datetime GROUP BY 1;
+ERROR:  [PG_DIFFIX] Primary argument for a generalization function has to be a simple column reference.
+LINE 1: SELECT cast(extract(julian from ts) as integer) FROM test_da...
+               ^

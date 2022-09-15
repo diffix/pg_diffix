@@ -231,10 +231,11 @@ static void verify_bucket_expression(Node *node)
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
-    if (is_allowed_cast(func_expr->funcid))
+    if (is_allowed_cast(func_expr))
     {
       Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
       verify_bucket_expression(linitial(func_expr->args));
+      return;
     }
 
     if (!is_allowed_function(func_expr->funcid))

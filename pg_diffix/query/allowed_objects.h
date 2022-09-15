@@ -2,6 +2,7 @@
 #define PG_DIFFIX_ALLOWED_OBJECTS_H
 
 #include "nodes/bitmapset.h"
+#include "nodes/primnodes.h"
 
 /*
  * Returns whether the OID points to a function (or operator) allowed in defining buckets.
@@ -17,7 +18,7 @@ extern int primary_arg_index(Oid funcoid);
 /*
  * Returns whether the OID points to a cast allowed in defining buckets.
  */
-extern bool is_allowed_cast(Oid funcoid);
+extern bool is_allowed_cast(const FuncExpr *func_expr);
 
 /*
  * Returns whether the OID points to a UDF being a implicit_range function, e.g. `ceil_by(x, 2.0)`,
