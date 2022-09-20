@@ -29,7 +29,7 @@
   } while (0)
 
 static void verify_where(Query *query);
-static void verify_rtable(Query *query);
+static void verify_select_targets(Query *query);
 static void verify_aggregators(Query *query);
 static void verify_non_system_column(Var *var);
 static bool option_matches(DefElem *option, char *name, bool value);
@@ -106,24 +106,64 @@ void verify_anonymization_requirements(Query *query)
 
   verify_where(query);
   verify_aggregators(query);
-  verify_rtable(query);
+  verify_select_targets(query);
 }
 
-static void verify_rtable(Query *query)
+static void verify_select_targets(Query *query)
 {
-  NOT_SUPPORTED(list_length(query->rtable) > 1, "JOINs in anonymizing queries");
-
   ListCell *cell = NULL;
+
   foreach (cell, query->rtable)
   {
     RangeTblEntry *range_table = lfirst_node(RangeTblEntry, cell);
-    NOT_SUPPORTED(range_table->rtekind == RTE_SUBQUERY, "Subqueries in anonymizing queries");
-    NOT_SUPPORTED(range_table->rtekind == RTE_JOIN, "JOINs in anonymizing queries");
 
-    if (range_table->rtekind == RTE_RELATION)
-      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries.");
-    else
-      FAILWITH("Unsupported FROM clause.");
+    switch (range_table->rtekind)
+    {
+    case RTE_RELATION:
+      NOT_SUPPORTED(has_subclass(range_table->relid) || has_superclass(range_table->relid), "Inheritance in anonymizing queries");
+      break;
+
+    case RTE_JOIN:
+      NOT_SUPPORTED(range_table->jointype == JOIN_SEMI || range_table->jointype == JOIN_ANTI, "SEMI JOIN in anonymizing queries");
+      break;
+
+    case RTE_SUBQUERY:
+      FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Subqueries in anonymizing queries are not supported.");
+      break;
+
+    default:
+      FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Unsupported FROM clause.");
+      break;
+    }
+  }
+
+  foreach (cell, query->jointree->fromlist)
+  {
+    if (list_length(query->jointree->fromlist) == 1 && IsA(lfirst(cell), RangeTblRef))
+      break;
+
+    NOT_SUPPORTED(IsA(lfirst(cell), RangeTblRef) || IsA(lfirst(cell), FromExpr), "CROSS JOIN in anonymizing queries");
+
+    Assert(IsA(lfirst(cell), JoinExpr));
+    JoinExpr *join_expr = lfirst_node(JoinExpr, cell);
+
+    List *subjects = NIL, *targets = NIL;
+    collect_equalities_from_filters(join_expr->quals, &subjects, &targets);
+
+    ListCell *subject_cell = NULL, *target_cell = NULL;
+    forboth(subject_cell, subjects, target_cell, targets)
+    {
+      Node *subject_expression = unwrap_cast(lfirst(subject_cell));
+      Node *target_expression = unwrap_cast(lfirst(target_cell));
+
+      if (!IsA(subject_expression, Var))
+        FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Left side of equality in pre-anonymization JOIN filter has to be a simple column reference.");
+      if (!IsA(target_expression, Var))
+        FAILWITH_CODE(ERRCODE_FEATURE_NOT_SUPPORTED, "Right side of equality in pre-anonymization JOIN filter has to be a simple column reference.");
+    }
+
+    list_free(subjects);
+    list_free(targets);
   }
 }
 
@@ -422,7 +462,7 @@ void collect_equalities_from_filters(Node *node, List **subjects, List **targets
     }
   }
 
-  FAILWITH("Only equalities between generalization expressions and constants are allowed as pre-anonymization filters.");
+  FAILWITH("Only equalities are allowed in pre-anonymization filters.");
 }
 
 static Var *get_bucket_expression_column_ref(Node *bucket_expression)
