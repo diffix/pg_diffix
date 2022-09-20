@@ -108,3 +108,6 @@ SELECT diffix.sum_noise(discount), diffix.count_noise(*) FROM test_customers;
 -- Rejects marking an AID column.
 CALL diffix.mark_not_filterable('test_customers', 'id');
 CALL diffix.mark_filterable('test_customers', 'id');
+
+-- JOIN between personal tables produces multiple AIDs
+EXPLAIN VERBOSE SELECT COUNT(*) FROM test_customers c JOIN test_purchases pur ON c.id = cid;
