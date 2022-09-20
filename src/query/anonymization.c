@@ -731,7 +731,7 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *personal
   /* Only simple select queries require implicit grouping. */
   if (!initial_has_aggs && !initial_has_group_clause)
   {
-    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+    DEBUG_LOG("Rewriting query to group and expand implicit buckets.");
     group_implicit_buckets(query);
     add_junk_count_star(query);
     anon_context->expand_buckets = true;
