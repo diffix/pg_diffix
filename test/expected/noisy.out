@@ -303,3 +303,15 @@ UNION
      7
 (1 row)
 
+----------------------------------------------------------------
+-- JOIN queries
+----------------------------------------------------------------
+-- JOIN order doesn't affect results
+(SELECT COUNT(*) FROM test_customers AS c JOIN test_purchases ON c.id = cid WHERE city = 'Berlin')
+UNION
+(SELECT COUNT(*) FROM test_purchases JOIN test_customers AS c ON cid = c.id WHERE city = 'Berlin');
+ count 
+-------
+    44
+(1 row)
+

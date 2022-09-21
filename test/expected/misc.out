@@ -212,6 +212,26 @@ SELECT id FROM test_customers WHERE NULL = NULL;
 ----
 (0 rows)
 
+-- JOIN between personal tables produces multiple AIDs
+EXPLAIN VERBOSE SELECT COUNT(*) FROM test_customers c JOIN test_purchases pur ON c.id = cid;
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Custom Scan (BucketScan)
+   Output: (diffix.anon_count_star(c.id, pur.cid))
+   ->  Aggregate
+         Output: diffix.anon_count_star(c.id, pur.cid)
+         ->  Hash Join
+               Output: c.id, pur.cid
+               Inner Unique: true
+               Hash Cond: (pur.cid = c.id)
+               ->  Seq Scan on public.test_purchases pur
+                     Output: pur.cid, pur.pid
+               ->  Hash
+                     Output: c.id
+                     ->  Seq Scan on public.test_customers c
+                           Output: c.id
+(14 rows)
+
 -- Tolerate `diffix.agg_noise` in direct access level
 SET pg_diffix.session_access_level = 'direct';
 SELECT diffix.sum_noise(discount), diffix.count_noise(*) FROM test_customers;

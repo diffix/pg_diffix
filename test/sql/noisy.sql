@@ -110,3 +110,12 @@ UNION
 (SELECT count(*) FROM test_customers WHERE diffix.round_by(discount, 2) = 0 GROUP BY city HAVING city = 'Berlin')
 UNION
 (SELECT count(*) FROM test_customers WHERE city = 'Berlin' AND diffix.round_by(discount, 2) = 0);
+
+----------------------------------------------------------------
+-- JOIN queries
+----------------------------------------------------------------
+
+-- JOIN order doesn't affect results
+(SELECT COUNT(*) FROM test_customers AS c JOIN test_purchases ON c.id = cid WHERE city = 'Berlin')
+UNION
+(SELECT COUNT(*) FROM test_purchases JOIN test_customers AS c ON cid = c.id WHERE city = 'Berlin');
