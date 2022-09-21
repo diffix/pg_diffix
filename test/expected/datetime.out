@@ -97,3 +97,17 @@ SELECT count(*) FROM test_datetime WHERE date_part('century', ts) = 21;
      9
 (1 row)
 
+-- Datetime extract cast to integer
+SELECT cast(extract(minute from ts) as integer) as extract FROM test_datetime GROUP BY 1;
+ extract 
+---------
+       0
+(1 row)
+
+-- Allowed despite the cast being rounding
+SELECT cast(extract(second from ts) as integer) as extract FROM test_datetime GROUP BY 1;
+ extract 
+---------
+       0
+(1 row)
+

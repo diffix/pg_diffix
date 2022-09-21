@@ -20,7 +20,7 @@ Node *unwrap_cast(Node *node)
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
-    if (is_allowed_cast(func_expr->funcid))
+    if (is_allowed_cast(func_expr))
     {
       Assert(list_length(func_expr->args) == 1); /* All allowed casts require exactly one argument. */
       return unwrap_cast(linitial(func_expr->args));
