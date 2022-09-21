@@ -59,13 +59,7 @@ SELECT count(*) FROM test_datetime WHERE date_trunc('year', ts) = '2012-01-01'::
 SELECT count(*) FROM test_datetime WHERE extract(century from ts) = 21;
 SELECT count(*) FROM test_datetime WHERE date_part('century', ts) = 21;
 
--- Datetime cast normalization
--- Allowed because the cast is a noop
+-- Datetime extract cast to integer
 SELECT cast(extract(minute from ts) as integer) as extract FROM test_datetime GROUP BY 1;
-
--- Disallowed because the cast is rounding
-SELECT cast(extract(epoch from ts) as integer) FROM test_datetime GROUP BY 1;
-SELECT cast(extract(second from ts) as integer) FROM test_datetime GROUP BY 1;
-SELECT cast(extract(millisecond from ts) as integer) FROM test_datetime GROUP BY 1;
-SELECT cast(extract(microsecond from ts) as integer) FROM test_datetime GROUP BY 1;
-SELECT cast(extract(julian from ts) as integer) FROM test_datetime GROUP BY 1;
+-- Allowed despite the cast being rounding
+SELECT cast(extract(second from ts) as integer) as extract FROM test_datetime GROUP BY 1;

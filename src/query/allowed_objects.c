@@ -15,7 +15,7 @@
 static const char *const g_allowed_casts[] = {
     "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof", "int48", "int84",
     "ftod", "dtof",
-    "int4_numeric", "float4_numeric", "float8_numeric",
+    "int2_numeric", "int4_numeric", "int8_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
     "date_timestamptz",
     /**/
@@ -138,12 +138,6 @@ static const char *const g_extract_functions[] = {
     /**/
 };
 
-static const char *const g_integer_extract_fields[] = {
-    "minute", "hour", "day", "dow", "isodow", "doy", "week", "month", "quarter", "year", "isoyear", "decade",
-    "century", "millennium",
-    /**/
-};
-
 static void prepare_pg_catalog_allowed(Oid relation_oid, AllowedCols *allowed_cols)
 {
   MemoryContext old_context = MemoryContextSwitchTo(TopMemoryContext);
@@ -256,27 +250,14 @@ bool is_allowed_cast(const FuncExpr *func_expr)
   }
   else if (is_funcname_member_of(func_expr->funcid, g_decimal_integer_casts, ARRAY_LENGTH(g_decimal_integer_casts)))
   {
-    /*
-     * Special case, where a `numeric_int4` cast is called on variants of `extract` which return
-     * integer numbers, e.g. `cast(extract(minute from ...) as integer)`.
-     */
+    /* Handle cases like `cast(extract(minute from ...) as integer)`. */
     Node *cast_arg = linitial(func_expr->args);
     if (IsA(cast_arg, FuncExpr))
     {
       FuncExpr *cast_arg_expr = (FuncExpr *)cast_arg;
       if (is_funcname_member_of(cast_arg_expr->funcid, g_extract_functions, ARRAY_LENGTH(g_extract_functions)) ||
           cast_arg_expr->funcid == F_DATE_PART_TEXT_DATE)
-      {
-        Node *extract_field = linitial(cast_arg_expr->args);
-        if (IsA(extract_field, Const))
-        {
-          Const *extract_field_const = (Const *)extract_field;
-          Assert(extract_field_const->consttype == TEXTOID);
-          const char *field = TextDatumGetCString(extract_field_const->constvalue);
-
-          return is_member_of(field, g_integer_extract_fields, ARRAY_LENGTH(g_integer_extract_fields));
-        }
-      }
+        return true;
     }
   }
   return false;
