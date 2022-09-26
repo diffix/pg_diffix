@@ -276,9 +276,9 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
 
   Expr *count_aggref = make_safe_anon_count_value(aggref);
 
-  FuncExpr *cast_sum;
-  FuncExpr *cast_count;
-  FuncExpr *division;
+  FuncExpr *cast_sum = NULL;
+  FuncExpr *cast_count = NULL;
+  FuncExpr *division = NULL;
 
   /*
    * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,

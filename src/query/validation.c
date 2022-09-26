@@ -425,7 +425,7 @@ double numeric_value_to_double(Oid type, Datum value)
 
 static bool option_matches(DefElem *option, char *name, bool value)
 {
-  return strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
+  return pg_strcasecmp(option->defname, name) == 0 && defGetBoolean(option) == value;
 }
 
 static bool is_equality_op(Oid opno)

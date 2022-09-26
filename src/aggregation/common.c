@@ -19,10 +19,10 @@
 extern MemoryContext get_current_bucket_context(void);
 extern bool aggref_shares_state(Aggref *aggref);
 
-PG_FUNCTION_INFO_V1(anon_agg_state_input);
-PG_FUNCTION_INFO_V1(anon_agg_state_output);
-PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
-PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(anon_agg_state_input);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(anon_agg_state_output);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(anon_agg_state_transfn);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(anon_agg_state_finalfn);
 
 ArgsDescriptor *build_args_desc(Aggref *aggref)
 {
