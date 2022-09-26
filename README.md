@@ -11,7 +11,11 @@ The [analyst guide](docs/analyst_guide.md) describes the SQL features and limita
 
 ## Installation
 
-PostgreSQL version 13 or higher is required. You also need `make`, `jq`, and a recent C compiler.
+PostgreSQL version 13 or higher is required.
+
+### Linux
+
+You need `make`, `jq`, and a recent C compiler.
 You should already have the `postgresql-server-dev-x` package installed if you have PostgreSQL version `x`.
 If not, you must install it in order to compile the source.
 
@@ -20,6 +24,17 @@ The compiled extension is installed with: `make install` (which requires superus
 
 The extension is also available on [PGXN](https://pgxn.org/dist/pg_diffix/), and can be installed using
 [PGXN Client](https://pgxn.github.io/pgxnclient/).
+
+### Windows
+
+You need Visual Studio 2022 installed with the "Desktop development with C++" option selected.
+You also need to set the environment variable `PGROOT` to point to the location of the PostgreSQL installation.
+
+You can compile the source from inside VS 2022, by opening the provided solution file, or from the command line,
+by opening a "Developer Command Prompt for VS 2022" terminal in the project's folder and executing `msbuild` (to do a
+release build, execute `msbuild -p:Configuration=Release`, to clean the build files, run `msbuild -t:Clean`).
+
+The compiled extension is installed by running `install` (for debug version) or `install Release` (for release version).
 
 ## Activating the extension
 
