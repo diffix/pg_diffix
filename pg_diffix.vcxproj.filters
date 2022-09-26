@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\query">
+      <UniqueIdentifier>{1f33f952-5c47-43f9-98e6-f8ca6ee226ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\aggregation">
+      <UniqueIdentifier>{bb88c063-db7c-485c-92f2-9bf38a9b9187}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\query">
+      <UniqueIdentifier>{08af81e9-a83c-4de1-b9c4-42c62ab0741d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\aggregation">
+      <UniqueIdentifier>{2556eca5-607c-4266-a670-f48a603bd517}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pg_diffix\auth.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\node_funcs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\oid_cache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\query\allowed_objects.h">
+      <Filter>Header Files\query</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\query\anonymization.h">
+      <Filter>Header Files\query</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\query\relation.h">
+      <Filter>Header Files\query</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\query\validation.h">
+      <Filter>Header Files\query</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\aid.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\aid_tracker.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\bucket_scan.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\common.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\contribution_tracker.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\count.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\led.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\noise.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\star_bucket.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+    <ClInclude Include="pg_diffix\aggregation\summable.h">
+      <Filter>Header Files\aggregation</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\auth.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\config.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hooks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\node_funcs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\oid_cache.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pg_diffix.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\query\allowed_objects.c">
+      <Filter>Source Files\query</Filter>
+    </ClCompile>
+    <ClCompile Include="src\query\anonymization.c">
+      <Filter>Source Files\query</Filter>
+    </ClCompile>
+    <ClCompile Include="src\query\relation.c">
+      <Filter>Source Files\query</Filter>
+    </ClCompile>
+    <ClCompile Include="src\query\validation.c">
+      <Filter>Source Files\query</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\aid.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\aid_tracker.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\bucket_scan.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\common.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\contribution_tracker.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\count.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\count_distinct.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\count_histogram.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\led.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\low_count.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\noise.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\star_bucket.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\sum.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\aggregation\summable.c">
+      <Filter>Source Files\aggregation</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
