@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pg_diffix\aggregation\aid.h" />
+    <ClInclude Include="pg_diffix\aggregation\aid_tracker.h" />
+    <ClInclude Include="pg_diffix\aggregation\bucket_scan.h" />
+    <ClInclude Include="pg_diffix\aggregation\common.h" />
+    <ClInclude Include="pg_diffix\aggregation\contribution_tracker.h" />
+    <ClInclude Include="pg_diffix\aggregation\count.h" />
+    <ClInclude Include="pg_diffix\aggregation\led.h" />
+    <ClInclude Include="pg_diffix\aggregation\noise.h" />
+    <ClInclude Include="pg_diffix\aggregation\star_bucket.h" />
+    <ClInclude Include="pg_diffix\aggregation\summable.h" />
+    <ClInclude Include="pg_diffix\auth.h" />
+    <ClInclude Include="pg_diffix\config.h" />
+    <ClInclude Include="pg_diffix\hooks.h" />
+    <ClInclude Include="pg_diffix\node_funcs.h" />
+    <ClInclude Include="pg_diffix\oid_cache.h" />
+    <ClInclude Include="pg_diffix\query\allowed_objects.h" />
+    <ClInclude Include="pg_diffix\query\anonymization.h" />
+    <ClInclude Include="pg_diffix\query\relation.h" />
+    <ClInclude Include="pg_diffix\query\validation.h" />
+    <ClInclude Include="pg_diffix\utils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\aggregation\aid.c" />
+    <ClCompile Include="src\aggregation\aid_tracker.c" />
+    <ClCompile Include="src\aggregation\bucket_scan.c" />
+    <ClCompile Include="src\aggregation\common.c" />
+    <ClCompile Include="src\aggregation\contribution_tracker.c" />
+    <ClCompile Include="src\aggregation\count.c" />
+    <ClCompile Include="src\aggregation\count_distinct.c" />
+    <ClCompile Include="src\aggregation\count_histogram.c" />
+    <ClCompile Include="src\aggregation\led.c" />
+    <ClCompile Include="src\aggregation\low_count.c" />
+    <ClCompile Include="src\aggregation\noise.c" />
+    <ClCompile Include="src\aggregation\star_bucket.c" />
+    <ClCompile Include="src\aggregation\sum.c" />
+    <ClCompile Include="src\aggregation\summable.c" />
+    <ClCompile Include="src\auth.c" />
+    <ClCompile Include="src\config.c" />
+    <ClCompile Include="src\hooks.c" />
+    <ClCompile Include="src\node_funcs.c" />
+    <ClCompile Include="src\oid_cache.c" />
+    <ClCompile Include="src\pg_diffix.c" />
+    <ClCompile Include="src\query\allowed_objects.c" />
+    <ClCompile Include="src\query\anonymization.c" />
+    <ClCompile Include="src\query\relation.c" />
+    <ClCompile Include="src\query\validation.c" />
+    <ClCompile Include="src\utils.c" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{38363b61-2a14-4350-8136-168f8fc02737}</ProjectGuid>
+    <RootNamespace>pgdiffix</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(PGROOT)\include\server\port\win32_msvc;$(PGROOT)\include\server\port\win32;$(PGROOT)\include\server;$(PGROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>false</ExceptionHandling>
+      <CompileAs>CompileAsC</CompileAs>
+      <DisableSpecificWarnings>4244;4715</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(PGROOT)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>postgres.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(PGROOT)\include\server\port\win32_msvc;$(PGROOT)\include\server\port\win32;$(PGROOT)\include\server;$(PGROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>false</ExceptionHandling>
+      <CompileAs>CompileAsC</CompileAs>
+      <DisableSpecificWarnings>4244;4715</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(PGROOT)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>postgres.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

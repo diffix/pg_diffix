@@ -74,8 +74,8 @@ typedef struct Int64ToInt64Entry
 #define SH_DEFINE
 #include "lib/simplehash.h"
 
-PG_FUNCTION_INFO_V1(count_histogram_transfn);
-PG_FUNCTION_INFO_V1(count_histogram_finalfn);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(count_histogram_transfn);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(count_histogram_finalfn);
 
 typedef struct CountHistogramState
 {

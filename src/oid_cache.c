@@ -20,7 +20,7 @@ void oid_cache_init(void)
   if (g_loaded)
     return;
 
-  g_oid_cache.count_star = lookup_function(NULL, "count", 0, (Oid[]){});
+  g_oid_cache.count_star = lookup_function(NULL, "count", 0, NULL);
   g_oid_cache.count_value = lookup_function(NULL, "count", 1, (Oid[]){ANYOID});
   g_oid_cache.sum_int2 = lookup_function(NULL, "sum", 1, (Oid[]){INT2OID});
   g_oid_cache.sum_int4 = lookup_function(NULL, "sum", 1, (Oid[]){INT4OID});
@@ -37,26 +37,26 @@ void oid_cache_init(void)
   g_oid_cache.count_histogram = lookup_function("diffix", "count_histogram", 1, (Oid[]){ANYOID});
   g_oid_cache.count_histogram_int8 = lookup_function("diffix", "count_histogram", 2, (Oid[]){ANYOID, INT8OID});
 
-  g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, (Oid[]){});
+  g_oid_cache.count_star_noise = lookup_function("diffix", "count_noise", 0, NULL);
   g_oid_cache.count_value_noise = lookup_function("diffix", "count_noise", 1, (Oid[]){ANYOID});
   g_oid_cache.sum_noise = lookup_function("diffix", "sum_noise", 1, (Oid[]){ANYOID});
   g_oid_cache.avg_noise = lookup_function("diffix", "avg_noise", 1, (Oid[]){ANYOID});
 
-  g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, (Oid[]){});
-  g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, (Oid[]){});
-  g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, (Oid[]){});
-  g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, (Oid[]){});
-  g_oid_cache.anon_sum = lookup_function("diffix", "anon_sum", -1, (Oid[]){});
-  g_oid_cache.anon_count_histogram = lookup_function("diffix", "anon_count_histogram", -1, (Oid[]){});
+  g_oid_cache.low_count = lookup_function("diffix", "low_count", -1, NULL);
+  g_oid_cache.anon_count_distinct = lookup_function("diffix", "anon_count_distinct", -1, NULL);
+  g_oid_cache.anon_count_star = lookup_function("diffix", "anon_count_star", -1, NULL);
+  g_oid_cache.anon_count_value = lookup_function("diffix", "anon_count_value", -1, NULL);
+  g_oid_cache.anon_sum = lookup_function("diffix", "anon_sum", -1, NULL);
+  g_oid_cache.anon_count_histogram = lookup_function("diffix", "anon_count_histogram", -1, NULL);
 
-  g_oid_cache.anon_count_distinct_noise = lookup_function("diffix", "anon_count_distinct_noise", -1, (Oid[]){});
-  g_oid_cache.anon_count_star_noise = lookup_function("diffix", "anon_count_star_noise", -1, (Oid[]){});
-  g_oid_cache.anon_count_value_noise = lookup_function("diffix", "anon_count_value_noise", -1, (Oid[]){});
-  g_oid_cache.anon_sum_noise = lookup_function("diffix", "anon_sum_noise", -1, (Oid[]){});
+  g_oid_cache.anon_count_distinct_noise = lookup_function("diffix", "anon_count_distinct_noise", -1, NULL);
+  g_oid_cache.anon_count_star_noise = lookup_function("diffix", "anon_count_star_noise", -1, NULL);
+  g_oid_cache.anon_count_value_noise = lookup_function("diffix", "anon_count_value_noise", -1, NULL);
+  g_oid_cache.anon_sum_noise = lookup_function("diffix", "anon_sum_noise", -1, NULL);
 
   g_oid_cache.anon_agg_state = get_func_rettype(g_oid_cache.anon_count_star);
 
-  g_oid_cache.is_suppress_bin = lookup_function("diffix", "is_suppress_bin", 0, (Oid[]){});
+  g_oid_cache.is_suppress_bin = lookup_function("diffix", "is_suppress_bin", 0, NULL);
 
   g_oid_cache.round_by_nn = lookup_function("diffix", "round_by", 2, (Oid[]){NUMERICOID, NUMERICOID});
   g_oid_cache.round_by_dd = lookup_function("diffix", "round_by", 2, (Oid[]){FLOAT8OID, FLOAT8OID});

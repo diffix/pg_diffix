@@ -29,37 +29,37 @@ void auth_init(void)
 
 static inline bool is_personal_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "personal") == 0;
+  return pg_strcasecmp(seclabel, "personal") == 0;
 }
 
 static inline bool is_public_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "public") == 0;
+  return pg_strcasecmp(seclabel, "public") == 0;
 }
 
 static inline bool is_aid_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "aid") == 0;
+  return pg_strcasecmp(seclabel, "aid") == 0;
 }
 
 static inline bool is_not_filterable_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "not_filterable") == 0;
+  return pg_strcasecmp(seclabel, "not_filterable") == 0;
 }
 
 static inline bool is_anonymized_trusted_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "anonymized_trusted") == 0;
+  return pg_strcasecmp(seclabel, "anonymized_trusted") == 0;
 }
 
 static inline bool is_anonymized_untrusted_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "anonymized_untrusted") == 0;
+  return pg_strcasecmp(seclabel, "anonymized_untrusted") == 0;
 }
 
 static inline bool is_direct_label(const char *seclabel)
 {
-  return strcasecmp(seclabel, "direct") == 0;
+  return pg_strcasecmp(seclabel, "direct") == 0;
 }
 
 #define FAIL_ON_INVALID_LABEL(seclabel) \
@@ -238,7 +238,7 @@ static char *level_to_string(AccessLevel level)
   }
 }
 
-PG_FUNCTION_INFO_V1(access_level);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(access_level);
 
 Datum access_level(PG_FUNCTION_ARGS)
 {

@@ -4,7 +4,6 @@
 #include "catalog/pg_type.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
-#include "utils/fmgrtab.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 
@@ -35,39 +34,39 @@ typedef struct FunctionByOid
 
 static const FunctionByName g_allowed_builtins[] = {
     /* rounding casts */
-    (FunctionByName){.name = "ftoi2", .primary_arg = 0},
-    (FunctionByName){.name = "ftoi4", .primary_arg = 0},
-    (FunctionByName){.name = "ftoi8", .primary_arg = 0},
-    (FunctionByName){.name = "dtoi2", .primary_arg = 0},
-    (FunctionByName){.name = "dtoi4", .primary_arg = 0},
-    (FunctionByName){.name = "dtoi8", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_int2", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_int4", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_int8", .primary_arg = 0},
+    {.name = "ftoi2", .primary_arg = 0},
+    {.name = "ftoi4", .primary_arg = 0},
+    {.name = "ftoi8", .primary_arg = 0},
+    {.name = "dtoi2", .primary_arg = 0},
+    {.name = "dtoi4", .primary_arg = 0},
+    {.name = "dtoi8", .primary_arg = 0},
+    {.name = "numeric_int2", .primary_arg = 0},
+    {.name = "numeric_int4", .primary_arg = 0},
+    {.name = "numeric_int8", .primary_arg = 0},
     /* substring */
-    (FunctionByName){.name = "text_substr", .primary_arg = 0},
-    (FunctionByName){.name = "text_substr_no_len", .primary_arg = 0},
-    (FunctionByName){.name = "bytea_substr", .primary_arg = 0},
-    (FunctionByName){.name = "bytea_substr_no_len", .primary_arg = 0},
+    {.name = "text_substr", .primary_arg = 0},
+    {.name = "text_substr_no_len", .primary_arg = 0},
+    {.name = "bytea_substr", .primary_arg = 0},
+    {.name = "bytea_substr_no_len", .primary_arg = 0},
     /* numeric generalization */
-    (FunctionByName){.name = "dround", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_round", .primary_arg = 0},
-    (FunctionByName){.name = "dceil", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_ceil", .primary_arg = 0},
-    (FunctionByName){.name = "dfloor", .primary_arg = 0},
-    (FunctionByName){.name = "numeric_floor", .primary_arg = 0},
+    {.name = "dround", .primary_arg = 0},
+    {.name = "numeric_round", .primary_arg = 0},
+    {.name = "dceil", .primary_arg = 0},
+    {.name = "numeric_ceil", .primary_arg = 0},
+    {.name = "dfloor", .primary_arg = 0},
+    {.name = "numeric_floor", .primary_arg = 0},
     /* width_bucket */
-    (FunctionByName){.name = "width_bucket_float8", .primary_arg = 0},
-    (FunctionByName){.name = "width_bucket_numeric", .primary_arg = 0},
+    {.name = "width_bucket_float8", .primary_arg = 0},
+    {.name = "width_bucket_numeric", .primary_arg = 0},
     /* date_trunc */
-    (FunctionByName){.name = "timestamptz_trunc", .primary_arg = 1},
-    (FunctionByName){.name = "timestamp_trunc", .primary_arg = 1},
+    {.name = "timestamptz_trunc", .primary_arg = 1},
+    {.name = "timestamp_trunc", .primary_arg = 1},
     /* extract & date_part*/
-    (FunctionByName){.name = "extract_date", .primary_arg = 1},
-    (FunctionByName){.name = "extract_timestamp", .primary_arg = 1},
-    (FunctionByName){.name = "extract_timestamptz", .primary_arg = 1},
-    (FunctionByName){.name = "timestamp_part", .primary_arg = 1},
-    (FunctionByName){.name = "timestamptz_part", .primary_arg = 1},
+    {.name = "extract_date", .primary_arg = 1},
+    {.name = "extract_timestamp", .primary_arg = 1},
+    {.name = "extract_timestamptz", .primary_arg = 1},
+    {.name = "timestamp_part", .primary_arg = 1},
+    {.name = "timestamptz_part", .primary_arg = 1},
     /**/
 };
 
@@ -93,8 +92,8 @@ static const char *const g_implicit_range_builtins_untrusted[] = {
 #endif
 
 static const FunctionByOid g_allowed_builtins_extra[] = {
-    (FunctionByOid){.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0},
-    (FunctionByOid){.funcid = F_DATE_PART_TEXT_DATE, .primary_arg = 1},
+    {.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0},
+    {.funcid = F_DATE_PART_TEXT_DATE, .primary_arg = 1},
     /**/
 };
 
@@ -166,6 +165,35 @@ static const Oid *const g_implicit_range_udfs_untrusted[] = {
     &g_oid_cache.floor_by_nn,
     &g_oid_cache.floor_by_dd,
 };
+
+/* Taken from fmgrtab.h. */
+typedef struct
+{
+  Oid foid;             /* OID of the function */
+  short nargs;          /* 0..FUNC_MAX_ARGS, or -1 if variable count */
+  bool strict;          /* T if function is "strict" */
+  bool retset;          /* T if function returns a set */
+  const char *funcName; /* C name of the function */
+  PGFunction func;      /* pointer to compiled function */
+} FmgrBuiltin;
+
+#define InvalidOidBuiltinMapping PG_UINT16_MAX
+
+#ifdef WIN32
+/* On Windows, FMGR exports have to be linked dynamically. */
+#define FMGRIMPORTTYPE PGDLLIMPORT
+#else
+#define FMGRIMPORTTYPE
+#endif
+
+/*
+ * This table stores info about all the built-in functions (ie, functions
+ * that are compiled into the Postgres executable).
+ */
+extern FMGRIMPORTTYPE const FmgrBuiltin fmgr_builtins[];
+extern FMGRIMPORTTYPE const int fmgr_nbuiltins;
+extern FMGRIMPORTTYPE const Oid fmgr_last_builtin_oid;
+extern FMGRIMPORTTYPE const uint16 fmgr_builtin_oid_index[];
 
 /* Taken from fmgr.c. */
 static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
