@@ -59,6 +59,14 @@
     <ClCompile Include="src\query\validation.c" />
     <ClCompile Include="src\utils.c" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="analysis.sql" />
+    <None Include="CHANGELOG.md" />
+    <None Include="LICENSE.md" />
+    <None Include="pg_diffix--fir.sql" />
+    <None Include="pg_diffix.control" />
+    <None Include="README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
