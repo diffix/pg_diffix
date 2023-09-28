@@ -2,19 +2,22 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    container: pgxn/pgxn-tools
+    container:
+      image: pgxn/pgxn-tools
     steps:
       - name: Install deps
         run: |
           sudo apt update
           apt-get install -y jq
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Silence git error about dubious ownership
+        run: git config --global --add safe.directory /__w/pg_diffix/pg_diffix
       - name: Package release
         run: make package
       - name: Make release draft
