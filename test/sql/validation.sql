@@ -7,7 +7,8 @@ CREATE TABLE test_validation (
   discount REAL,
   birthday DATE,
   lunchtime TIME,
-  last_seen TIMESTAMP
+  last_seen TIMESTAMP,
+  last_seen_tz TIMESTAMP WITH TIME ZONE
 );
 
 CALL diffix.mark_personal('test_validation', 'id');
@@ -86,10 +87,25 @@ GROUP BY 1, 2;
 
 SELECT
   substring(cast(last_seen AS text), 1, 3),
+  substring(cast(last_seen_tz AS text), 1, 3),
   substring(cast(birthday AS text), 2, 3),
   substring(cast(lunchtime AS varchar), 1, 4)
 FROM test_validation
-GROUP BY 1, 2, 3;
+GROUP BY 1, 2, 3, 4;
+
+-- `as extract` ensures that the column is aliased consistently in PG 13 and 14.
+SELECT
+  date_trunc('year', last_seen),
+  date_trunc('year', last_seen_tz),
+  date_trunc('year', birthday),
+  extract(month from last_seen) as extract,
+  extract(month from last_seen_tz) as extract,
+  extract(month from birthday) as extract,
+  date_part('month', last_seen) as date_part,
+  date_part('month', last_seen_tz) as date_part,
+  date_part('month', birthday) as date_part
+FROM test_validation
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
 
 -- Allow all functions post-anonymization.
 SELECT 2 * length(city) FROM test_validation GROUP BY city;
@@ -156,6 +172,20 @@ SELECT * FROM diffix.show_labels() WHERE objname LIKE 'public.empty_test_custome
 PREPARE prepared(float) AS SELECT discount, count(*) FROM empty_test_customers WHERE discount = $1 GROUP BY 1;
 EXECUTE prepared(1.0);
 
+-- Allow anonymizing JOINs
+SELECT COUNT(*) FROM test_validation AS c
+  INNER JOIN test_purchases ON c.id = cid;
+
+SELECT COUNT(*) FROM test_validation AS t1
+  INNER JOIN test_validation AS t2 ON t1.name = t2.name AND t1.city = t2.city;
+
+SELECT COUNT(c.city), COUNT(p.name) FROM test_validation AS c
+  LEFT JOIN test_purchases ON c.id = cid
+  LEFT JOIN test_products AS p ON pid = p.id;
+
+SELECT COUNT(*) FROM test_validation NATURAL JOIN test_patients;
+SELECT COUNT(*) FROM test_validation JOIN test_patients USING (name);
+
 ----------------------------------------------------------------
 -- Unsupported queries
 ----------------------------------------------------------------
@@ -198,6 +228,8 @@ SELECT count(distinct least(id, 5)) FROM test_validation;
 SELECT count(id + 5) FROM test_validation;
 SELECT count(least(id, 5)) FROM test_validation;
 SELECT diffix.count_histogram(city) FROM test_validation;
+SELECT diffix.sum_noise(last_seen) FROM test_validation;
+SELECT diffix.avg_noise(last_seen::date) FROM test_validation;
 
 -- Get rejected because only a subset of expressions is supported for defining buckets.
 SELECT COUNT(*) FROM test_validation GROUP BY LENGTH(city);
@@ -211,25 +243,24 @@ SELECT COUNT(*) FROM test_validation GROUP BY floor(cast(discount AS integer));
 SELECT COUNT(*) FROM test_validation GROUP BY substr(city, 1, id);
 SELECT COUNT(*) FROM test_validation GROUP BY substr('aaaa', 1, 2);
 
+-- Get rejected because of lack of interval support
+SELECT date_trunc('year', lunchtime) FROM test_validation GROUP BY 1;
+SELECT extract(hour from lunchtime) FROM test_validation GROUP BY 1;
+
+-- Get rejected because of averaging opportunity
+SELECT  date_trunc('year', last_seen_tz, 'EST') FROM test_validation GROUP BY 1;
+
 -- Get rejected because expression node type is unsupported.
 SELECT COALESCE(discount, 20) FROM test_validation;
 SELECT NULLIF(discount, 20) FROM test_validation;
 SELECT GREATEST(discount, 20) FROM test_validation;
 SELECT LEAST(discount, 20) FROM test_validation;
 
--- Get rejected because of JOINs
-SELECT COUNT(*), COUNT(DISTINCT id), COUNT(DISTINCT cid) FROM test_validation
-  INNER JOIN test_purchases tp ON id = cid;
-
-SELECT COUNT(c.city), COUNT(p.name) FROM test_validation c
-  LEFT JOIN test_purchases ON c.id = cid
-  LEFT JOIN test_products p ON pid = p.id;
-
-SELECT city, COUNT(price) FROM test_validation, test_products GROUP BY 1;
-
-SELECT city, COUNT(price) FROM test_products, test_validation GROUP BY 1;
-
-SELECT city, COUNT(price) FROM test_products CROSS JOIN test_validation GROUP BY 1;
+-- Get rejected because of invalid JOINs
+SELECT COUNT(*) FROM test_validation JOIN test_purchases ON id != cid;
+SELECT COUNT(*) FROM test_validation JOIN test_purchases ON id = cid OR cid = id;
+SELECT COUNT(*) FROM test_validation JOIN test_purchases ON true;
+SELECT COUNT(*) FROM test_validation, test_purchases;
 
 -- Get rejected because of invalid WHERE clauses
 SELECT COUNT(*) FROM test_validation WHERE city <> 'London';

@@ -3,6 +3,7 @@
 #include "common/sha2.h"
 
 #include <limits.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 #include "pg_diffix/aggregation/noise.h"

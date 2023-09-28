@@ -1,3 +1,8 @@
+## Version 1.2.0
+  - Added support for joining tables in anonymizing queries.
+  - Added support for Windows.
+  - Added support for `date_trunc` and `extract(... from ...)`.
+
 ## Version 1.1.0
   - Added support for simple pre-anonymization `WHERE` clauses.
   - Added `sum` and `avg` aggregrators.

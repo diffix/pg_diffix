@@ -59,7 +59,7 @@ static AnonQueryLinks *prepare_query(Query *query, ParamListInfo bound_params)
     return NULL;
 
   /* At this point we have an anonymizing query. */
-  DEBUG_LOG("Anonymizing query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+  DEBUG_LOG("Anonymizing query (User ID=%u) %s", GetSessionUserId(), nodeToString(query));
 
   /* We load OIDs lazily because experimentation shows that UDFs may return INVALIDOID (0) during _PG_init. */
   oid_cache_init();
@@ -72,7 +72,7 @@ static AnonQueryLinks *prepare_query(Query *query, ParamListInfo bound_params)
 
   AnonQueryLinks *links = compile_query(query, personal_relations, bound_params);
 
-  DEBUG_LOG("Compiled query (Query ID=%lu) (User ID=%u) %s", query->queryId, GetSessionUserId(), nodeToString(query));
+  DEBUG_LOG("Compiled query (User ID=%u) %s", GetSessionUserId(), nodeToString(query));
 
   return links;
 }
@@ -83,10 +83,7 @@ static PlannedStmt *pg_diffix_planner(
     int cursorOptions,
     ParamListInfo boundParams)
 {
-  static uint64 next_query_id = 1;
-  query->queryId = next_query_id++;
-
-  DEBUG_LOG("Statement (Query ID=%lu) (User ID=%u): %s", query->queryId, GetSessionUserId(), query_string);
+  DEBUG_LOG("Statement (User ID=%u): %s", GetSessionUserId(), query_string);
 
   AnonQueryLinks *links = prepare_query(query, boundParams);
 

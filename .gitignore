@@ -1,5 +1,8 @@
 .vscode/*
 !.vscode/cpp.code-snippets
+.vs/
+x64/
+*.vcxproj.user
 
 *.o
 *.so

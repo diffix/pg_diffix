@@ -1,7 +1,9 @@
 #include "postgres.h"
 
 #include "access/sysattr.h"
-#include "utils/fmgrtab.h"
+#include "catalog/pg_type.h"
+#include "utils/builtins.h"
+#include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 
@@ -12,20 +14,59 @@
 static const char *const g_allowed_casts[] = {
     "i2tod", "i2tof", "i2toi4", "i4toi2", "i4tod", "i4tof", "i8tod", "i8tof", "int48", "int84",
     "ftod", "dtof",
-    "int4_numeric", "float4_numeric", "float8_numeric",
+    "int2_numeric", "int4_numeric", "int8_numeric", "float4_numeric", "float8_numeric",
     "numeric_float4", "numeric_float8",
+    "date_timestamptz",
     /**/
 };
 
-static const char *const g_allowed_builtins[] = {
+typedef struct FunctionByName
+{
+  const char *name;
+  int primary_arg;
+} FunctionByName;
+
+typedef struct FunctionByOid
+{
+  Oid funcid;
+  int primary_arg;
+} FunctionByOid;
+
+static const FunctionByName g_allowed_builtins[] = {
     /* rounding casts */
-    "ftoi2", "ftoi4", "ftoi8", "dtoi2", "dtoi4", "dtoi8", "numeric_int4",
+    {.name = "ftoi2", .primary_arg = 0},
+    {.name = "ftoi4", .primary_arg = 0},
+    {.name = "ftoi8", .primary_arg = 0},
+    {.name = "dtoi2", .primary_arg = 0},
+    {.name = "dtoi4", .primary_arg = 0},
+    {.name = "dtoi8", .primary_arg = 0},
+    {.name = "numeric_int2", .primary_arg = 0},
+    {.name = "numeric_int4", .primary_arg = 0},
+    {.name = "numeric_int8", .primary_arg = 0},
     /* substring */
-    "text_substr", "text_substr_no_len", "bytea_substr", "bytea_substr_no_len",
+    {.name = "text_substr", .primary_arg = 0},
+    {.name = "text_substr_no_len", .primary_arg = 0},
+    {.name = "bytea_substr", .primary_arg = 0},
+    {.name = "bytea_substr_no_len", .primary_arg = 0},
     /* numeric generalization */
-    "dround", "numeric_round", "dceil", "numeric_ceil", "dfloor", "numeric_floor",
+    {.name = "dround", .primary_arg = 0},
+    {.name = "numeric_round", .primary_arg = 0},
+    {.name = "dceil", .primary_arg = 0},
+    {.name = "numeric_ceil", .primary_arg = 0},
+    {.name = "dfloor", .primary_arg = 0},
+    {.name = "numeric_floor", .primary_arg = 0},
     /* width_bucket */
-    "width_bucket_float8", "width_bucket_numeric",
+    {.name = "width_bucket_float8", .primary_arg = 0},
+    {.name = "width_bucket_numeric", .primary_arg = 0},
+    /* date_trunc */
+    {.name = "timestamptz_trunc", .primary_arg = 1},
+    {.name = "timestamp_trunc", .primary_arg = 1},
+    /* extract & date_part*/
+    {.name = "extract_date", .primary_arg = 1},
+    {.name = "extract_timestamp", .primary_arg = 1},
+    {.name = "extract_timestamptz", .primary_arg = 1},
+    {.name = "timestamp_part", .primary_arg = 1},
+    {.name = "timestamptz_part", .primary_arg = 1},
     /**/
 };
 
@@ -42,7 +83,19 @@ static const char *const g_implicit_range_builtins_untrusted[] = {
 
 /* Some allowed functions don't appear in the builtins catalog, so we must allow them manually by OID. */
 #define F_NUMERIC_ROUND_INT 1708
-static const Oid g_allowed_builtins_extra[] = {F_NUMERIC_ROUND_INT};
+/*
+ * `date_part` for `date` is a SQL builtin and doesn't show up in `fmgr_isbuiltin`.
+ *  PG 14 has the define, but PG 13 doesn't.
+ */
+#if PG_MAJORVERSION_NUM < 14
+#define F_DATE_PART_TEXT_DATE 1384
+#endif
+
+static const FunctionByOid g_allowed_builtins_extra[] = {
+    {.funcid = F_NUMERIC_ROUND_INT, .primary_arg = 0},
+    {.funcid = F_DATE_PART_TEXT_DATE, .primary_arg = 1},
+    /**/
+};
 
 typedef struct AllowedCols
 {
@@ -71,6 +124,16 @@ static AllowedCols g_pg_catalog_allowed_cols[] = {
      * dramatically, so opting to leave them out to err on the safe side.
      */
     {.rel_name = "pg_stat_database", .col_names = {"datname", "xact_commit", "xact_rollback"}},
+    /**/
+};
+
+static const char *const g_decimal_integer_casts[] = {
+    "numeric_int2", "numeric_int4", "numeric_int8", "dtoi2", "dtoi4", "dtoi8", "ftoi2", "ftoi4", "ftoi8",
+    /**/
+};
+
+static const char *const g_extract_functions[] = {
+    "extract_date", "extract_timestamp", "extract_timestamptz", "timestamp_part", "timestamptz_part",
     /**/
 };
 
@@ -103,6 +166,35 @@ static const Oid *const g_implicit_range_udfs_untrusted[] = {
     &g_oid_cache.floor_by_dd,
 };
 
+/* Taken from fmgrtab.h. */
+typedef struct
+{
+  Oid foid;             /* OID of the function */
+  short nargs;          /* 0..FUNC_MAX_ARGS, or -1 if variable count */
+  bool strict;          /* T if function is "strict" */
+  bool retset;          /* T if function returns a set */
+  const char *funcName; /* C name of the function */
+  PGFunction func;      /* pointer to compiled function */
+} FmgrBuiltin;
+
+#define InvalidOidBuiltinMapping PG_UINT16_MAX
+
+#ifdef WIN32
+/* On Windows, FMGR exports have to be linked dynamically. */
+#define FMGRIMPORTTYPE PGDLLIMPORT
+#else
+#define FMGRIMPORTTYPE
+#endif
+
+/*
+ * This table stores info about all the built-in functions (ie, functions
+ * that are compiled into the Postgres executable).
+ */
+extern FMGRIMPORTTYPE const FmgrBuiltin fmgr_builtins[];
+extern FMGRIMPORTTYPE const int fmgr_nbuiltins;
+extern FMGRIMPORTTYPE const Oid fmgr_last_builtin_oid;
+extern FMGRIMPORTTYPE const uint16 fmgr_builtin_oid_index[];
+
 /* Taken from fmgr.c. */
 static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
 {
@@ -116,14 +208,24 @@ static const FmgrBuiltin *fmgr_isbuiltin(Oid id)
   return &fmgr_builtins[index];
 }
 
-static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], int length)
+static bool is_member_of(const char *s, const char *const array[], int length)
+{
+  for (int i = 0; i < length; i++)
+  {
+    if (strcmp(array[i], s) == 0)
+      return true;
+  }
+  return false;
+}
+
+static bool is_func_member_of(Oid funcoid, const FunctionByName func_array[], int length)
 {
   const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
   if (fmgr_builtin != NULL)
   {
     for (int i = 0; i < length; i++)
     {
-      if (strcmp(name_array[i], fmgr_builtin->funcName) == 0)
+      if (strcmp(func_array[i].name, fmgr_builtin->funcName) == 0)
         return true;
     }
   }
@@ -131,9 +233,62 @@ static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], i
   return false;
 }
 
-bool is_allowed_cast(Oid funcoid)
+static bool is_funcname_member_of(Oid funcoid, const char *const name_array[], int length)
 {
-  return is_funcname_member_of(funcoid, g_allowed_casts, ARRAY_LENGTH(g_allowed_casts));
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+    return is_member_of(fmgr_builtin->funcName, name_array, length);
+
+  return false;
+}
+
+int primary_arg_index(Oid funcoid)
+{
+  for (int i = 0; i < ARRAY_LENGTH(g_implicit_range_udfs); i++)
+  {
+    /* We ensured that our UDFs have the primary arg first. */
+    if (*g_implicit_range_udfs[i] == funcoid)
+      return 0;
+  }
+
+  const FmgrBuiltin *fmgr_builtin = fmgr_isbuiltin(funcoid);
+  if (fmgr_builtin != NULL)
+  {
+    for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins); i++)
+    {
+      if (strcmp(g_allowed_builtins[i].name, fmgr_builtin->funcName) == 0)
+        return g_allowed_builtins[i].primary_arg;
+    }
+  }
+
+  for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins_extra); i++)
+  {
+    if (g_allowed_builtins_extra[i].funcid == funcoid)
+      return g_allowed_builtins_extra[i].primary_arg;
+  }
+
+  FAILWITH("Cannot identify the primary argument position for funcid %u.", funcoid);
+}
+
+bool is_allowed_cast(const FuncExpr *func_expr)
+{
+  if (is_funcname_member_of(func_expr->funcid, g_allowed_casts, ARRAY_LENGTH(g_allowed_casts)))
+  {
+    return true;
+  }
+  else if (is_funcname_member_of(func_expr->funcid, g_decimal_integer_casts, ARRAY_LENGTH(g_decimal_integer_casts)))
+  {
+    /* Handle cases like `cast(extract(minute from ...) as integer)`. */
+    Node *cast_arg = linitial(func_expr->args);
+    if (IsA(cast_arg, FuncExpr))
+    {
+      FuncExpr *cast_arg_expr = (FuncExpr *)cast_arg;
+      if (is_funcname_member_of(cast_arg_expr->funcid, g_extract_functions, ARRAY_LENGTH(g_extract_functions)) ||
+          cast_arg_expr->funcid == F_DATE_PART_TEXT_DATE)
+        return true;
+    }
+  }
+  return false;
 }
 
 bool is_implicit_range_udf_untrusted(Oid funcoid)
@@ -154,12 +309,12 @@ bool is_allowed_function(Oid funcoid)
       return true;
   }
 
-  if (is_funcname_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
+  if (is_func_member_of(funcoid, g_allowed_builtins, ARRAY_LENGTH(g_allowed_builtins)))
     return true;
 
   for (int i = 0; i < ARRAY_LENGTH(g_allowed_builtins_extra); i++)
   {
-    if (g_allowed_builtins_extra[i] == funcoid)
+    if (g_allowed_builtins_extra[i].funcid == funcoid)
       return true;
   }
 
@@ -186,13 +341,10 @@ bool is_allowed_pg_catalog_rte(Oid relation_oid, const Bitmapset *selected_cols)
   char *rel_name = get_rel_name(relation_oid);
 
   /* Then check if the entire relation is allowed. */
-  for (int i = 0; i < ARRAY_LENGTH(g_pg_catalog_allowed_rels); i++)
+  if (is_member_of(rel_name, g_pg_catalog_allowed_rels, ARRAY_LENGTH(g_pg_catalog_allowed_rels)))
   {
-    if (strcmp(g_pg_catalog_allowed_rels[i], rel_name) == 0)
-    {
-      pfree(rel_name);
-      return true;
-    }
+    pfree(rel_name);
+    return true;
   }
 
   /* Otherwise specific selected columns must be checked against the allow-list. */

@@ -276,9 +276,9 @@ static Node *rewrite_to_avg_aggregator(Aggref *aggref, List *aid_refs)
 
   Expr *count_aggref = make_safe_anon_count_value(aggref);
 
-  FuncExpr *cast_sum;
-  FuncExpr *cast_count;
-  FuncExpr *division;
+  FuncExpr *cast_sum = NULL;
+  FuncExpr *cast_count = NULL;
+  FuncExpr *division = NULL;
 
   /*
    * The typing of the anon avg(col) is based on the original sum(col) and avg(col) typing,
@@ -534,12 +534,54 @@ static void append_seed_material(
   strcpy(existing_material + existing_material_length, new_material);
 }
 
+static char *datum_seed_material(Oid type, Datum value, bool is_null)
+{
+  if (is_null)
+  {
+    char *value_as_string = palloc(sizeof(char) * (4 + 1));
+    strcpy(value_as_string, "NULL");
+    return value_as_string;
+  }
+  else if (is_supported_numeric_type(type))
+  {
+    /* Normalize numeric values. */
+    double value_as_double = numeric_value_to_double(type, value);
+    char *value_as_string = palloc(sizeof(char) * DOUBLE_SHORTEST_DECIMAL_LEN);
+    double_to_shortest_decimal_buf(value_as_double, value_as_string);
+    return value_as_string;
+  }
+  else if (TypeCategory(type) == TYPCATEGORY_DATETIME)
+  {
+    char *value_as_string = palloc(sizeof(char) * (MAXDATELEN + 1));
+    /* Leveraging `json.h` with UTC to get style-stable encoding of various datetime types. */
+    const int tzp = 0;
+    JsonEncodeDateTime(value_as_string, value, type, &tzp);
+    return value_as_string;
+  }
+
+  /* Handle all other types by casting to text. */
+  Oid type_output_funcid = InvalidOid;
+  bool is_varlena = false;
+  getTypeOutputInfo(type, &type_output_funcid, &is_varlena);
+
+  return OidOutputFunctionCall(type_output_funcid, value);
+}
+
 typedef struct CollectMaterialContext
 {
   Query *query;
   ParamListInfo bound_params;
   char material[MAX_SEED_MATERIAL_SIZE];
 } CollectMaterialContext;
+
+static void normalize_function_name(char *func_name)
+{
+  if (strcmp(func_name, "date_part") == 0)
+  {
+    // Not reallocing the `func_name`, because the normalized string is shorter.
+    strcpy(func_name, "extract");
+  }
+}
 
 static bool collect_seed_material(Node *node, CollectMaterialContext *context)
 {
@@ -549,12 +591,12 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
   if (IsA(node, FuncExpr))
   {
     FuncExpr *func_expr = (FuncExpr *)node;
-    if (!is_allowed_cast(func_expr->funcid))
+    if (!is_allowed_cast(func_expr))
     {
       char *func_name = get_func_name(func_expr->funcid);
       if (func_name)
       {
-        /* TODO: Normalize function names. */
+        normalize_function_name(func_name);
         append_seed_material(context->material, func_name, ',');
         pfree(func_name);
       }
@@ -585,13 +627,9 @@ static bool collect_seed_material(Node *node, CollectMaterialContext *context)
     bool isnull;
     get_stable_expression_value(node, context->bound_params, &type, &value, &isnull);
 
-    if (!is_supported_numeric_type(type))
-      FAILWITH_LOCATION(exprLocation(node), "Unsupported constant type used in bucket definition!");
-
-    double const_as_double = numeric_value_to_double(type, value);
-    char const_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
-    double_to_shortest_decimal_buf(const_as_double, const_as_string);
-    append_seed_material(context->material, const_as_string, ',');
+    char *value_as_string = datum_seed_material(type, value, isnull);
+    append_seed_material(context->material, value_as_string, ',');
+    pfree(value_as_string);
   }
 
   /* We ignore unknown nodes. Validation should make sure nothing unsafe reaches this stage. */
@@ -617,35 +655,9 @@ static void collect_seed_material_hashes(Query *query, List *exprs, List **seed_
 
 static hash_t hash_label(Oid type, Datum value, bool is_null)
 {
-  if (is_null)
-    return hash_string("NULL");
-
-  if (is_supported_numeric_type(type))
-  {
-    /* Normalize numeric values. */
-    double value_as_double = numeric_value_to_double(type, value);
-    char value_as_string[DOUBLE_SHORTEST_DECIMAL_LEN];
-    double_to_shortest_decimal_buf(value_as_double, value_as_string);
-    return hash_string(value_as_string);
-  }
-
-  if (TypeCategory(type) == TYPCATEGORY_DATETIME)
-  {
-    char value_as_string[MAXDATELEN + 1];
-    /* Leveraging `json.h` as a way to get style-stable encoding of various datetime types. */
-    JsonEncodeDateTime(value_as_string, value, type, NULL);
-    return hash_string(value_as_string);
-  }
-
-  /* Handle all other types by casting to text. */
-  Oid type_output_funcid = InvalidOid;
-  bool is_varlena = false;
-  getTypeOutputInfo(type, &type_output_funcid, &is_varlena);
-
-  char *value_as_string = OidOutputFunctionCall(type_output_funcid, value);
+  char *value_as_string = datum_seed_material(type, value, is_null);
   hash_t hash = hash_string(value_as_string);
   pfree(value_as_string);
-
   return hash;
 }
 
@@ -719,7 +731,7 @@ static AnonymizationContext *make_query_anonymizing(Query *query, List *personal
   /* Only simple select queries require implicit grouping. */
   if (!initial_has_aggs && !initial_has_group_clause)
   {
-    DEBUG_LOG("Rewriting query to group and expand implicit buckets (Query ID=%lu).", query->queryId);
+    DEBUG_LOG("Rewriting query to group and expand implicit buckets.");
     group_implicit_buckets(query);
     add_junk_count_star(query);
     anon_context->expand_buckets = true;

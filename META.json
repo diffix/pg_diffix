@@ -2,7 +2,7 @@
   "name": "pg_diffix",
   "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
   "description": "Diffix is a bundled set of mechanisms for anonymizing structured data. Open Diffix is a project to make Diffix anonymization free and open. More details at open-diffix.org.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "maintainer": "Open Diffix <hello@open-diffix.org>",
   "license": {
     "restricted": "https://github.com/diffix/pg_diffix/blob/master/LICENSE.md"
@@ -13,7 +13,7 @@
       "abstract": "A PostgreSQL extension for strong dynamic anonymization.",
       "file": "src/pg_diffix.c",
       "docfile": "docs/user_guide.md",
-      "version": "1.1.0"
+      "version": "1.2.0"
     }
   },
   "prereqs": {

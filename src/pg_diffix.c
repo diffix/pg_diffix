@@ -11,14 +11,19 @@
 #include "pg_diffix/utils.h"
 
 #include <limits.h>
+
+#ifdef _WIN64
+#define __WORDSIZE 64
+#endif
+
 #if __WORDSIZE != 64
 #error "This module requires a 64-bit target architecture!"
 #endif
 
 PG_MODULE_MAGIC;
 
-void _PG_init(void);
-void _PG_fini(void);
+PGDLLEXPORT void _PG_init(void);
+PGDLLEXPORT void _PG_fini(void);
 
 void _PG_init(void)
 {
@@ -39,14 +44,14 @@ void _PG_fini(void)
   hooks_cleanup();
 }
 
-PG_FUNCTION_INFO_V1(placeholder_func);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(placeholder_func);
 
 Datum placeholder_func(PG_FUNCTION_ARGS)
 {
   return PG_GETARG_DATUM(0);
 }
 
-PG_FUNCTION_INFO_V1(internal_qual_wrapper);
+PGDLLEXPORT PG_FUNCTION_INFO_V1(internal_qual_wrapper);
 
 Datum internal_qual_wrapper(PG_FUNCTION_ARGS)
 {

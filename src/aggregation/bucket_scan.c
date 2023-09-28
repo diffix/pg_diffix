@@ -7,6 +7,7 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/cost.h"
+#include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
 #include "utils/datum.h"
 
@@ -760,8 +761,6 @@ static List *make_scan_tlist(List *flat_agg_tlist, int num_labels, int num_aggs)
 
   return scan_tlist;
 }
-
-extern double cpu_tuple_cost; /* optimizer/path/costsize.c. */
 
 Plan *make_bucket_scan(Plan *left_tree, AnonymizationContext *anon_context)
 {
